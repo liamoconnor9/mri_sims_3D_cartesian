@@ -147,6 +147,7 @@ else:
 
 problem.add_bc("left(vx)   = 0")
 problem.add_bc("right(vx)  = 0")
+
 if not ideal:
     if hardwall:
         problem.add_bc("left(vy)   = 0")
