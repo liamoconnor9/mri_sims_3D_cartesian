@@ -12,6 +12,7 @@ import os
 import h5py
 from eigentools import Eigenproblem
 import dedalus.public as de
+from dedalus.extras import flow_tools
 from mpi4py import MPI
 CW = MPI.COMM_WORLD
 import logging
@@ -93,16 +94,12 @@ if ideal:
 
 # Boundary Conditions: stress-free, perfect-conductor
 
-problem.add_bc("left(vx) = 0")
-# problem.add_bc("left(vy) = 0")
-# problem.add_bc("left(vz) = 0")
-# problem.add_bc("left(p) = 0")
-
-problem.add_bc("right(vx) = 0", condition="(nr!=0)")
-problem.add_bc("right(p) = 0", condition="(nr==0)")
+problem.add_equation("left(vx) = 0")
+problem.add_equation("right(vx) = 0", condition="(ny!=0) or (nz!=0)")
+problem.add_equation("right(p) = 0", condition="(ny==0) and (nz==0)")
 
 # setup
-dt = 0.001
+dt = 1e-6
 solver = problem.build_solver(de.timesteppers.SBDF2)
 
 # ICs
@@ -130,6 +127,17 @@ vz['g'] = x*x * -(z - pert) * (z - pert)
 rand = np.random.RandomState(seed=23)
 noise = rand.standard_normal(gshape)[slices]
 
+checkpoints = solver.evaluator.add_file_handler('checkpoints_nom', sim_dt=0.001, max_writes=50, mode='overwrite')
+checkpoints.add_system(solver.state)
+
+CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.5,
+                     max_change=1.5, min_change=0.5, max_dt=0.125, threshold=0.05)
+CFL.add_velocities(('vx', 'vy', 'vz'))
+
+# Flow properties
+flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
+flow.add_property("sqrt(vx*vx + vy*vy + vz*vz)", name='Re')
+
 solver.stop_sim_time = 100
 solver.stop_wall_time = 60 * 60.
 solver.stop_iteration = np.inf
@@ -138,9 +146,12 @@ try:
     logger.info('Starting loop')
     start_run_time = time.time()
     while solver.ok:
+        dt = CFL.compute_dt()
         solver.step(dt)
         if (solver.iteration-1) % 100 == 0:
             logger.info('Iteration: %i, Time: %e, dt: %e' %(solver.iteration, solver.sim_time, dt))
+            logger.info('Max Re = %f' %flow.max('Re'))
+
 except:
     logger.error('Exception raised, triggering end of main loop.')
     raise
