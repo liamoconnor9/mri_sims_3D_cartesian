@@ -13,6 +13,7 @@ import h5py
 from eigentools import Eigenproblem
 import dedalus.public as de
 from dedalus.extras import flow_tools
+from dedalus.extras.plot_tools import plot_bot_2d
 from mpi4py import MPI
 CW = MPI.COMM_WORLD
 import logging
@@ -118,7 +119,7 @@ noise = rand.standard_normal(gshape)[slices]
 
 # Linear background + perturbations damped at walls
 zb, zt = z_basis.interval
-pert =  1e-1 * noise * (zt - z) * (z - zb)
+pert =  1e-3 * noise * (zt - z) * (z - zb)
 p['g'] = -(z - pert)
 vx['g'] = -(z - pert) * (z - pert)
 by['g'] = x * (z - pert) * (z - pert)
@@ -127,7 +128,7 @@ vz['g'] = x*x * -(z - pert) * (z - pert)
 rand = np.random.RandomState(seed=23)
 noise = rand.standard_normal(gshape)[slices]
 
-checkpoints = solver.evaluator.add_file_handler('checkpoints_nom', sim_dt=0.001, max_writes=50, mode='overwrite')
+checkpoints = solver.evaluator.add_file_handler('checkpoints_mri', sim_dt=0.0001, max_writes=10, mode='overwrite')
 checkpoints.add_system(solver.state)
 
 CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.5,
