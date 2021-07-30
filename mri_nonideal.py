@@ -19,7 +19,6 @@ import logging
 import pathlib
 logger = logging.getLogger(__name__)
 
-ideal = True
 hardwall = False
 filename = Path('mri_options.cfg')
 outbase = Path("data")
@@ -78,7 +77,7 @@ logger.info("running on processor mesh={}".format(mesh))
 
 
 # 3D MRI
-problem_variables = ['p','vx','vy','vz','bx','by','bz']
+problem_variables = ['p','vx','vy','vz','bx','by','bz','ωy','ωz','jxx', 'pb']
 problem = de.IVP(domain, variables=problem_variables, time='t')
 # problem.meta[:]['x']['dirichlet'] = True
 
@@ -88,26 +87,54 @@ problem.parameters['S'] = S
 problem.parameters['f'] = f
 problem.parameters['B'] = B
 
-# Operator substitutions for y,z, and t derivatives
+# non ideal
+problem.parameters['ν'] = ν
+problem.parameters['η'] = η
+
+# Operator substitutions for t derivative
 problem.substitutions['Dt(A)'] = "dt(A) + S*x*dy(A)"
+
+# non ideal
+problem.substitutions['ωx'] = "dy(vz) - dz(vy)"
+problem.substitutions['jx'] = "dy(bz) - dz(by)"
+problem.substitutions['jy'] = "dz(bx) - dx(bz)"
+problem.substitutions['jz'] = "dx(by) - dy(bx)"
+problem.substitutions['L(A)'] = "dy(dy(A)) + dz(dz(A))"
 
 # Variable substitutions
 problem.add_equation("dx(vx) + dy(vy) + dz(vz) = 0")
-if ideal:
-    problem.add_equation("Dt(vx)  -     f*vy + dx(p) - B*dz(bx) = 0")
-    problem.add_equation("Dt(vy)  + (f+S)*vx + dy(p) - B*dz(by) = 0")
-    problem.add_equation("Dt(vz)             + dz(p) - B*dz(bz) = 0")
 
-    # Frozen-in field
-    problem.add_equation("Dt(bx) - B*dz(vx)        = 0")
-    problem.add_equation("Dt(by) - B*dz(vy) - S*bx = 0")
-    problem.add_equation("Dt(bz) - B*dz(vz)        = 0")
+problem.add_equation("Dt(vx)  -     f*vy + dx(p) - B*dz(bx) + ν*(dy(ωz) - dz(ωy)) = 0")
+problem.add_equation("Dt(vy)  + (f+S)*vx + dy(p) - B*dz(by) + ν*(dz(ωx) - dx(ωz)) = 0")
+problem.add_equation("Dt(vz)             + dz(p) - B*dz(bz) + ν*(dx(ωy) - dy(ωx)) = 0")
+
+problem.add_equation("ωy - dz(vx) + dx(vz) = 0")
+problem.add_equation("ωz - dx(vy) + dy(vx) = 0")
+
+# MHD equations: bx, by, bz, jxx
+problem.add_equation("dx(bx) + dy(by) + dz(bz) = 0")
+problem.add_equation("Dt(bx) - B*dz(vx) + η*( dy(jz) - dz(jy) ) + dx(pb)           = 0")
+problem.add_equation("Dt(jx) - B*dz(ωx) + S*dz(bx) - η*( dx(jxx) + L(jx) ) = 0")
+problem.add_equation("jxx - dx(jx) = 0")
 
 # Boundary Conditions: stress-free, perfect-conductor
 
 problem.add_equation("left(vx) = 0")
 problem.add_equation("right(vx) = 0", condition="(ny!=0) or (nz!=0)")
+# problem.add_equation("right(bx) = 0", condition="(ny!=0) or (nz!=0)")
 problem.add_equation("right(p) = 0", condition="(ny==0) and (nz==0)")
+
+problem.add_equation("left(pb) = 0")
+problem.add_equation("right(pb) = 0")
+
+problem.add_bc("left(ωy)   = 0")
+problem.add_bc("left(ωz)   = 0")
+problem.add_bc("left(bx)   = 0")
+problem.add_bc("left(jxx)  = 0")
+problem.add_bc("right(ωy)  = 0")
+problem.add_bc("right(ωz)  = 0")
+problem.add_bc("right(bx)  = 0")
+problem.add_bc("right(jxx) = 0")
 
 # setup
 dt = 1e-6
@@ -130,14 +157,14 @@ if not pathlib.Path('restart.h5').exists():
     noise = rand.standard_normal(gshape)[slices]
 
     # Linear background + perturbations damped at walls
-    xb, xt = x_basis.interval
+    zb, zt = z_basis.interval
     # pert =  1e-2 * noise * (zt - z) * (z - zb)
     # bx['g'] = pert
 
-    rand = np.random.RandomState(seed=42)
+    rand = np.random.RandomState(seed=24)
     noise = rand.standard_normal(gshape)[slices]
-    pert =  1e-2 * noise * (xt - x) * (x - xb)
-    vx['g'] = pert
+    pert =  1e-2 * noise * (zt - z) * (z - zb)
+    vx['g'] = -(z - pert)
     fh_mode = 'overwrite'
 
 else:
@@ -150,11 +177,10 @@ else:
     stop_sim_time = 50
     fh_mode = 'append'
 
-
-checkpoints = solver.evaluator.add_file_handler('checkpoints_mri_test', sim_dt=0.1, max_writes=6, mode=fh_mode)
+checkpoints = solver.evaluator.add_file_handler('checkpoints_mri_non', sim_dt=0.1, max_writes=6, mode=fh_mode)
 checkpoints.add_system(solver.state)
 
-slicepoints = solver.evaluator.add_file_handler('slicepoints_mri_test', sim_dt=0.01, max_writes=50, mode=fh_mode)
+slicepoints = solver.evaluator.add_file_handler('slicepoints_mri_non', sim_dt=0.01, max_writes=50, mode=fh_mode)
 
 slicepoints.add_task("interp(vx, y={})".format(Lx / 2), name="vx_midy")
 slicepoints.add_task("interp(vx, z={})".format(Lx / 2), name="vx_midz")
@@ -187,7 +213,7 @@ try:
     while solver.ok:
         dt = CFL.compute_dt()
         solver.step(dt)
-        if (solver.iteration-1) % 10 == 0:
+        if (solver.iteration-1) % 100 == 0:
             logger.info('Iteration: %i, Time: %e, dt: %e' %(solver.iteration, solver.sim_time, dt))
             logger.info('Max Re = %f' %flow.max('Re'))
 
