@@ -1,6 +1,6 @@
 """
 Modified from: The magnetorotational instability prefers three dimensions.
-linear, ideal, 3D MHD initial value problem (simulation)
+3D MHD initial value problem (simulation)
 """
 
 from docopt import docopt
@@ -112,28 +112,57 @@ problem.add_equation("ωy - dz(vx) + dx(vz) = 0")
 problem.add_equation("ωz - dx(vy) + dy(vx) = 0")
 
 # MHD equations: bx, by, bz, jxx
-problem.add_equation("dx(bx) + dy(by) + dz(bz) = 0")
-problem.add_equation("Dt(bx) - B*dz(vx) + η*( dy(jz) - dz(jy) )            = 0")
-problem.add_equation("Dt(jx) - B*dz(ωx) + S*dz(bx) - η*( dx(jxx) + L(jx) ) = 0")
-problem.add_equation("jxx - dx(jx) = 0")
+problem.add_equation("dx(bx) + dy(by) + dz(bz) = 0", condition='(ny != 0) or (nz != 0)')
+problem.add_equation("Dt(bx) - B*dz(vx) + η*( dy(jz) - dz(jy) )            = 0", condition='(ny != 0) or (nz != 0)')
+problem.add_equation("Dt(jx) - B*dz(ωx) + S*dz(bx) - η*( dx(jxx) + L(jx) ) = 0", condition='(ny != 0) or (nz != 0)')
+problem.add_equation("jxx - dx(jx) = 0", condition='(ny != 0) or (nz != 0)')
+problem.add_equation("bx = 0", condition='(ny == 0) and (nz == 0)')
+problem.add_equation("by = 0", condition='(ny == 0) and (nz == 0)')
+problem.add_equation("bz = 0", condition='(ny == 0) and (nz == 0)')
+problem.add_equation("jxx = 0", condition='(ny == 0) and (nz == 0)')
+
+# if ny == 0:
+# dx(bx) + dz(bz) = 0
+# -Dt(dz(by)) + B*dz(dz(vy)) - eta*.... = 0
+# should be ok
+# similarly nz == 0 should be ok
+
+# if ny == nz == 0:
+# dx(bx) = 0
+# Dt(bx) + B*dz(vx) = 0
+# Dt(0) + ... = 0
+# jxx = 0
+# this has problems!
+# magnetic variables are: bx, by, bz, jxx
+# dx(bx) = 0 is the equation for bx
+# jxx = 0 is the equation for jxx
+# need equations for by and bz
+# the equations are
+# dt(by) - eta*dx(dx(by)) = -u.grad(b) + b.grad(u)
+
+# dt(by) - eta*dx(dx(by)) = -(vx*dx(by) + vy*dy(by) + vz*dz(by)) + (bx * dx(vy) + by * dy(vy) + bz * dz(vy))
+# if ny == nz == 0:
+# dt(by) - eta*dx(dx(by)) = -vx*dx(by) + bx * dx(vy)
+# dt(by) - eta*dx(dx(by)) = 0
+
+# dt(bz) - eta*dx(dx(bz)) = 0
+# this seems hard because it is second order in x for both by and bz.
+# So instead let us just assume the initial condition hax <by>=<bz>=0, so it stays that way.
 
 # Boundary Conditions: stress-free, perfect-conductor
 
-problem.add_equation("left(vx) = 0")
-problem.add_equation("right(vx) = 0", condition="(ny!=0) or (nz!=0)")
-problem.add_equation("right(bx) = 0", condition="(ny!=0) or (nz!=0)")
-problem.add_equation("right(p) = 0", condition="(ny==0) and (nz==0)")
-
-problem.add_equation("right(by) = 0", condition="(ny==0) and (nz==0)")
-
+problem.add_bc("left(vx) = 0")
+problem.add_bc("right(vx) = 0", condition="(ny != 0) or (nz != 0)")
+problem.add_bc("right(p) = 0", condition="(ny == 0) and (nz == 0)")
 problem.add_bc("left(ωy)   = 0")
 problem.add_bc("left(ωz)   = 0")
-problem.add_bc("left(bx)   = 0")
-problem.add_bc("left(jxx)  = 0")
-
 problem.add_bc("right(ωy)  = 0")
 problem.add_bc("right(ωz)  = 0")
-problem.add_bc("right(jxx) = 0")
+
+problem.add_bc("left(bx)   = 0", condition="(ny != 0) or (nz != 0)")
+problem.add_bc("left(jxx)  = 0", condition="(ny != 0) or (nz != 0)")
+problem.add_bc("right(bx) = 0", condition="(ny != 0) or (nz != 0)")
+problem.add_bc("right(jxx) = 0", condition="(ny != 0) or (nz != 0)")
 
 # setup
 dt = 1e-6
@@ -156,14 +185,14 @@ if not pathlib.Path('restart.h5').exists():
     noise = rand.standard_normal(gshape)[slices]
 
     # Linear background + perturbations damped at walls
-    zb, zt = z_basis.interval
+    xb, xt = x_basis.interval
     # pert =  1e-2 * noise * (zt - z) * (z - zb)
     # bx['g'] = pert
 
-    rand = np.random.RandomState(seed=24)
+    rand = np.random.RandomState(seed=42)
     noise = rand.standard_normal(gshape)[slices]
-    pert =  1e-2 * noise * (zt - z) * (z - zb)
-    vx['g'] = -(z - pert)
+    pert =  1e-2 * noise * (xt - x) * (x - xb)
+    vx['g'] = pert
     fh_mode = 'overwrite'
 
 else:
@@ -176,10 +205,10 @@ else:
     stop_sim_time = 50
     fh_mode = 'append'
 
-checkpoints = solver.evaluator.add_file_handler('checkpoints_mri_non', sim_dt=0.1, max_writes=6, mode=fh_mode)
+checkpoints = solver.evaluator.add_file_handler('checkpoints_mri_non', sim_dt=0.1, max_writes=1, mode=fh_mode)
 checkpoints.add_system(solver.state)
 
-slicepoints = solver.evaluator.add_file_handler('slicepoints_mri_non', sim_dt=0.01, max_writes=50, mode=fh_mode)
+slicepoints = solver.evaluator.add_file_handler('slicepoints_mri_non', sim_dt=0.002, max_writes=50, mode=fh_mode)
 
 slicepoints.add_task("interp(vx, y={})".format(Lx / 2), name="vx_midy")
 slicepoints.add_task("interp(vx, z={})".format(Lx / 2), name="vx_midz")
@@ -203,7 +232,7 @@ flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
 flow.add_property("sqrt(vx*vx + vy*vy + vz*vz)", name='Re')
 
 solver.stop_sim_time = 30
-solver.stop_wall_time = 8 * 60 * 60.
+solver.stop_wall_time = 16 * 60 * 60.
 solver.stop_iteration = np.inf
 
 try:

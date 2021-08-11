@@ -1,0 +1,35 @@
+Job 11537013.pbspl1.nas.nasa.gov started on Fri Aug 06 20:03:48 PDT 2021
+The job requested the following resources:
+    ncpus=532
+    place=scatter:excl
+    walltime=01:00:00
+
+PBS set the following environment variables:
+        FORT_BUFFERED = 1
+                   TZ = PST8PDT
+
+On r623i1n12:
+Current directory is /home3/loconno2/mri_simulations
+/var/spool/pbs/mom_priv/jobs/11537013.pbspl1.nas.nasa.gov.SC: line 14: deactivate: command not found
+2021-08-06 20:04:24,971 post 0/512 INFO :: Merging files from checkpoints_mri_non
+2021-08-06 21:02:06,463 post 0/512 INFO :: Merging files from slicepoints_mri_non
+=>> PBS: job killed: walltime 3633 exceeded limit 3600
+MPT: Received signal 15
+
+
+____________________________________________________________________
+Job Resource Usage Summary for 11537013.pbspl1.nas.nasa.gov
+
+    CPU Time Used            : 00:27:16
+    Real Memory Used         : 68462720kb
+    Walltime Used            : 01:00:43
+    Exit Status              : 271
+
+    Number of CPUs Requested : 532
+    Walltime Requested       : 01:00:00
+
+    Execution Queue          : normal
+    Charged To               : s2276
+
+    Job Stopped              : Fri Aug  6 21:04:52 2021
+____________________________________________________________________
