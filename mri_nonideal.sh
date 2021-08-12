@@ -1,7 +1,7 @@
 #PBS -S /bin/bash
-#PBS -N mri_nonideal
-#PBS -l select=19:ncpus=28:mpiprocs=512:model=bro
-#PBS -l walltime=16:00:00
+#PBS -N mri_nonideal_diff2en4
+#PBS -l select=10:ncpus=28:mpiprocs=256:model=bro
+#PBS -l walltime=24:00:00
 #PBS -j oe
 module load mpi-sgi/mpt
 module load comp-intel
@@ -14,8 +14,12 @@ conda activate dedalus
 # support lots of text output to stdio for analysis
 export MPI_UNBUFFERED_STDIO=true
 cd ~/scratch/dedalus/mri_simulations/
+source png2mp4.sh
 
-mpiexec_mpt -np 512 python3 mri_nonideal_bc.py
-mpiexec_mpt -np 512 python3 -m dedalus merge_procs checkpoints_mri_non
-mpiexec_mpt -np 512 python3 -m dedalus merge_procs slicepoints_mri_non
-mpiexec_mpt -np 512 python3 plot_slices.py checkpoints_mri_wed/*.h5 --output=frames_non
+mpiexec_mpt -np 256 python3 mri_nonideal_bc.py
+mpiexec_mpt -np 256 python3 -m dedalus merge_procs slicepoints_diff2en4
+mpiexec_mpt -np 256 python3 plot_slicepoints.py slicepoints_diff2en4/*.h5 --output=frames_diff2en4
+png2mp4 frames_diff2en4/ mri_diff2en4.mp4 60
+mpiexec_mpt -np 1 python3 plot_ke.py slicepoints_diff2en4/*.h5
+mpiexec_mpt -np 1 python3 plot_be.py slicepoints_diff2en4/*.h5
+mpiexec_mpt -np 256 python3 -m dedalus merge_procs checkpoints_diff2en4

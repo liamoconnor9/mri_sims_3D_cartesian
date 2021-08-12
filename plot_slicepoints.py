@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 plt.ioff()
 from dedalus.extras import plot_tools
 
@@ -27,7 +28,7 @@ def midplane(filename, start, count, output):
     """Save plot of specified tasks for given range of analysis writes."""
 
     # Plot settings
-    tasks = ['vx', 'vy', 'vz', 'bx', 'by', 'bz']
+    tasks = ['vx_midz', 'vy_midz', 'vz_midz', 'bx_midz', 'by_midz', 'bz_midz']
     scale = 2.5
     dpi = 100
     title_func = lambda sim_time: 't = {:.3f}'.format(sim_time)
@@ -50,9 +51,27 @@ def midplane(filename, start, count, output):
                 axes = mfig.add_axes(i, j, [0, 0, 1, 1])
                 # Call plotting helper (dset axes: [t, x, y, z])
                 dset = file['tasks'][task]
-                image_axes = (2, 1)
-                data_slices = (index, slice(None), slice(None), 0)
+                image_axes = (3, 1)
+                data_slices = (index, slice(None), 0, slice(None))
+                # if (index % 5 != 0):
+                #     continue
                 plot_tools.plot_bot(dset, image_axes, data_slices, axes=axes, title=task, even_scale=True)
+
+                # x = file['scales/x/1.0'][()]
+                # y = file['scales/y/1.0'][()]
+                # yy, xx = np.meshgrid(y.flatten(), x.flatten())
+                # data = dset[data_slices]
+                # plot = plt.pcolormesh(xx, yy, data)
+                # cbar = plt.colorbar(plot, cax=axes, orientation='horizontal',
+                #     ticks=ticker.MaxNLocator(nbins=5))
+                # cbar.outline.set_visible(False)
+                # axes.xaxis.set_ticks_position('top')                # plt.pcolor(dset[data_slices])
+                # axes.xaxis.set_label_position('top')
+                # plt.xlabel("x")
+                # plt.ylabel("y")
+                # plt.title(task)
+                
+                # plot_tools.plot_bot(dset, image_axes, data_slices, axes=axes, title=task, even_scale=True)
             # Add time title
             title = title_func(file['scales/sim_time'][index])
             title_height = 1 - 0.5 * mfig.margin.top / mfig.fig.y
@@ -60,7 +79,8 @@ def midplane(filename, start, count, output):
             # Save figure
             savename = savename_func(file['scales/write_number'][index])
             savepath = output.joinpath(savename)
-            fig.savefig(str(savepath), dpi=dpi)
+            if (index % 1 == 0):
+                fig.savefig(str(savepath), dpi=dpi)
             fig.clear()
     plt.close(fig)
 

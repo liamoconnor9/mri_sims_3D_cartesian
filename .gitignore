@@ -4,6 +4,8 @@
 *.c
 *.so
 *.o
+*.mp4
+*.o*
 *.h5
 *.orig
 .ipynb_checkpoints/

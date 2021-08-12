@@ -19,6 +19,43 @@ import logging
 import pathlib
 logger = logging.getLogger(__name__)
 
+def filter_field(field, frac=0.25):
+    """
+    Filter a field in coefficient space by cutting off all coefficient above
+    a given threshold.  This is accomplished by changing the scale of a field,
+    forcing it into coefficient space at that small scale, then coming back to
+    the original scale.
+    Inputs:
+        field   - The dedalus field to filter
+        frac    - The fraction of coefficients to KEEP POWER IN.  If frac=0.25,
+                    The upper 75% of coefficients are set to 0.
+    """
+    dom = field.domain
+    logger.info("filtering field {} with frac={} using a set-scales approach".format(field.name,frac))
+    orig_scale = field.scales
+    field.set_scales(frac, keep_data=True)
+    field['c']
+    field['g']
+    field.set_scales(orig_scale, keep_data=True)
+    
+def global_noise(domain, seed=42, **kwargs):
+    """
+    Create a field fielled with random noise of order 1.  Modify seed to
+    get varying noise, keep seed the same to directly compare runs.
+    """
+    # Random perturbations, initialized globally for same results in parallel
+    gshape = domain.dist.grid_layout.global_shape(scales=domain.dealias)
+    slices = domain.dist.grid_layout.slices(scales=domain.dealias)
+    rand = np.random.RandomState(seed=seed)
+    noise = rand.standard_normal(gshape)[slices]
+    # filter in k-space
+    noise_field = domain.new_field()
+    noise_field.set_scales(domain.dealias, keep_data=False)
+    noise_field['g'] = noise
+    filter_field(noise_field, **kwargs)
+    return noise_field
+
+
 hardwall = False
 filename = Path('mri_options.cfg')
 outbase = Path("data")
@@ -165,7 +202,7 @@ problem.add_bc("right(bx) = 0", condition="(ny != 0) or (nz != 0)")
 problem.add_bc("right(jxx) = 0", condition="(ny != 0) or (nz != 0)")
 
 # setup
-dt = 1e-6
+dt = 1e-4
 solver = problem.build_solver(de.timesteppers.SBDF2)
 
 
@@ -186,13 +223,14 @@ if not pathlib.Path('restart.h5').exists():
 
     # Linear background + perturbations damped at walls
     xb, xt = x_basis.interval
-    # pert =  1e-2 * noise * (zt - z) * (z - zb)
-    # bx['g'] = pert
+    # rand = np.random.RandomState(seed=42)
+    # noise = rand.standard_normal(gshape)[slices]
+    # pert =  1e-2 * noise * (xt - x) * (x - xb)
+    # vx['g'] = pert
 
-    rand = np.random.RandomState(seed=42)
-    noise = rand.standard_normal(gshape)[slices]
-    pert =  1e-2 * noise * (xt - x) * (x - xb)
-    vx['g'] = pert
+    noise = global_noise(domain)
+    vx['g'] += 1e-3*np.cos(np.pi*(x))*noise['g']
+
     fh_mode = 'overwrite'
 
 else:
@@ -202,13 +240,13 @@ else:
 
     # Timestepping and output
     dt = last_dt
-    stop_sim_time = 50
+    stop_sim_time = 20
     fh_mode = 'append'
 
-checkpoints = solver.evaluator.add_file_handler('checkpoints_mri_non', sim_dt=0.1, max_writes=1, mode=fh_mode)
+checkpoints = solver.evaluator.add_file_handler('checkpoints_diff2en4', sim_dt=0.1, max_writes=1, mode=fh_mode)
 checkpoints.add_system(solver.state)
 
-slicepoints = solver.evaluator.add_file_handler('slicepoints_mri_non', sim_dt=0.002, max_writes=50, mode=fh_mode)
+slicepoints = solver.evaluator.add_file_handler('slicepoints_diff2en4', sim_dt=0.005, max_writes=50, mode=fh_mode)
 
 slicepoints.add_task("interp(vx, y={})".format(Lx / 2), name="vx_midy")
 slicepoints.add_task("interp(vx, z={})".format(Lx / 2), name="vx_midz")
@@ -221,27 +259,42 @@ slicepoints.add_task("interp(vy, x={})".format(0.0), name="vy_midx")
 slicepoints.add_task("interp(vz, y={})".format(Lx / 2), name="vz_midy")
 slicepoints.add_task("interp(vz, z={})".format(Lx / 2), name="vz_midz")
 slicepoints.add_task("interp(vz, x={})".format(0.0), name="vz_midx")
+
+slicepoints.add_task("interp(bx, y={})".format(Lx / 2), name="bx_midy")
+slicepoints.add_task("interp(bx, z={})".format(Lx / 2), name="bx_midz")
+slicepoints.add_task("interp(bx, x={})".format(0.0), name="bx_midx")
+
+slicepoints.add_task("interp(by, y={})".format(Lx / 2), name="by_midy")
+slicepoints.add_task("interp(by, z={})".format(Lx / 2), name="by_midz")
+slicepoints.add_task("interp(by, x={})".format(0.0), name="by_midx")
+
+slicepoints.add_task("interp(bz, y={})".format(Lx / 2), name="bz_midy")
+slicepoints.add_task("interp(bz, z={})".format(Lx / 2), name="bz_midz")
+slicepoints.add_task("interp(bz, x={})".format(0.0), name="bz_midx")
+
+slicepoints.add_task("integ(integ(integ(vx*vx + vy*vy + vz*vz, 'x'), 'y'), 'z')", name="ke")
+slicepoints.add_task("integ(integ(integ(bx*bx + by*by + bz*bz, 'x'), 'y'), 'z')", name="be")
 slicepoints.add_task("integ(integ(integ(sqrt(vx*vx + vy*vy + vz*vz), 'x'), 'y'), 'z')", name="Re")
 
-CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.5,
-                     max_change=1.5, min_change=0.5, max_dt=0.125, threshold=0.05)
-CFL.add_velocities(('vx', 'vy', 'vz'))
+# CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.5,
+#                      max_change=1.5, min_change=0.5, max_dt=0.125, threshold=0.05)
+# CFL.add_velocities(('vx', 'vy', 'vz'))
 
 # Flow properties
 flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
 flow.add_property("sqrt(vx*vx + vy*vy + vz*vz)", name='Re')
 
 solver.stop_sim_time = 30
-solver.stop_wall_time = 16 * 60 * 60.
+solver.stop_wall_time = 48 * 60 * 60.
 solver.stop_iteration = np.inf
 
 try:
     logger.info('Starting loop')
     start_run_time = time.time()
     while solver.ok:
-        dt = CFL.compute_dt()
+        # dt = CFL.compute_dt()
         solver.step(dt)
-        if (solver.iteration-1) % 100 == 0:
+        if (solver.iteration-1) % 10 == 0:
             logger.info('Iteration: %i, Time: %e, dt: %e' %(solver.iteration, solver.sim_time, dt))
             logger.info('Max Re = %f' %flow.max('Re'))
 

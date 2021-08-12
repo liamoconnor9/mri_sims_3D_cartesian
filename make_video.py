@@ -8,11 +8,11 @@ img_array = []
 test = os.getcwd()
 
 # directory = "/nobackup22/loconno2/mri_simulations/frames_wedtwo/"
-directory = path = os.path.dirname(os.path.abspath(__file__)) + "/frames_friz/"
+directory = path = os.path.dirname(os.path.abspath(__file__)) + "/frames_sliced/"
 fileType = "*.png"
-videoName = 'frames_friz.avi'
+videoName = 'frames_sliced_midz.avi'
 files = natsorted(glob.glob(directory + fileType))
-files = files[::]
+files = files[:150:]
 nFrames = len(files)
 
 index = 0
