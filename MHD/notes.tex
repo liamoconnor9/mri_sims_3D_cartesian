@@ -1,0 +1,78 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx,amsmath,amsfonts,amssymb}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+\newcommand\Ra{\mathrm{Ra}}
+\newcommand\Pran{\mathrm{Pr}}
+\newcommand\Rac{\mathrm{Ra}_{\mathrm{c}}}
+\newcommand\Ek{\mathrm{Ek}}
+\newcommand\Ro{\mathrm{Ro}}
+\newcommand\Nu{\mathrm{Nu}}
+\newcommand\Sc{\mathrm{Sc}}
+
+\newcommand\eps{\varepsilon}
+\renewcommand\L {\mathcal{L}}
+
+\newcommand{\n}{\\ \nonumber \\ }
+\newcommand{\nn}{\nonumber}
+\newcommand{\nnn}{\\ \nonumber \\ \nonumber}
+
+\newcommand\ie{\textit{i.e.},~}
+\newcommand\eg{\textit{e.g.},~}
+\newcommand{\omicron}{o}
+
+\newcommand{\pd}[1]{\partial_{#1}}
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\M}[1]{\mathbf{#1}}
+\newcommand{\grad}{\vec{\nabla}}
+\newcommand{\cross}{\vec{\times}}
+\newcommand{\curl}{\grad \vec{\times}}
+\newcommand{\laplacian}{\nabla^2}
+\newcommand{\veclaplacian}{\grad^2}
+
+\newcommand{\sump}[2]{\sideset{}{'}\sum_{{#1}=0}^{#2}}
+
+\newcommand{\eq}[1]{(\ref{#1})}
+\newcommand{\eqs}[2]{(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\eqss}[2]{(\ref{#1})--(\ref{#2})}
+
+\newcommand{\Eq}[1]{Eq.~(\ref{#1})}
+\newcommand{\Eqs}[2]{Eqs.~(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\Eqss}[2]{Eqs.~(\ref{#1})--(\ref{#2})}
+
+\newcommand{\fig}[1]{Fig.~(\ref{#1})}
+\newcommand{\figs}[2]{Figs.~(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\T}{{\cal T}}
+\newcommand{\Z}{{\cal Z}}
+
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+\section{MRI Notes}
+\subsection{Daniel (8/6/2021)}
+\subsubsection{Potential Form}
+The induction equation is given by
+\begin{align*}
+    \partial_t\vec{b} &= \grad \cross (\vec{u} \cross \vec{b}) + \eta \grad^2 \vec{b}
+    \intertext{Using the following identity}
+    \grad \cross \grad \cross \vec{f} &= \grad \grad \cdot \vec{f} - \grad^2\vec{f}
+    \intertext{and assumming $\eta$ to be constant, we use $\grad \cdot \vec{b} = 0$, giving}
+    \partial_t\vec{b} &= \grad \cross (\vec{u} \cross \vec{b}) - \eta \grad \cross \grad \cross \vec{b}.
+    \intertext{Then we define a vector potential $\grad \cross \vec{A} \equiv \vec{b}$, yielding}
+    \partial_t \grad \cross \vec{A} &= \grad \cross (\vec{u} \cross \vec{b}) - \grad \cross (\eta \grad \cross \vec{b}) \\
+    \partial_t \vec{A} &= \vec{u} \cross \vec{b} - \eta \grad \cross \vec{b} + \grad \phi
+    \intertext{where $\phi$ is a scalar potential arizing from ``uncurling'' the equation. We must then provide an additional constraint to fix $\phi$: the Coulomb gauge $\grad \cdot \vec{A} = 0$. Therefore}
+    -\grad \cross \vec{b} &= - \curl \grad \cross \vec{A} = \veclaplacian \vec{A}.
+\end{align*}
+Next we decompose $\vec{u} = \vec{u_0} + \vec{u'}$ and $\vec{b} = \vec{b_0} + \vec{b'}$.
+We assume the mean quantities $\vec{u_0}$ and $\vec{b_0}$ are themselves solutions to the original problem. 
+If we consider only the 0th mode of $\vec{b}$, i.e. $\vec{b} \cdot \vec{\hat{e}_i} \sim e^{i0}$ then clearly $\veclaplacian \vec{b} = \vec{0}$ and therefore
+\begin{align*}
+    \partial_t \vec{b'} &= \curl (\vec{u_0} \cross \vec{b'}) + \curl (\vec{u'} \cross \vec{b_0}) + \curl (\vec{u'} \cross \vec{b'}).
+    \intertext{Using another identity}
+    \curl (\vec{A} \cross \vec{B}) &= \vec{A} \grad \cdot \vec{B} - \vec{B} \grad \cdot \vec{A} + \vec{B} \cdot \grad \vec{A} - \vec{A} \cdot \grad \vec{B}
+\end{align*}
+\end{document}

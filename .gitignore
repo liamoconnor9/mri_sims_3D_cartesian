@@ -32,5 +32,4 @@ restart.h5
 *.tar.gz*
 *examples*
 *profs*
-*.pdf
 *.png
