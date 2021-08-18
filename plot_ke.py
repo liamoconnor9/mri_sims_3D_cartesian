@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 plt.ioff()
 from dedalus.extras import plot_tools
 import publication_settings
+import scipy.stats
 
 matplotlib.rcParams.update(publication_settings.params)
 plt.rcParams.update({'figure.autolayout': True})
@@ -55,8 +56,9 @@ if __name__ == "__main__":
 
     global path 
     path = os.path.dirname(os.path.abspath(__file__))
-    write_data = True
+    write_data = False
     plot = True
+    regress = True
     if (write_data):
         args = docopt(__doc__)
         output_path = pathlib.Path(args['--output']).absolute()
@@ -70,16 +72,39 @@ if __name__ == "__main__":
                     output_path.mkdir()
         post.visit_writes(args['<files>'], main, output=output_path)
     if (plot):
+        fig = plt.figure()
         ke_data = pickle.load(open(path + '/ke_data_mri.pick', 'rb'))
         ke_ar = ke_data['ke_ar']
         sim_times_ar = ke_data['sim_times_ar']
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-        plt.plot(sim_times_ar, ke_ar, color=colors[-1])
+        plt.plot(sim_times_ar, ke_ar, color=colors[-1], label='Simulation')
         plt.yscale('log')
+        if (regress):
+            ln_ke_ar = np.log(ke_ar)
+            t_cutoff = 25
+            i_cutoff = -1
+            for i, t in enumerate(sim_times_ar):
+                if (t > t_cutoff):
+                    i_cutoff = i
+                    break
+            
+            t_lin = sim_times_ar[i:]
+            ke_lin = ln_ke_ar[i:]
+            slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(t_lin, ke_lin)
+            print('R2 val: ' + str(r_value**2))
+            print('slope: ' + str(slope))
+            print('intercept: ' + str(intercept))      
+            ke_reg = np.exp(slope * np.array(t_lin) + intercept)
+            plt.plot(t_lin, ke_reg, color='k', linestyle='--', linewidth=2, label='Best fit')
+
+            fig.text(.2, .05, 'Growth rate = ' + str(round(slope, 4)), ha='center')
+            plt.legend()
+
+
         # plt.xlim(0, 400)
         # plt.legend(frameon=False)
         plt.xlabel(r'$t$')
         plt.ylabel(r'$\langle |\mathbf{u}|^2 \rangle_{\mathcal{D}}$')
         plt.title(r'$\rm{Re}^{-1} \, = \, \eta \, = \nu \, = \, 2 \cdot 10^{-4}; \; S/S_C = 1.2$')
         # plt.savefig(path + '/publication_materials/sim_eq_ke_nonoise')
-        plt.savefig(path + '/ke_diff2en4.png')
+        plt.savefig(path + '/ke_diff2en4_slice.png')

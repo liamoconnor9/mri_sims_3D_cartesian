@@ -16,7 +16,7 @@ import time
 from configparser import ConfigParser
 from pathlib import Path
 import numpy as np
-import os
+import sys
 import h5py
 from eigentools import Eigenproblem
 import dedalus.public as de
@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 args = docopt(__doc__)
 ky = float(args['<ky>'])
 kz = float(args['<kz>'])
-ideal = args['--ideal']
-hardwall = args['--hardwall']
+ideal = False
+hardwall = False
 filename = Path(args['<config_file>'])
 outbase = Path("data")
 
@@ -174,17 +174,21 @@ if not ideal:
 
 
 # GO
-EP = Eigenproblem(problem,sparse=False)
+EP = Eigenproblem(problem)
 t1 = time.time()
-gr, idx, freq = EP.growth_rate({})
+gr, idx, freq = EP.growth_rate(sparse=False)
 t2 = time.time()
 logger.info("Solve time: {}".format(t2-t1))
 
 gamma = EP.evalues_good
-eigenvectors = EP.solver.eigenvectors[:,EP.evalues_good_index]
-index = np.argsort(-gamma.real)
 
-logger.info("saving eigenvector with gamma = {}".format(gamma[index[0]]))
+# eigenvectors = EP.solver.eigenvectors[:,EP.evalues_good_index]
+index = np.argsort(-gamma.real)
+logger.info("eigenvales: " + str(gamma[index]))
+
+
+logger.info("Solve complete. gamma = {}".format(gamma[index[0]]))
+sys.exit()
 nvars = len(problem_variables)
 eigvec = np.zeros((nvars,Nx),dtype=np.complex128)
 EP.solver.set_state(index[0])

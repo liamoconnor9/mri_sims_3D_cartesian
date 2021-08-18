@@ -99,8 +99,8 @@ cutoff =  kx*np.sqrt(R**2 - 1)
 # Create bases and domain
 # Use COMM_SELF so keep calculations independent between processes
 x_basis = de.Chebyshev('x', Nx, interval=(-Lx/2, Lx/2))
-y_basis = de.Fourier('y', Ny, interval=(0, Lx))
-z_basis = de.Fourier('z', Nz, interval=(0, Lx))
+y_basis = de.Fourier('y', Ny, interval=(0, Lx * 8))
+z_basis = de.Fourier('z', Nz, interval=(0, Lx * 8))
 
 ncpu = MPI.COMM_WORLD.size
 log2 = np.log2(ncpu)
@@ -202,7 +202,7 @@ problem.add_bc("right(bx) = 0", condition="(ny != 0) or (nz != 0)")
 problem.add_bc("right(jxx) = 0", condition="(ny != 0) or (nz != 0)")
 
 # setup
-dt = 1e-4
+dt = 1e-3
 solver = problem.build_solver(de.timesteppers.SBDF2)
 
 
@@ -243,10 +243,10 @@ else:
     stop_sim_time = 20
     fh_mode = 'append'
 
-checkpoints = solver.evaluator.add_file_handler('checkpoints_diff2en4', sim_dt=0.1, max_writes=1, mode=fh_mode)
+checkpoints = solver.evaluator.add_file_handler('checkpoints_diff2en4_slice', sim_dt=0.1, max_writes=1, mode=fh_mode)
 checkpoints.add_system(solver.state)
 
-slicepoints = solver.evaluator.add_file_handler('slicepoints_diff2en4', sim_dt=0.005, max_writes=50, mode=fh_mode)
+slicepoints = solver.evaluator.add_file_handler('slicepoints_diff2en4_slice', sim_dt=0.005, max_writes=50, mode=fh_mode)
 
 slicepoints.add_task("interp(vx, y={})".format(Lx / 2), name="vx_midy")
 slicepoints.add_task("interp(vx, z={})".format(Lx / 2), name="vx_midz")
@@ -285,7 +285,7 @@ flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
 flow.add_property("sqrt(vx*vx + vy*vy + vz*vz)", name='Re')
 
 solver.stop_sim_time = 30
-solver.stop_wall_time = 48 * 60 * 60.
+solver.stop_wall_time = 1 * 60 * 60.
 solver.stop_iteration = np.inf
 
 try:

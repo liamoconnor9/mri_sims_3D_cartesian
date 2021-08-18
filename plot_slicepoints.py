@@ -79,7 +79,7 @@ def midplane(filename, start, count, output):
             # Save figure
             savename = savename_func(file['scales/write_number'][index])
             savepath = output.joinpath(savename)
-            if (index % 1 == 0):
+            if (index % 4 == 0):
                 fig.savefig(str(savepath), dpi=dpi)
             fig.clear()
     plt.close(fig)
