@@ -194,7 +194,7 @@ problem.add_bc("right(bx) = 0", condition="(ny != 0) or (nz != 0)")
 problem.add_bc("right(jxx) = 0", condition="(ny != 0) or (nz != 0)")
 
 # setup
-dt = 1e-4
+dt = 1e-3
 solver = problem.build_solver(de.timesteppers.SBDF2)
 
 
