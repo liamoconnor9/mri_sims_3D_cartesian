@@ -1,8 +1,8 @@
 # Fdb version 3
-["pdflatex"] 1629238536 "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.tex" "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.pdf" "notes" 1629238537
+["pdflatex"] 1629384681 "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.tex" "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.pdf" "notes" 1629384683
   "/etc/texmf/web2c/texmf.cnf" 1589514010 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.aux" 1629238537 321 75934270176553de647c62d35cc95558 ""
-  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.tex" 1629238536 4663 f0b69bd67cc11aa08023e72de1f19e00 ""
+  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.aux" 1629384683 321 75934270176553de647c62d35cc95558 ""
+  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.tex" 1629384681 4682 73e035b4a722cccd2a2bdbb37fec95e4 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy5.tfm" 1246382020 1120 1e8878807317373affa7f7bba4cf2f6a ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy7.tfm" 1246382020 1120 7f9f170e8aa57527ad6c49feafd45d54 ""
@@ -64,11 +64,11 @@
   "/usr/share/texmf/web2c/texmf.cnf" 1581979058 38841 ce3692aa899bb693b90b87eaa5d4d84e ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1591369336 4770781 1ed1abab22da9c3e2cc82e4db562318b ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1591369434 8257748 584a4f25fbbc7efc556884babc34f16e ""
-  "notes.aux" 1629238537 321 75934270176553de647c62d35cc95558 "pdflatex"
-  "notes.tex" 1629238536 4663 f0b69bd67cc11aa08023e72de1f19e00 ""
+  "notes.aux" 1629384683 321 75934270176553de647c62d35cc95558 "pdflatex"
+  "notes.tex" 1629384681 4682 73e035b4a722cccd2a2bdbb37fec95e4 ""
   (generated)
+  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.pdf"
   "notes.log"
   "notes.aux"
   "notes.pdf"
   "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.log"
-  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.pdf"

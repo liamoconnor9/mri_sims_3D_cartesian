@@ -80,7 +80,7 @@ If we consider only the 0th mode of $\vec{b}$, i.e. $\vec{b} \cdot \vec{\hat{e}_
 \subsection*{Momentum Equation}
 Verbatim from Jeff Oishi's MRI paper:
 \begin{align*}
-    \frac{D\vec{u'}}{Dt} + f\vhat{z} \cross\vec{u'} + Su_x' \vhat{y} + \grad p' + \nu \curl \omega' &= B_0 \partial_z \vec{b'}
+    \frac{D\vec{u'}}{Dt} + f\vhat{z} \cross\vec{u'} + Su_x' \vhat{y} + \grad p' + \nu \curl \vec{\omega}' &= B_0 \partial_z \vec{b'}
     \intertext{where $f$ is the corriolis parameter, S is the background shearing rate, and $B_0 \vhat{z}$ is a uniform background magnetic field. This equation is linearized wrt perturbations. Accordingly, the material derivative goes like}
     \frac{D}{Dt} &\equiv \partial_t + \vec{u} \cdot \grad \\
     &= \partial_t + Sx\partial_y
@@ -88,10 +88,11 @@ Verbatim from Jeff Oishi's MRI paper:
     In the nonlinear case we have}
     &= \partial_t + (Sx\vhat{y} + \vec{u'}) \cdot \grad
     \intertext{From inspection and stuff, the irrotational momentum equation goes like}
-    \frac{D\vec{u}}{Dt} + \grad p + \nu\cross \omega &= \vec{b} \cdot \grad\vec{b}
+    \frac{D\vec{u}}{Dt} + \grad p + \nu\cross \vec{\omega} &= \vec{b} \cdot \grad\vec{b}
     \intertext{Next we generalize $\vec{u} = \vec{u'} + Sx\vhat{y}$ and $\vec{b} = \vec{b'} + B_0\vhat{z}$, giving}
-    \underline{\partial_t \vec{u'} + \vec{u'} \cdot \grad \vec{u'} + Sx\partial_y \vec{u'} + Su'_x \vhat{y}} + \grad p + \nu \curl \omega &= B_0 \partial_z\vec{b'} + \vec{b'} \cdot \grad \vec{b'}
+    \underline{\partial_t \vec{u'} + \vec{u'} \cdot \grad \vec{u'} + Sx\partial_y \vec{u'} + Su'_x \vhat{y}} + \grad p + \nu \curl \vec{\omega} &= B_0 \partial_z\vec{b'} + \vec{b'} \cdot \grad \vec{b'}
     \intertext{where the material derivative $\frac{D\vec{u}}{Dt}$ consists of the underlined terms}
 \end{align*}
 
 \end{document}
+ 
