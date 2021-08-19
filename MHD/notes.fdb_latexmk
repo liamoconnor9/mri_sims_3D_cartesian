@@ -1,8 +1,8 @@
 # Fdb version 3
-["pdflatex"] 1629393511 "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.tex" "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.pdf" "notes" 1629393513
+["pdflatex"] 1629393989 "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.tex" "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.pdf" "notes" 1629393991
   "/etc/texmf/web2c/texmf.cnf" 1589514010 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.aux" 1629393513 8 a94a2480d3289e625eea47cd1b285758 ""
-  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.tex" 1629393510 7932 66cb794926f92ac4089a1e3acfcb9d4e ""
+  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.aux" 1629393991 8 a94a2480d3289e625eea47cd1b285758 ""
+  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.tex" 1629393988 7997 53959ad64d13e4a2e2353f62cc295a12 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy5.tfm" 1246382020 1120 1e8878807317373affa7f7bba4cf2f6a ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy7.tfm" 1246382020 1120 7f9f170e8aa57527ad6c49feafd45d54 ""
@@ -66,11 +66,11 @@
   "/usr/share/texmf/web2c/texmf.cnf" 1581979058 38841 ce3692aa899bb693b90b87eaa5d4d84e ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1591369336 4770781 1ed1abab22da9c3e2cc82e4db562318b ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1591369434 8257748 584a4f25fbbc7efc556884babc34f16e ""
-  "notes.aux" 1629393513 8 a94a2480d3289e625eea47cd1b285758 "pdflatex"
-  "notes.tex" 1629393510 7932 66cb794926f92ac4089a1e3acfcb9d4e ""
+  "notes.aux" 1629393991 8 a94a2480d3289e625eea47cd1b285758 "pdflatex"
+  "notes.tex" 1629393988 7997 53959ad64d13e4a2e2353f62cc295a12 ""
   (generated)
   "notes.aux"
-  "notes.log"
-  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.log"
-  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.pdf"
   "notes.pdf"
+  "notes.log"
+  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.pdf"
+  "/mnt/d/dev/dedalus/mri_simulations/MHD/notes.log"

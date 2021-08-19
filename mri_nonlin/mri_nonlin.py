@@ -84,7 +84,7 @@ q      =  config.getfloat('parameters','q')
 
 kx     =  np.pi/Lx
 S      = -R*B*kx*np.sqrt(q)
-f      =  R*B*kx/np.sqrt(q)
+f      =  0 *        R*B*kx/np.sqrt(q)
 cutoff =  kx*np.sqrt(R**2 - 1)
 
 # Create bases and domain
@@ -134,8 +134,8 @@ problem.substitutions['L(A)'] = "dy(dy(A)) + dz(dz(A))"
 # Variable substitutions
 problem.add_equation("dx(vx) + dy(vy) + dz(vz) = 0")
 
-problem.add_equation("Dt(vx) -     f*vy + dx(p) - B*dz(bx) + ν*(dy(ωz) - dz(ωy)) = b_dot_grad(bx) - v_dot_grad(vx)")
-problem.add_equation("Dt(vy) + (f+S)*vx + dy(p) - B*dz(by) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy)")
+problem.add_equation("Dt(vx)            + dx(p) - B*dz(bx) + ν*(dy(ωz) - dz(ωy)) = b_dot_grad(bx) - v_dot_grad(vx)")
+problem.add_equation("Dt(vy) + S*vx     + dy(p) - B*dz(by) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy)")
 problem.add_equation("Dt(vz)            + dz(p) - B*dz(bz) + ν*(dx(ωy) - dy(ωx)) = b_dot_grad(bz) - v_dot_grad(vz)")
 
 problem.add_equation("ωy - dz(vx) + dx(vz) = 0")
