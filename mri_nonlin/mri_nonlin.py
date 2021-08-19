@@ -19,6 +19,8 @@ import logging
 import pathlib
 logger = logging.getLogger(__name__)
 
+
+##### Initial condition functions from Evan H. Anders
 def filter_field(field, frac=0.25):
     """
     Filter a field in coefficient space by cutting off all coefficient above
@@ -40,7 +42,7 @@ def filter_field(field, frac=0.25):
     
 def global_noise(domain, seed=42, **kwargs):
     """
-    Create a field fielled with random noise of order 1.  Modify seed to
+    Create a field filled with random noise of order 1.  Modify seed to
     get varying noise, keep seed the same to directly compare runs.
     """
     # Random perturbations, initialized globally for same results in parallel
@@ -74,19 +76,8 @@ Nz = eval(config.get('parameters','Nz'))
 Lx = eval(config.get('parameters','Lx'))
 
 B = config.getfloat('parameters','B')
-
-Nmodes = config.getint('parameters','Nmodes')
-
 R      =  config.getfloat('parameters','R')
 q      =  config.getfloat('parameters','q')
-
-kymin = config.getfloat('parameters','kymin')
-kymax = config.getfloat('parameters','kymax')
-Nky = config.getint('parameters','Nky')
-
-kzmin = config.getfloat('parameters','kzmin')
-kzmax = config.getfloat('parameters','kzmax')
-Nkz = config.getint('parameters','Nkz')
 
 ν = config.getfloat('parameters','ν')
 η = config.getfloat('parameters','η')
@@ -152,14 +143,13 @@ problem.add_equation("ωz - dx(vy) + dy(vx) = 0")
 
 # MHD equations: bx, by, bz, jxx
 problem.add_equation("dx(bx) + dy(by) + dz(bz) = 0", condition='(ny != 0) or (nz != 0)')
-problem.add_equation("Dt(bx) - B*dz(vx) + η*( dy(jz) - dz(jy) )            = bz*dz(vx) - v_dot_grad(bx)", condition='(ny != 0) or (nz != 0)')
-problem.add_equation("Dt(jx) - B*dz(ωx) + S*dz(bx) - η*( dx(jxx) + L(jx) ) = bz*dz(ωx) - v_dot_grad(ωx)", condition='(ny != 0) or (nz != 0)')
+problem.add_equation("Dt(bx) - B*dz(vx) + η*( dy(jz) - dz(jy) )            = b_dot_grad(vx) - v_dot_grad(bx)", condition='(ny != 0) or (nz != 0)')
+problem.add_equation("Dt(jx) - B*dz(ωx) + S*dz(bx) - η*( dx(jxx) + L(jx) ) = b_dot_grad(ωx) - v_dot_grad(jx)", condition='(ny != 0) or (nz != 0)')
 problem.add_equation("jxx - dx(jx) = 0", condition='(ny != 0) or (nz != 0)')
 problem.add_equation("bx = 0", condition='(ny == 0) and (nz == 0)')
 problem.add_equation("by = 0", condition='(ny == 0) and (nz == 0)')
 problem.add_equation("bz = 0", condition='(ny == 0) and (nz == 0)')
 problem.add_equation("jxx = 0", condition='(ny == 0) and (nz == 0)')
-
 # if ny == 0:
 # dx(bx) + dz(bz) = 0
 # -Dt(dz(by)) + B*dz(dz(vy)) - eta*.... = 0
