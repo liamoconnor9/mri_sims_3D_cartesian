@@ -33,3 +33,11 @@ restart.h5
 *examples*
 *profs*
 *.png
+*.aux
+*.log
+*.fls
+*.cls
+*.blg
+*.fdb_latexmk
+*.gz
+*.synctex

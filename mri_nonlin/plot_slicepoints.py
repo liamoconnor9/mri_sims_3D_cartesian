@@ -28,7 +28,8 @@ def midplane(filename, start, count, output):
     """Save plot of specified tasks for given range of analysis writes."""
 
     # Plot settings
-    tasks = ['vx_midz', 'vy_midz', 'vz_midz', 'bx_midz', 'by_midz', 'bz_midz']
+    normal_dir = 'y'
+    tasks = ['vx_mid'+normal_dir, 'vy_mid'+normal_dir, 'vz_mid'+normal_dir, 'bx_mid'+normal_dir, 'by_mid'+normal_dir, 'bz_mid'+normal_dir]
     scale = 2.5
     dpi = 100
     title_func = lambda sim_time: 't = {:.3f}'.format(sim_time)
@@ -51,8 +52,8 @@ def midplane(filename, start, count, output):
                 axes = mfig.add_axes(i, j, [0, 0, 1, 1])
                 # Call plotting helper (dset axes: [t, x, y, z])
                 dset = file['tasks'][task]
-                image_axes = (3, 1)
-                data_slices = (index, slice(None), 0, slice(None))
+                image_axes = (3, 2)
+                data_slices = (index, 0, slice(None), slice(None))
                 # if (index % 5 != 0):
                 #     continue
                 plot_tools.plot_bot(dset, image_axes, data_slices, axes=axes, title=task, even_scale=True)
@@ -138,6 +139,7 @@ if __name__ == "__main__":
     args = docopt(__doc__)
 
     output_path = pathlib.Path(args['--output']).absolute()
+
     # Create output directory if needed
     with Sync() as sync:
         if sync.comm.rank == 0:
