@@ -80,11 +80,11 @@
 % \end{align*}
 
 \subsection*{Momentum Equation: Nonlinear Terms}
-Verbatim from Jeff Oishi's MRI paper:
+Navier-Stokes (Verbatim from Jeff Oishi's ``MRI prefers'' paper):
 \begin{align*}
     \frac{D\vec{u'}}{Dt} + f\vhat{z} \cross\vec{u'} + Su_x' \vhat{y} + \grad p' + \nu \curl \vec{\omega}' &= B_0 \partial_z \vec{b'}
-    \intertext{where $f$ is the corriolis parameter, S is the background shearing rate, and $B_0 \vhat{z}$ is a uniform background magnetic field. This equation is linearized wrt perturbations. Accordingly, the material derivative goes like}
-    \frac{D}{Dt} &\equiv \partial_t + \vec{u} \cdot \grad \\
+    \intertext{where $f$ is the corriolis parameter, S is the background shearing rate, and $B_0 \vhat{z}$ is a uniform background magnetic field. The equation is linearized wrt perturbations so the material derivative goes like}
+    \frac{D}{Dt} &\equiv \partial_t + \vec{\overline{u}} \cdot \grad \\
     &= \partial_t + Sx\partial_y
     \intertext{due to the background velocity $\vec{\overline{u}} = Sx\vhat{y}$. 
     In the nonlinear case we have}
@@ -97,7 +97,7 @@ Verbatim from Jeff Oishi's MRI paper:
 \end{align*}
 
 \subsection*{Induction Equation: Nonlinear Terms}
-The MHD induction equation (as given by \textit{Fluid Mechanics of Planets and Stars, 2019}) is given by
+The MHD induction equation (\textit{Fluid Mechanics of Planets and Stars, 2019}) is given by
 \begin{align*}
     \partial_t \vec{b} &= \underline{\curl (\vec{u} \cross \vec{b})} + \eta \laplacian \vec{b}.
     \intertext{We expand the underlined term using the following identity}
