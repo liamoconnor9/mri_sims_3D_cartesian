@@ -22,7 +22,7 @@ SUFF="diff1en2_L8"
 DIFF=0.01
 MPIPROC=256
 
-mpiexec_mpt -np $MPIPROC python3 mri_nonlin.py $SUFF $DIFF
+# mpiexec_mpt -np $MPIPROC python3 mri_nonlin.py $SUFF $DIFF
 mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs scalars_${SUFF}
 mpiexec_mpt -np 1 python3 plot_ke.py scalars_${SUFF}/*.h5 --suffix=$SUFF
 mpiexec_mpt -np 1 python3 plot_be.py scalars_${SUFF}/*.h5 --suffix=$SUFF

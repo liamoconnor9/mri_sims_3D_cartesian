@@ -1,5 +1,5 @@
 #PBS -S /bin/bash
-#PBS -N mri_nonlin_diff1en2_L8
+#PBS -N mri_nonlin_diff1en3_L8
 #PBS -l select=10:ncpus=28:mpiprocs=28:model=bro
 #PBS -l walltime=24:00:00
 #PBS -j oe
@@ -18,8 +18,8 @@ export MPI_UNBUFFERED_STDIO=true
 source ~/png2mp4.sh
 cd ~/scratch/dedalus/mri_simulations/mri_nonlin
 
-SUFF="diff1en2_L8"
-DIFF=0.01
+SUFF="diff1en3_L8_asym"
+DIFF=0.001
 MPIPROC=256
 
 mpiexec_mpt -np $MPIPROC python3 mri_nonlin.py $SUFF $DIFF

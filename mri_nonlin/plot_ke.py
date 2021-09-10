@@ -83,7 +83,7 @@ if __name__ == "__main__":
                 if (t > t_cutoff):
                     i_cutoff = i
                     break
-            t_cutoff2 = 60
+            t_cutoff2 = 130
             i_cutoff2 = -1
             for i, t in enumerate(sim_times_ar):
                 if (t > t_cutoff2):
