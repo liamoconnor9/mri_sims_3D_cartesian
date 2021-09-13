@@ -16,18 +16,18 @@ conda activate dedalus
 export MPI_UNBUFFERED_STDIO=true
 
 source ~/png2mp4.sh
-cd ~/scratch/dedalus/mri_simulations/mri_nonlin
+cd ~/scratch/dedalus/mri/mri_nonlin
 
-SUFF="diff1en2_R1p01"
+SUFF="diff1en2_R1p01_test"
 DIFF=0.01
 MPIPROC=256
 
-# mpiexec_mpt -np $MPIPROC python3 mri_nonlin.py $SUFF $DIFF
+mpiexec_mpt -np $MPIPROC python3 mri_nonlin.py $SUFF $DIFF
 # mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs scalars_${SUFF}
 # mpiexec_mpt -np 1 python3 plot_ke.py scalars_${SUFF}/*.h5 --suffix=$SUFF
 # mpiexec_mpt -np 1 python3 plot_be.py scalars_${SUFF}/*.h5 --suffix=$SUFF
 # mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs slicepoints_${SUFF}
-mpiexec_mpt -np $MPIPROC python3 plot_slicepoints_xy.py slicepoints_${SUFF}/*.h5 --output=frames_xy_${SUFF}
-png2mp4 frames_xy_${SUFF}/ mri_${SUFF}_xy.mp4 60
-# mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs checkpoints_${SUFF}
+# mpiexec_mpt -np $MPIPROC python3 plot_slicepoints_xy.py slicepoints_${SUFF}/*.h5 --output=frames_xy_${SUFF}
+# png2mp4 frames_xy_${SUFF}/ mri_${SUFF}_xy.mp4 60
+mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs checkpoints_${SUFF}
 

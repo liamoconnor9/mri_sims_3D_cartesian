@@ -16,7 +16,7 @@ conda activate dedalus
 export MPI_UNBUFFERED_STDIO=true
 
 source ~/png2mp4.sh
-cd ~/scratch/dedalus/mri_simulations/mri_nonlin
+cd ~/scratch/dedalus/mri/mri_nonlin
 
 SUFF="diff1en3_L8_asym"
 DIFF=0.001

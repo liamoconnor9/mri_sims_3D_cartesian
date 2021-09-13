@@ -229,11 +229,8 @@ NU.value = ν
 ETA.value = η
 aspect_ratio = ar
 
-checkpoints = solver.evaluator.add_file_handler('checkpoints_' + run_suffix, sim_dt=2.0, max_writes=1, mode=fh_mode)
+checkpoints = solver.evaluator.add_file_handler('checkpoints_' + run_suffix, sim_dt=0.1, max_writes=1, mode=fh_mode)
 checkpoints.add_system(solver.state)
-checkpoints.add_task(NU, name='nu')
-checkpoints.add_task(ETA, name='eta')
-checkpoints.add_task(aspect_ratio, name='ar')
 
 slicepoints = solver.evaluator.add_file_handler('slicepoints_' + run_suffix, sim_dt=0.005, max_writes=50, mode=fh_mode)
 
@@ -282,19 +279,6 @@ scalars.add_task(ETA, name='eta')
 scalars.add_task(aspect_ratio, name='ar')
 
 path = os.path.dirname(os.path.abspath(__file__))
-# ke_data = {'t' : [], 'ke_00' : [], 'ke_01' : [], 'ke_10' : [], 'ke_11' : [],
-#     'ke_0n1' : [], 'ke_n10' : [], 'ke_1n1' : [], 'ke_n11' : [], 'ke_n1n1' : []}
-# pickle.dump(ke_data, open(path + '/modes_mri.pick', 'wb'))
-# time_ar = []
-# ke_00 = []
-# ke_01 = []
-# ke_10 = []
-# ke_11 = []
-# ke_1n1 = []
-# ke_n11 = []
-# ke_0n1 = []
-# ke_n10 = []
-# ke_n1n1 = []
 
 CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.1,
                      max_change=1.5, min_change=0.5, max_dt=dt, threshold=0.05)
@@ -306,7 +290,7 @@ flow.add_property("sqrt(vx*vx + vy*vy + vz*vz)", name='Re')
 
 solver.stop_sim_time = 400
 # solver.stop_wall_time = 12*60*60.
-solver.stop_wall_time = 22*60*60.
+solver.stop_wall_time = 5*60.
 solver.stop_iteration = np.inf
 nan_count = 0
 max_nan_count = 1
@@ -325,22 +309,6 @@ try:
                 logger.warning('Max Re is nan! Strike ' + str(nan_count) + ' of ' + str(max_nan_count))
                 if (nan_count >= max_nan_count):
                     break
-
-            # vx = solver.state['vx']
-            # vy = solver.state['vy']
-            # vz = solver.state['vz']
-            # ke_data = pickle.load(open(path + '/ke_data_mri.pick', 'rb'))
-
-            # time_ar.append(solver.sim_time)
-            # ke_00.append((vx*vx + vy*vy + vz*vz)['c'][0, 0, :])
-            # ke_01.append((vx*vx + vy*vy + vz*vz)['c'][0, 1, :])
-            # ke_10.append((vx*vx + vy*vy + vz*vz)['c'][1, 0, :])
-            # ke_11.append((vx*vx + vy*vy + vz*vz)['c'][1, 1, :])
-            # ke_1n1.append((vx*vx + vy*vy + vz*vz)['c'][1, -1, :])
-            # ke_n11.append((vx*vx + vy*vy + vz*vz)['c'][-1, 1, :])
-            # ke_0n1.append((vx*vx + vy*vy + vz*vz)['c'][0, -1, :])
-            # ke_n10.append((vx*vx + vy*vy + vz*vz)['c'][-1, 0, :])
-            # ke_n1n1.append((vx*vx + vy*vy + vz*vz)['c'][-1, -1, :])
 
 except:
     logger.error('Exception raised, triggering end of main loop.')
