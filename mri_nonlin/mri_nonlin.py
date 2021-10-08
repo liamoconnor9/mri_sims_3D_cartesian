@@ -12,7 +12,9 @@ import os
 import sys
 import h5py
 import gc
+import pickle
 import dedalus.public as de
+from dedalus.core.field import Scalar
 from dedalus.extras import flow_tools
 from dedalus.extras.plot_tools import plot_bot_2d
 from mpi4py import MPI
@@ -103,12 +105,16 @@ else:
 
 S      = -R*B*np.sqrt(q)
 f      =  R*B/np.sqrt(q)
+logger.info("S = " + str(S))
+logger.info("Sc = " + str(-1.0 / f))
+logger.info("S/Sc = " + str(S / -1.0 * f))
 
 # Create bases and domain
 # Use COMM_SELF so keep calculations independent between processes
+ar = 8
 x_basis = de.Chebyshev('x', Nx, interval=(-Lx/2, Lx/2))
-y_basis = de.Fourier('y', Ny, interval=(0, Lx * 4))
-z_basis = de.Fourier('z', Nz, interval=(0, Lx * 4))
+y_basis = de.Fourier('y', Ny, interval=(0, Lx * ar))
+z_basis = de.Fourier('z', Nz, interval=(0, Lx * ar))
 
 ncpu = MPI.COMM_WORLD.size
 log2 = np.log2(ncpu)
@@ -194,8 +200,6 @@ if not pathlib.Path('restart.h5').exists():
     x = domain.grid(2)
     p = solver.state['p']
     vx = solver.state['vx']
-    bx = solver.state['bx']
-    vz = solver.state['vz']
 
     # Random perturbations, initialized globally for same results in parallel
     lshape = domain.dist.grid_layout.local_shape(scales=1)
@@ -204,7 +208,7 @@ if not pathlib.Path('restart.h5').exists():
     slices = domain.dist.grid_layout.slices(scales=1)
 
     # Linear background + perturbations damped at walls
-    vx['g'] += 1e0*np.cos(np.pi*(x))*noise
+    vx['g'] += 1e0*np.cos(x)*noise
     filter_field(vx)
     fh_mode = 'overwrite'
 
@@ -218,7 +222,14 @@ else:
     stop_sim_time = 100
     fh_mode = 'append'
 
-checkpoints = solver.evaluator.add_file_handler('checkpoints_' + run_suffix, sim_dt=2.0, max_writes=1, mode=fh_mode)
+NU = Scalar()
+ETA = Scalar()
+aspect_ratio = Scalar()
+NU.value = ν
+ETA.value = η
+aspect_ratio = ar
+
+checkpoints = solver.evaluator.add_file_handler('checkpoints_' + run_suffix, sim_dt=0.1, max_writes=1, mode=fh_mode)
 checkpoints.add_system(solver.state)
 
 slicepoints = solver.evaluator.add_file_handler('slicepoints_' + run_suffix, sim_dt=0.005, max_writes=50, mode=fh_mode)
@@ -251,12 +262,25 @@ slicepoints.add_task("integ(integ(integ(vx*vx + vy*vy + vz*vz, 'x'), 'y'), 'z')"
 slicepoints.add_task("integ(integ(integ(bx*bx + by*by + bz*bz, 'x'), 'y'), 'z')", name="be")
 slicepoints.add_task("integ(integ(integ(sqrt(vx*vx + vy*vy + vz*vz), 'x'), 'y'), 'z')", name="Re")
 
+slicepoints.add_task(NU, name='nu')
+slicepoints.add_task(ETA, name='eta')
+slicepoints.add_task(aspect_ratio, name='ar')
+
 scalars = solver.evaluator.add_file_handler('scalars_' + run_suffix, sim_dt=0.001, max_writes=1000, mode=fh_mode)
 scalars.add_task("integ(integ(integ(vx*vx + vy*vy + vz*vz, 'x'), 'y'), 'z')", name="ke")
 scalars.add_task("integ(integ(integ(bx*bx + by*by + bz*bz, 'x'), 'y'), 'z')", name="be")
 scalars.add_task("integ(integ(integ(sqrt(vx*vx + vy*vy + vz*vz), 'x'), 'y'), 'z')", name="Re")
+scalars.add_task("sqrt(integ("
++ "((integ(integ(vx * cos(1*y + 1*z), 'y'), 'z'))**2 + (integ(integ(vy * cos(1*y + 1*z), 'y'), 'z'))**2 + (integ(integ(vz * cos(1*y + 1*z), 'y'), 'z'))**2)**2"
++ ", 'x'))", name="ke11")
 
-CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.3,
+scalars.add_task(NU, name='nu')
+scalars.add_task(ETA, name='eta')
+scalars.add_task(aspect_ratio, name='ar')
+
+path = os.path.dirname(os.path.abspath(__file__))
+
+CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.1,
                      max_change=1.5, min_change=0.5, max_dt=dt, threshold=0.05)
 CFL.add_velocities(('vy', 'vz', 'vx'))
 
@@ -265,7 +289,8 @@ flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
 flow.add_property("sqrt(vx*vx + vy*vy + vz*vz)", name='Re')
 
 solver.stop_sim_time = 400
-solver.stop_wall_time = 22*60*60.
+# solver.stop_wall_time = 12*60*60.
+solver.stop_wall_time = 5*60.
 solver.stop_iteration = np.inf
 nan_count = 0
 max_nan_count = 1
@@ -278,6 +303,7 @@ try:
         if (solver.iteration-1) % 10 == 0:
             logger.info('Iteration: %i, Time: %e, dt: %e' %(solver.iteration, solver.sim_time, dt))
             logger.info('Max Re = %f' %flow.max('Re'))
+
             if (np.isnan(flow.max('Re'))):
                 nan_count += 1
                 logger.warning('Max Re is nan! Strike ' + str(nan_count) + ' of ' + str(max_nan_count))

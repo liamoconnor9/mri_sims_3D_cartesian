@@ -25,12 +25,12 @@ CW = MPI.COMM_WORLD
 import logging
 logger = logging.getLogger(__name__)
 
-args = docopt(__doc__)
-ky = float(args['<ky>'])
-kz = float(args['<kz>'])
+# args = docopt(__doc__)
+ky = 0.0
+kz = 0.5
 ideal = False
 hardwall = False
-filename = Path(args['<config_file>'])
+filename = Path("mri_options.cfg")
 outbase = Path("data")
 
 logger.info("Solving for mode ky = {}, kz = {}".format(ky, kz))
@@ -71,9 +71,9 @@ Nkz = config.getint('parameters','Nkz')
 η = config.getfloat('parameters','η')
 
 kx     =  np.pi/Lx
-S      = -R*B*kx*np.sqrt(q)
+S      = -1.02
 f      =  R*B*kx/np.sqrt(q)
-cutoff =  kx*np.sqrt(R**2 - 1)
+logger.info("S = " + str(S))
 
 # Create bases and domain
 # Use COMM_SELF so keep calculations independent between processes

@@ -2,7 +2,10 @@
 Plot planes from joint analysis files.
 
 Usage:
-    plot_slices.py <files>... [--suffix=write_string_suffix] 
+    plot_slices.py <files>... [--output=<dir>]
+
+Options:
+    --output=<dir>  Output directory [default: ./frames]
 
 """
 
@@ -14,9 +17,12 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 plt.ioff()
+import dedalus.public as de
 from dedalus.extras import plot_tools
 import publication_settings
 import scipy.stats
+from configparser import ConfigParser
+from pathlib import Path
 
 matplotlib.rcParams.update(publication_settings.params)
 plt.rcParams.update({'figure.autolayout': True})
@@ -25,20 +31,38 @@ plt.gcf().subplots_adjust(left=0.15)
 def main(filename, start, count, output):
     """Save plot of specified tasks for given range of analysis writes."""
 
+    Nx = 64
+    Ny = 256
+    Nz = 256
+    Lx = np.pi
+    ar = 8
+    x_basis = de.Chebyshev('x', Nx, interval=(-Lx/2, Lx/2))
+    y_basis = de.Fourier('y', Ny, interval=(0, Lx * ar))
+    z_basis = de.Fourier('z', Nz, interval=(0, Lx * ar))
+    domain = de.Domain([y_basis, z_basis, x_basis], grid_dtype=np.float64)
+    ky, kz, kx = [domain.elements(i).squeeze() for i in range(3)]
+    vx = domain.new_field()
+    vy = domain.new_field()
+    vz = domain.new_field()
+
+    ky1, kz1 = 0.5, 0.25
+
     # Plot writes
     with h5py.File(filename, mode='r') as file:
-        ke_data = pickle.load(open(path + '/ke_data_mri.pick', 'rb'))
+        ke_data = pickle.load(open(path + '/ke_modes.pick', 'rb'))
         ke_ar = ke_data['ke_ar']
         # ke_max_ar = ke_data['ke_max_ar']
         sim_times_ar = ke_data['sim_times_ar']
         for index in range(start, start+count):
-            ke_avg = file['tasks']['ke'][index][0, 0, 0]
-            ke_ar.append(ke_avg)
+            vx['g'] = file['tasks']['vx'][index]
+            coeffs1 = vx['c'][ky == ky1, kz == kz1, :]
+            coeffs2 = vx['c'][ky == ky1, kz == -kz1, :]
+            power_coeff = np.sum(coeffs1*np.conj(coeffs1)) + np.sum(coeffs2*np.conj(coeffs2))
+            ke_ar.append(power_coeff)
             sim_times_ar.append(file['scales/sim_time'][index])
         ke_data['ke_ar'] = ke_ar
         ke_data['sim_times_ar'] = sim_times_ar
-        pickle.dump(ke_data, open(path + '/ke_data_mri.pick', 'wb'))
-        
+        pickle.dump(ke_data, open(path + '/ke_modes.pick', 'wb'))
 
 
 if __name__ == "__main__":
@@ -48,6 +72,8 @@ if __name__ == "__main__":
     from dedalus.tools import logging
     from dedalus.tools import post
     from dedalus.tools.parallel import Sync
+    import logging
+    logger = logging.getLogger(__name__)
 
     global path 
     path = os.path.dirname(os.path.abspath(__file__))
@@ -58,7 +84,7 @@ if __name__ == "__main__":
         args = docopt(__doc__)
         output_path = pathlib.Path('').absolute()
         ke_data = {'ke_ar' : [], 'sim_times_ar' : []}
-        pickle.dump(ke_data, open(path + '/ke_data_mri.pick', 'wb'))
+        pickle.dump(ke_data, open(path + '/ke_modes.pick', 'wb'))
 
         # Create output directory if needed
         with Sync() as sync:
@@ -66,43 +92,18 @@ if __name__ == "__main__":
                 if not output_path.exists():
                     output_path.mkdir()
         post.visit_writes(args['<files>'], main, output=output_path)
+
     if (plot):
         fig = plt.figure()
         write_suffix = args['--suffix']
-        ke_data = pickle.load(open(path + '/ke_data_mri.pick', 'rb'))
+        ke_data = pickle.load(open(path + '/ke_modes.pick', 'rb'))
         ke_ar = ke_data['ke_ar']
         sim_times_ar = ke_data['sim_times_ar']
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
         plt.plot(sim_times_ar, ke_ar, color=colors[-1], label='Simulation')
         plt.yscale('log')
-        if (regress):
-            ln_ke_ar = np.log(ke_ar)
-            t_cutoff = 25
-            i_cutoff = -1
-            for i, t in enumerate(sim_times_ar):
-                if (t > t_cutoff):
-                    i_cutoff = i
-                    break
-            t_cutoff2 = 130
-            i_cutoff2 = -1
-            for i, t in enumerate(sim_times_ar):
-                if (t > t_cutoff2):
-                    i_cutoff2 = i
-                    break
-            
-            t_lin = sim_times_ar[i_cutoff:i_cutoff2]
-            ke_lin = ln_ke_ar[i_cutoff:i_cutoff2]
-            slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(t_lin, ke_lin)
-            print('R2 val: ' + str(r_value**2))
-            print('slope: ' + str(slope))
-            print('intercept: ' + str(intercept))      
-            ke_reg = np.exp(slope * np.array(t_lin) + intercept)
-            plt.plot(t_lin, ke_reg, color='k', linestyle='--', linewidth=2, label='Best fit')
-
-            fig.text(.2, .05, 'Growth rate = ' + str(round(slope, 4)), ha='center')
-            plt.legend()
 
         plt.xlabel(r'$t$')
         plt.ylabel(r'$\langle |\mathbf{u}|^2 \rangle_{\mathcal{D}}$')
         plt.title(r'$\rm{Re}^{-1} \, = \, \eta \, = \nu \, = \, 10^{-3}; \; S/S_C = 1.2$')
-        plt.savefig(path + '/ke_nonlin_' + write_suffix + '.png')
+        plt.savefig(path + '/ke_modes_' + write_suffix + '.png')
