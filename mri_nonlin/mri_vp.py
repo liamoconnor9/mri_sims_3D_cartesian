@@ -1,6 +1,6 @@
 """
 Modified from: The magnetorotational instability prefers three dimensions.
-3D MHD initial value problem (simulation)
+3D MHD initial value problem
 """
 
 from docopt import docopt
