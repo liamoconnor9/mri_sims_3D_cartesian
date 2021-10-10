@@ -12,7 +12,7 @@ directory = path = os.path.dirname(os.path.abspath(__file__)) + "/frames_sliced/
 fileType = "*.png"
 videoName = 'frames_sliced_midz.avi'
 files = natsorted(glob.glob(directory + fileType))
-files = files[:150:]
+files = files[:10:]
 nFrames = len(files)
 
 index = 0

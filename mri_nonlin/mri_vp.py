@@ -142,7 +142,7 @@ logger.info("running on processor mesh={}".format(mesh))
 domain = de.Domain([y_basis, z_basis, x_basis], grid_dtype=np.float64, mesh=mesh)
 
 # 3D MRI
-problem_variables = ['p','vx','vy','vz','bx','by','bz','ωy','ωz','jxx']
+problem_variables = ['p','vx','vy','vz','Ax','Ay','Az','Axx','Ayx','Azx', 'phi', 'ωy','ωz']
 problem = de.IVP(domain, variables=problem_variables, time='t')
 
 # Local parameters
@@ -161,9 +161,14 @@ problem.substitutions['v_dot_grad(A)'] = "vx * dx(A) + vy * dy(A) + vz * dz(A)"
 
 # non ideal
 problem.substitutions['ωx'] = "dy(vz) - dz(vy)"
+problem.substitutions['bx'] = "dy(Az) - dz(Ay)"
+problem.substitutions['by'] = "dz(Ax) - Azx"
+problem.substitutions['bz'] = "Ayx - dy(Ax)"
+
 problem.substitutions['jx'] = "dy(bz) - dz(by)"
 problem.substitutions['jy'] = "dz(bx) - dx(bz)"
 problem.substitutions['jz'] = "dx(by) - dy(bx)"
+
 problem.substitutions['L(A)'] = "dy(dy(A)) + dz(dz(A))"
 problem.substitutions['A_dot_grad_C(Ax, Ay, Az, C)'] = "Ax*dx(C) + Ay*dy(C) + Az*dz(C)"
 
@@ -179,18 +184,15 @@ problem.add_equation("ωy - dz(vx) + dx(vz) = 0")
 problem.add_equation("ωz - dx(vy) + dy(vx) = 0")
 
 # MHD equations: bx, by, bz, jxx
-problem.add_equation("dx(bx) + dy(by) + dz(bz) = 0", condition='(ny != 0) or (nz != 0)')
-problem.add_equation("Dt(bx) - B*dz(vx) + η*( dy(jz) - dz(jy) )            = b_dot_grad(vx) - v_dot_grad(bx)", condition='(ny != 0) or (nz != 0)')
+problem.add_equation("Axx + dy(Ay) + dz(Az) = 0")
 
-problem.add_equation("Dt(jx) - B*dz(ωx) + S*dz(bx) - η*( dx(jxx) + L(jx) ) = b_dot_grad(ωx) - v_dot_grad(jx)"
- + "+ A_dot_grad_C(dy(bx), dy(by), dy(bz), vz) - A_dot_grad_C(dz(bx), dz(by), dz(bz), vy)"
- + "- A_dot_grad_C(dy(vx), dy(vy), dy(vz), bz) + A_dot_grad_C(dz(vx), dz(vy), dz(vz), by)", condition='(ny != 0) or (nz != 0)')
+problem.add_equation("dt(Ax) + η * (L(Ax) + dx(Axx)) - dx(phi) = ((vy + S*x) * (bz + B) - vz*by) ")
+problem.add_equation("dt(Ay) + η * (L(Ay) + dx(Ayx)) - dy(phi) = (vz*bx - vx*bz)")
+problem.add_equation("dt(Az) + η * (L(Az) + dx(Azx)) - dz(phi) = (vx*by - vy*bx)")
 
-problem.add_equation("jxx - dx(jx) = 0", condition='(ny != 0) or (nz != 0)')
-problem.add_equation("bx = 0", condition='(ny == 0) and (nz == 0)')
-problem.add_equation("by = 0", condition='(ny == 0) and (nz == 0)')
-problem.add_equation("bz = 0", condition='(ny == 0) and (nz == 0)')
-problem.add_equation("jxx = 0", condition='(ny == 0) and (nz == 0)')
+problem.add_equation("Axx - dx(Ax) = 0")
+problem.add_equation("Ayx - dx(Ay) = 0")
+problem.add_equation("Azx - dx(Az) = 0")
 
 problem.add_bc("left(vx) = 0")
 problem.add_bc("right(vx) = 0", condition="(ny != 0) or (nz != 0)")
@@ -200,10 +202,12 @@ problem.add_bc("left(ωz)   = 0")
 problem.add_bc("right(ωy)  = 0")
 problem.add_bc("right(ωz)  = 0")
 
-problem.add_bc("left(bx)   = 0", condition="(ny != 0) or (nz != 0)")
-problem.add_bc("left(jxx)  = 0", condition="(ny != 0) or (nz != 0)")
-problem.add_bc("right(bx) = 0", condition="(ny != 0) or (nz != 0)")
-problem.add_bc("right(jxx) = 0", condition="(ny != 0) or (nz != 0)")
+problem.add_equation("left(Ay) = 0")
+problem.add_equation("right(Ay) = 0")
+problem.add_equation("left(Az) = 0")
+problem.add_equation("right(Az) = 0")
+problem.add_equation("left(phi) = 0")
+problem.add_equation("right(phi) = 0")
 
 # setup
 dt = 1e0

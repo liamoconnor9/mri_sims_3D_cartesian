@@ -1,8 +1,10 @@
 #PBS -S /bin/bash
-#PBS -N mri_nonlin_diff1en2_R1p01
-#PBS -l select=10:ncpus=28:mpiprocs=28:model=bro
-#PBS -l walltime=24:00:00
+#PBS -l select=1:ncpus=40:mpiprocs=40:model=sky_ele
+#PBS -l walltime=4:00:00
 #PBS -j oe
+file=${0##*/}
+job_name="${file%.*}"
+#PBS -N ${job_name}
 
 module load mpi-sgi/mpt
 module load comp-intel
@@ -20,14 +22,20 @@ cd ~/scratch/dedalus/mri/mri_nonlin
 
 SUFF="diff1en2_R1p01_test"
 DIFF=0.01
-MPIPROC=256
+MPIPROC=16
 
+mkdir $SUFF
 mpiexec_mpt -np $MPIPROC python3 mri_nonlin.py $SUFF $DIFF
-# mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs scalars_${SUFF}
-# mpiexec_mpt -np 1 python3 plot_ke.py scalars_${SUFF}/*.h5 --suffix=$SUFF
-# mpiexec_mpt -np 1 python3 plot_be.py scalars_${SUFF}/*.h5 --suffix=$SUFF
-# mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs slicepoints_${SUFF}
-# mpiexec_mpt -np $MPIPROC python3 plot_slicepoints_xy.py slicepoints_${SUFF}/*.h5 --output=frames_xy_${SUFF}
-# png2mp4 frames_xy_${SUFF}/ mri_${SUFF}_xy.mp4 60
+mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs scalars_${SUFF}
+mpiexec_mpt -np 1 python3 plot_ke.py scalars_${SUFF}/*.h5 --suffix=$SUFF
+mpiexec_mpt -np 1 python3 plot_be.py scalars_${SUFF}/*.h5 --suffix=$SUFF
+mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs slicepoints_${SUFF}
+mpiexec_mpt -np $MPIPROC python3 plot_slicepoints_xy.py slicepoints_${SUFF}/*.h5 --output=frames_xy_${SUFF}
+mpiexec_mpt -np $MPIPROC python3 plot_slicepoints_xz.py slicepoints_${SUFF}/*.h5 --output=frames_xz_${SUFF}
+mpiexec_mpt -np $MPIPROC python3 plot_slicepoints_yz.py slicepoints_${SUFF}/*.h5 --output=frames_yz_${SUFF}
+png2mp4 frames_xy_${SUFF}/ mri_${SUFF}_xy.mp4 60
+png2mp4 frames_xz_${SUFF}/ mri_${SUFF}_xz.mp4 60
+png2mp4 frames_yz_${SUFF}/ mri_${SUFF}_yz.mp4 60
 mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs checkpoints_${SUFF}
-
+cp -r *$SUFF* $SUFF/
+bash clear_results.sh $SUFF

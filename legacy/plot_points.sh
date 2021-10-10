@@ -13,7 +13,7 @@ export PYTHONNOUSERSITE=1
 conda activate dedalus
 # support lots of text output to stdio for analysis
 export MPI_UNBUFFERED_STDIO=true
-cd ~/scratch/dedalus/mri_simulations/
+cd ~/scratch/dedalus/mri/
 
 mpiexec_mpt -np 512 python3 -m dedalus merge_procs checkpoints_mri_non
 mpiexec_mpt -np 512 python3 -m dedalus merge_procs slicepoints_mri_non

@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 plt.ioff()
-from dedalus.extras import plot_tools
+# from dedalus.extras import plot_tools
 import publication_settings
 import scipy.stats
 
@@ -27,7 +27,7 @@ def main(filename, start, count, output):
 
     # Plot writes
     with h5py.File(filename, mode='r') as file:
-        ke_data = pickle.load(open(path + '/ke_data_mri.pick', 'rb'))
+        ke_data = pickle.load(open(path + '/ke_data_' + write_suffix + '.pick', 'rb'))
         ke_ar = ke_data['ke_ar']
         # ke_max_ar = ke_data['ke_max_ar']
         sim_times_ar = ke_data['sim_times_ar']
@@ -37,7 +37,7 @@ def main(filename, start, count, output):
             sim_times_ar.append(file['scales/sim_time'][index])
         ke_data['ke_ar'] = ke_ar
         ke_data['sim_times_ar'] = sim_times_ar
-        pickle.dump(ke_data, open(path + '/ke_data_mri.pick', 'wb'))
+        pickle.dump(ke_data, open(path + '/ke_data_' + write_suffix + '.pick', 'wb'))
         
 
 
@@ -50,15 +50,17 @@ if __name__ == "__main__":
     from dedalus.tools.parallel import Sync
 
     global path 
+    global write_suffix
+    args = docopt(__doc__)
+    write_suffix = args['--suffix']
     path = os.path.dirname(os.path.abspath(__file__))
     write_data = True
     plot = True
     regress = True
     if (write_data):
-        args = docopt(__doc__)
         output_path = pathlib.Path('').absolute()
         ke_data = {'ke_ar' : [], 'sim_times_ar' : []}
-        pickle.dump(ke_data, open(path + '/ke_data_mri.pick', 'wb'))
+        pickle.dump(ke_data, open(path + '/ke_data_' + write_suffix + '.pick', 'wb'))
 
         # Create output directory if needed
         with Sync() as sync:
@@ -68,22 +70,24 @@ if __name__ == "__main__":
         post.visit_writes(args['<files>'], main, output=output_path)
     if (plot):
         fig = plt.figure()
-        write_suffix = args['--suffix']
-        ke_data = pickle.load(open(path + '/ke_data_mri.pick', 'rb'))
+        diff_str_dict = {'diff1en2' : '10^{-2}', 'diff2en3' : r'$2 \times 10^{-3}$', 'diff3en3' : r'$3 \times 10^{-3}$', 'diff1en3' : '10^{-3}'}
+        diff_str = diff_str_dict[write_suffix[:8]]
+        ke_data = pickle.load(open(path + '/ke_data_' + write_suffix + '.pick', 'rb'))
         ke_ar = ke_data['ke_ar']
         sim_times_ar = ke_data['sim_times_ar']
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-        plt.plot(sim_times_ar, ke_ar, color=colors[-1], label='Simulation')
+        shave_ind = 10
+        plt.plot(sim_times_ar[:-shave_ind], ke_ar[:-shave_ind], color=colors[-1], label='Simulation')
         plt.yscale('log')
         if (regress):
             ln_ke_ar = np.log(ke_ar)
-            t_cutoff = 25
+            t_cutoff = 40
             i_cutoff = -1
             for i, t in enumerate(sim_times_ar):
                 if (t > t_cutoff):
                     i_cutoff = i
                     break
-            t_cutoff2 = 130
+            t_cutoff2 = 90
             i_cutoff2 = -1
             for i, t in enumerate(sim_times_ar):
                 if (t > t_cutoff2):
@@ -104,5 +108,6 @@ if __name__ == "__main__":
 
         plt.xlabel(r'$t$')
         plt.ylabel(r'$\langle |\mathbf{u}|^2 \rangle_{\mathcal{D}}$')
-        plt.title(r'$\rm{Re}^{-1} \, = \, \eta \, = \nu \, = \, 10^{-3}; \; S/S_C = 1.2$')
+        plt.title(r'$\rm{Re}^{-1} \, = \, \eta \, = \nu \, = \, $' + diff_str + r'$; \; S/S_C = 1.02$')
+        # plt.title(r'$\rm{Re}^{-1} \, = \, \eta \, = \nu \, = \, ' + diff_str + '; \; S/S_C = 1.02$')
         plt.savefig(path + '/ke_nonlin_' + write_suffix + '.png')
