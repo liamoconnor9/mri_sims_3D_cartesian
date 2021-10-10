@@ -68,10 +68,11 @@ The induction equation is given by
     \partial_t \grad \cross \vec{A} &= \grad \cross (\vec{u} \cross \vec{b}) - \grad \cross (\eta \grad \cross \vec{b}) \\
     \partial_t \vec{A} &= \vec{u} \cross \vec{b} - \eta \grad \cross \vec{b} + \grad \phi
     \intertext{where $\phi$ is a scalar potential arizing from ``uncurling'' the equation. We must then provide an additional constraint to fix $\phi$: the Coulomb gauge $\grad \cdot \vec{A} = 0$. Therefore}
-    -\grad \cross \vec{b} &= - \curl \grad \cross \vec{A} = \veclaplacian \vec{A}.
+    -\grad \cross \vec{b} &= - \curl \grad \cross \vec{A} = \veclaplacian \vec{A}. \\
+    \partial_t \vec{A} &= \vec{u} \cross (\grad \cross \vec{A}) - \eta \veclaplacian \vec{A} + \grad \phi
 \end{align*}
-Next we decompose $\vec{u} = \vec{u_0} + \vec{u'}$ and $\vec{b} = \vec{b_0} + \vec{b'}$.
-We assume the mean quantities $\vec{u_0}$ and $\vec{b_0}$ are themselves solutions to the original problem. 
+Next we decompose $\vec{u} = \vec{u_0} + \vec{u'}$ and $\vec{b} = \vec{b_0} + \vec{b'} \; \to \; \vec{A} = \vec{A_0} + \vec{A'}$.
+We assume the mean quantities $\vec{u_0}$ and $\vec{A_0}$ are themselves solutions to the original problem. 
 If we consider only the 0th mode of $\vec{b}$, i.e. $\vec{b} \cdot \vec{\hat{e}_i} \sim e^{i0}$ then clearly $\veclaplacian \vec{b} = \vec{0}$ and therefore
 \begin{align*}
     \partial_t \vec{b'} &= \curl (\vec{u_0} \cross \vec{b'}) + \curl (\vec{u'} \cross \vec{b_0}) + \curl (\vec{u'} \cross \vec{b'}).
@@ -79,85 +80,85 @@ If we consider only the 0th mode of $\vec{b}$, i.e. $\vec{b} \cdot \vec{\hat{e}_
     \curl (\vec{A} \cross \vec{B}) &= \vec{A} \grad \cdot \vec{B} - \vec{B} \grad \cdot \vec{A} + \vec{B} \cdot \grad \vec{A} - \vec{A} \cdot \grad \vec{B}
 \end{align*}
 
-\subsection*{Momentum Equation: Nonlinear Terms}
-Navier-Stokes (Verbatim from Jeff Oishi's ``MRI prefers'' paper):
-\begin{align*}
-    \frac{D\vec{u'}}{Dt} + f\vhat{z} \cross\vec{u'} + Su_x' \vhat{y} + \grad p' + \nu \curl \vec{\omega}' &= B_0 \partial_z \vec{b'}
-    \intertext{where $f$ is the corriolis parameter, S is the background shearing rate, and $B_0 \vhat{z}$ is a uniform background magnetic field. The equation is linearized wrt perturbations so the material derivative goes like}
-    \frac{D}{Dt} &\equiv \partial_t + \vec{\overline{u}} \cdot \grad \\
-    &= \partial_t + Sx\partial_y
-    \intertext{due to the background velocity $\vec{\overline{u}} = Sx\vhat{y}$. 
-    In the nonlinear case we have}
-    &= \partial_t + (Sx\vhat{y} + \vec{u'}) \cdot \grad
-    \intertext{From inspection and stuff, the irrotational momentum equation goes like}
-    \frac{D\vec{u}}{Dt} + \grad p + \nu\cross \vec{\omega} &= \vec{b} \cdot \grad\vec{b}
-    \intertext{Next we generalize $\vec{u} = \vec{u'} + Sx\vhat{y}$ and $\vec{b} = \vec{b'} + B_0\vhat{z}$, giving}
-    \underline{\partial_t \vec{u'} + \vec{u'} \cdot \grad \vec{u'} + Sx\partial_y \vec{u'} + Su'_x \vhat{y}} + \grad p + \nu \curl \vec{\omega} &= B_0 \partial_z\vec{b'} + \vec{b'} \cdot \grad \vec{b'}
-    \intertext{where the material derivative $\frac{D\vec{u}}{Dt}$ consists of the underlined terms. Note this definition differs from that of the associated script}
-\end{align*}
+% \subsection*{Momentum Equation: Nonlinear Terms}
+% Navier-Stokes (Verbatim from Jeff Oishi's ``MRI prefers'' paper):
+% \begin{align*}
+%     \frac{D\vec{u'}}{Dt} + f\vhat{z} \cross\vec{u'} + Su_x' \vhat{y} + \grad p' + \nu \curl \vec{\omega}' &= B_0 \partial_z \vec{b'}
+%     \intertext{where $f$ is the corriolis parameter, S is the background shearing rate, and $B_0 \vhat{z}$ is a uniform background magnetic field. The equation is linearized wrt perturbations so the material derivative goes like}
+%     \frac{D}{Dt} &\equiv \partial_t + \vec{\overline{u}} \cdot \grad \\
+%     &= \partial_t + Sx\partial_y
+%     \intertext{due to the background velocity $\vec{\overline{u}} = Sx\vhat{y}$. 
+%     In the nonlinear case we have}
+%     &= \partial_t + (Sx\vhat{y} + \vec{u'}) \cdot \grad
+%     \intertext{From inspection and stuff, the irrotational momentum equation goes like}
+%     \frac{D\vec{u}}{Dt} + \grad p + \nu\cross \vec{\omega} &= \vec{b} \cdot \grad\vec{b}
+%     \intertext{Next we generalize $\vec{u} = \vec{u'} + Sx\vhat{y}$ and $\vec{b} = \vec{b'} + B_0\vhat{z}$, giving}
+%     \underline{\partial_t \vec{u'} + \vec{u'} \cdot \grad \vec{u'} + Sx\partial_y \vec{u'} + Su'_x \vhat{y}} + \grad p + \nu \curl \vec{\omega} &= B_0 \partial_z\vec{b'} + \vec{b'} \cdot \grad \vec{b'}
+%     \intertext{where the material derivative $\frac{D\vec{u}}{Dt}$ consists of the underlined terms. Note this definition differs from that of the associated script}
+% \end{align*}
 
-\subsection*{Induction Equation: Nonlinear Terms}
-The MHD induction equation (\textit{Fluid Mechanics of Planets and Stars, 2019}) is given by
-\begin{align*}
-    \partial_t \vec{b} &= \underline{\curl (\vec{u} \cross \vec{b})} + \eta \laplacian \vec{b}.
-    \intertext{We expand the underlined term using the following identity}
-    \curl(\vec{u}\cross\vec{b}) &= \vec{u}\divergence\vec{b} - \vec{b}\divergence\vec{u} + \vec{b}\cdot\grad\vec{u} - \vec{u}\cdot\grad\vec{b}
-    \intertext{where the first two terms on the RHS vanish due to incompressibility and the abscence of magnetic monopoles. 
-    Therefore}
-    \partial_t \vec{b} + \vec{u} \cdot \grad\vec{b} &= \vec{b}\cdot\grad\vec{u} + \eta\laplacian\vec{b}.
-    \intertext{Substituting the decompositions for $\vec{u}$ and $\vec{b}$ as above yields}
-    \partial_t (B_0\vhat{z} + \vec{b'}) + (Sx\vhat{y} + \vec{u'}) \cdot \grad(B_0\vhat{z} + \vec{b'}) &= (B_0\vhat{z} + \vec{b'})\cdot\grad(Sx\vhat{y} + \vec{u'}) + \eta\laplacian(B_0\vhat{z} + \vec{b'}) \\
-    \partial_t \vec{b'} + (Sx\vhat{y} + \vec{u'}) \cdot \grad \vec{b'} &= (B_0\vhat{z} + \vec{b'})\cdot\grad(Sx\vhat{y} + \vec{u'}) + \eta\laplacian\vec{b'} 
-    \intertext{dropping the $'$s and taking the $x,y,$ and $z$ components of the above yields}
-    \partial_t b_x + Sx \partial_y b_x + \vec{u} \cdot \grad b_x &= B_0\partial_z u_x + \vec{b} \cdot \grad u_x + \eta\laplacian b_x \\
-    \partial_t b_y + Sx \partial_y b_y + \vec{u} \cdot \grad b_y &= B_0\partial_z u_y + \vec{b} \cdot \grad u_y + S b_x + \eta\laplacian b_y \\
-    \partial_t b_z + Sx \partial_y b_z + \vec{u} \cdot \grad b_z &= B_0\partial_z u_z + \vec{b} \cdot \grad u_z + \eta\laplacian b_z 
-    \intertext{Note that the nonlinear operator on the LHS is identical for each scalar equation. Accordingly, we redefine $D_t$ to be this operator, i.e.}
-    D_tA &\equiv \partial_t A + Sx \partial_y A + \vec{u} \cdot \grad A \\
-    \intertext{\textbf{NOTE: the material derivative substitution implemented in \texttt{Dedalus} excludes the nonlinear term.}}
-    \intertext{We continue by taking $\partial_z$ of the $b_y$ equation}
-    \partial_z D_t b_y = \partial_z \Big[ \partial_t b_y + Sx \partial_y b_y + \vec{u} \cdot \grad b_y \Big] &= \partial_z  B_0\partial_z u_y + \partial_z [\vec{b} \cdot \grad u_y] + S \partial_z b_x + \eta\laplacian \partial_z b_y \\
-    D_t \partial_z b_y + \partial_z \vec{u} \cdot \grad b_y &= B_0\partial^2_z u_y + \partial_z \vec{b} \cdot \grad u_y + \vec{b} \cdot \grad\partial_z u_y + S \partial_z b_x + \eta\laplacian \partial_z b_y \\
-    \intertext{and the $\partial_y$ of the $b_z$ equation}
-    \partial_y D_t b_z = \partial_y \Big[ \partial_t b_z + Sx \partial_y b_z + \vec{u} \cdot \grad b_z \Big] &= B_0\partial_z \partial_yu_z + \partial_y[\vec{b} \cdot \grad u_z] + \eta\laplacian \partial_yb_z \\
-    D_t \partial_y b_z +\partial_y \vec{u}\cdot\grad b_z &= B_0\partial_z \partial_yu_z + \partial_y\vec{b} \cdot \grad u_z + \vec{b} \cdot \grad \partial_yu_z + \eta\laplacian \partial_yb_z 
-    \intertext{Recall that the current density is given by}
-    \vec{j} = j_x\vhat{x} + j_y\vhat{y} + j_z\vhat{z} &= \curl \vec{b} \\
-    j_x &= \partial_y b_z - \partial_z b_y \\
-    D_t j_x &= D_t\partial_y b_z - D_t\partial_z b_y 
-    \intertext{Therefore}
-    D_t j_x + \partial_y\vec{u}\cdot\grad b_z - \partial_z\vec{u}\cdot\grad b_y = B_0\partial_z \omega_x + \vec{b} \cdot\grad\omega_x - &S\partial_zb_x + \eta\laplacian j_x + \partial_y\vec{b}\cdot\grad u_z - \partial_z \vec{b}\cdot\grad u_y
-    \intertext{Expanding the material derivative and grouping linear terms on the LHS gives}
-\end{align*}
-\begin{subequations}
-\begin{empheq}[box=\widefbox]{align*}
-    \partial_t j_x + Sx \partial_y j_x - B_0\partial_z \omega_x + S\partial_zb_x - \eta\laplacian j_x &=
-    \vec{b} \cdot\grad\omega_x - \vec{u} \cdot \grad j_x\nonumber\\&\quad + \partial_y\vec{b}\cdot\grad u_z - \partial_z \vec{b}\cdot\grad u_y \\\nonumber&\quad- \partial_y\vec{u}\cdot\grad b_z+ \partial_z\vec{u}\cdot\grad b_y\nonumber
-\end{empheq}
-\end{subequations}
+% \subsection*{Induction Equation: Nonlinear Terms}
+% The MHD induction equation (\textit{Fluid Mechanics of Planets and Stars, 2019}) is given by
+% \begin{align*}
+%     \partial_t \vec{b} &= \underline{\curl (\vec{u} \cross \vec{b})} + \eta \laplacian \vec{b}.
+%     \intertext{We expand the underlined term using the following identity}
+%     \curl(\vec{u}\cross\vec{b}) &= \vec{u}\divergence\vec{b} - \vec{b}\divergence\vec{u} + \vec{b}\cdot\grad\vec{u} - \vec{u}\cdot\grad\vec{b}
+%     \intertext{where the first two terms on the RHS vanish due to incompressibility and the abscence of magnetic monopoles. 
+%     Therefore}
+%     \partial_t \vec{b} + \vec{u} \cdot \grad\vec{b} &= \vec{b}\cdot\grad\vec{u} + \eta\laplacian\vec{b}.
+%     \intertext{Substituting the decompositions for $\vec{u}$ and $\vec{b}$ as above yields}
+%     \partial_t (B_0\vhat{z} + \vec{b'}) + (Sx\vhat{y} + \vec{u'}) \cdot \grad(B_0\vhat{z} + \vec{b'}) &= (B_0\vhat{z} + \vec{b'})\cdot\grad(Sx\vhat{y} + \vec{u'}) + \eta\laplacian(B_0\vhat{z} + \vec{b'}) \\
+%     \partial_t \vec{b'} + (Sx\vhat{y} + \vec{u'}) \cdot \grad \vec{b'} &= (B_0\vhat{z} + \vec{b'})\cdot\grad(Sx\vhat{y} + \vec{u'}) + \eta\laplacian\vec{b'} 
+%     \intertext{dropping the $'$s and taking the $x,y,$ and $z$ components of the above yields}
+%     \partial_t b_x + Sx \partial_y b_x + \vec{u} \cdot \grad b_x &= B_0\partial_z u_x + \vec{b} \cdot \grad u_x + \eta\laplacian b_x \\
+%     \partial_t b_y + Sx \partial_y b_y + \vec{u} \cdot \grad b_y &= B_0\partial_z u_y + \vec{b} \cdot \grad u_y + S b_x + \eta\laplacian b_y \\
+%     \partial_t b_z + Sx \partial_y b_z + \vec{u} \cdot \grad b_z &= B_0\partial_z u_z + \vec{b} \cdot \grad u_z + \eta\laplacian b_z 
+%     \intertext{Note that the nonlinear operator on the LHS is identical for each scalar equation. Accordingly, we redefine $D_t$ to be this operator, i.e.}
+%     D_tA &\equiv \partial_t A + Sx \partial_y A + \vec{u} \cdot \grad A \\
+%     \intertext{\textbf{NOTE: the material derivative substitution implemented in \texttt{Dedalus} excludes the nonlinear term.}}
+%     \intertext{We continue by taking $\partial_z$ of the $b_y$ equation}
+%     \partial_z D_t b_y = \partial_z \Big[ \partial_t b_y + Sx \partial_y b_y + \vec{u} \cdot \grad b_y \Big] &= \partial_z  B_0\partial_z u_y + \partial_z [\vec{b} \cdot \grad u_y] + S \partial_z b_x + \eta\laplacian \partial_z b_y \\
+%     D_t \partial_z b_y + \partial_z \vec{u} \cdot \grad b_y &= B_0\partial^2_z u_y + \partial_z \vec{b} \cdot \grad u_y + \vec{b} \cdot \grad\partial_z u_y + S \partial_z b_x + \eta\laplacian \partial_z b_y \\
+%     \intertext{and the $\partial_y$ of the $b_z$ equation}
+%     \partial_y D_t b_z = \partial_y \Big[ \partial_t b_z + Sx \partial_y b_z + \vec{u} \cdot \grad b_z \Big] &= B_0\partial_z \partial_yu_z + \partial_y[\vec{b} \cdot \grad u_z] + \eta\laplacian \partial_yb_z \\
+%     D_t \partial_y b_z +\partial_y \vec{u}\cdot\grad b_z &= B_0\partial_z \partial_yu_z + \partial_y\vec{b} \cdot \grad u_z + \vec{b} \cdot \grad \partial_yu_z + \eta\laplacian \partial_yb_z 
+%     \intertext{Recall that the current density is given by}
+%     \vec{j} = j_x\vhat{x} + j_y\vhat{y} + j_z\vhat{z} &= \curl \vec{b} \\
+%     j_x &= \partial_y b_z - \partial_z b_y \\
+%     D_t j_x &= D_t\partial_y b_z - D_t\partial_z b_y 
+%     \intertext{Therefore}
+%     D_t j_x + \partial_y\vec{u}\cdot\grad b_z - \partial_z\vec{u}\cdot\grad b_y = B_0\partial_z \omega_x + \vec{b} \cdot\grad\omega_x - &S\partial_zb_x + \eta\laplacian j_x + \partial_y\vec{b}\cdot\grad u_z - \partial_z \vec{b}\cdot\grad u_y
+%     \intertext{Expanding the material derivative and grouping linear terms on the LHS gives}
+% \end{align*}
+% \begin{subequations}
+% \begin{empheq}[box=\widefbox]{align*}
+%     \partial_t j_x + Sx \partial_y j_x - B_0\partial_z \omega_x + S\partial_zb_x - \eta\laplacian j_x &=
+%     \vec{b} \cdot\grad\omega_x - \vec{u} \cdot \grad j_x\nonumber\\&\quad + \partial_y\vec{b}\cdot\grad u_z - \partial_z \vec{b}\cdot\grad u_y \\\nonumber&\quad- \partial_y\vec{u}\cdot\grad b_z+ \partial_z\vec{u}\cdot\grad b_y\nonumber
+% \end{empheq}
+% \end{subequations}
 
-\pagebreak
-\begin{align*}
-    \intertext{Let's check that. Using the following identity}
-    \curl\curl (\vec{u} \cross\vec{b}) &= \curl\big(\vec{u}(\divergence \vec{b}) - \vec{b}(\divergence\vec{u}) + (\vec{b}\cdot\grad)\vec{u} - (\vec{u}\cdot\grad)\vec{b}\big) \\
-    &= \curl\big((\vec{b}\cdot\grad)\vec{u} - (\vec{u}\cdot\grad)\vec{b}\big) \\
-    &= \curl\Bigg(\begin{bmatrix} \vec{b}\cdot\grad u_x\\\vec{b}\cdot\grad u_y\\\vec{b}\cdot\grad u_z\end{bmatrix} - \begin{bmatrix} \vec{u}\cdot\grad b_x\\\vec{u}\cdot\grad b_y\\\vec{u}\cdot\grad b_z \end{bmatrix}\Bigg) \\
-    \intertext{Taking the $x$-component gives}
-    \vhat{x}\cdot\curl\curl (\vec{u} \cross\vec{b}) &= \partial_y(\vec{b}\cdot\grad u_z - \vec{u}\cdot\grad b_z) - \partial_z(\vec{b}\cdot\grad u_y - \vec{u}\cdot\grad b_y) \\
-    &= \partial_y\vec{b}\cdot\grad u_z + \vec{b}\cdot\grad\partial_y u_z - \partial_y\vec{u}\cdot\grad b_z - \vec{u}\cdot\grad\partial_y b_z \\
-    &\qquad - \partial_z\vec{b}\cdot\grad u_y - \vec{b}\cdot\grad\partial_z u_y + \partial_z\vec{u}\cdot\grad b_y + \vec{u}\cdot\grad\partial_z b_y \\
-    &= \vec{b}\cdot\grad\omega_x - \vec{u}\cdot\grad j_x \\
-    &\qquad + \partial_y\vec{b}\cdot\grad u_z - \partial_z\vec{b}\cdot\grad u_y + \partial_z\vec{u}\cdot\grad b_y - \partial_y\vec{u}\cdot\grad b_z \\
-    \intertext{Letting $B_0=S=0$, the expanded current-density equation is given by}
-    \partial_tj_x &= \eta\laplacian j_x \\
-    &\qquad + \vec{b} \cdot\grad\omega_x - \vec{u}\cdot\grad j_x\\
-    &\qquad +  \partial_y\vec{b}\cdot\grad u_z - \partial_z \vec{b}\cdot\grad u_y + \partial_z\vec{u}\cdot\grad b_y - \partial_y\vec{u}\cdot\grad b_z \\
-    &= \eta\laplacian j_x + \vhat{x}\cdot \curl\curl (\vec{u} \cross \vec{b}).
-    \intertext{by symmetry we have}
-    \partial_t \vec{j} &= \eta\veclaplacian \vec{j} + \curl\curl (\vec{u} \cross \vec{b})
-    \intertext{We can ``uncurl'' this equation, and if we assume the unknown scalar potential-gradient term $\grad \phi = \vec{0}$, we have}
-    \partial_t \vec{b} &= \curl (\vec{u}\cross\vec{b}) + \eta\veclaplacian\vec{b}
-    \intertext{which is the usual form of the induction equation}
-\end{align*}
+% \pagebreak
+% \begin{align*}
+%     \intertext{Let's check that. Using the following identity}
+%     \curl\curl (\vec{u} \cross\vec{b}) &= \curl\big(\vec{u}(\divergence \vec{b}) - \vec{b}(\divergence\vec{u}) + (\vec{b}\cdot\grad)\vec{u} - (\vec{u}\cdot\grad)\vec{b}\big) \\
+%     &= \curl\big((\vec{b}\cdot\grad)\vec{u} - (\vec{u}\cdot\grad)\vec{b}\big) \\
+%     &= \curl\Bigg(\begin{bmatrix} \vec{b}\cdot\grad u_x\\\vec{b}\cdot\grad u_y\\\vec{b}\cdot\grad u_z\end{bmatrix} - \begin{bmatrix} \vec{u}\cdot\grad b_x\\\vec{u}\cdot\grad b_y\\\vec{u}\cdot\grad b_z \end{bmatrix}\Bigg) \\
+%     \intertext{Taking the $x$-component gives}
+%     \vhat{x}\cdot\curl\curl (\vec{u} \cross\vec{b}) &= \partial_y(\vec{b}\cdot\grad u_z - \vec{u}\cdot\grad b_z) - \partial_z(\vec{b}\cdot\grad u_y - \vec{u}\cdot\grad b_y) \\
+%     &= \partial_y\vec{b}\cdot\grad u_z + \vec{b}\cdot\grad\partial_y u_z - \partial_y\vec{u}\cdot\grad b_z - \vec{u}\cdot\grad\partial_y b_z \\
+%     &\qquad - \partial_z\vec{b}\cdot\grad u_y - \vec{b}\cdot\grad\partial_z u_y + \partial_z\vec{u}\cdot\grad b_y + \vec{u}\cdot\grad\partial_z b_y \\
+%     &= \vec{b}\cdot\grad\omega_x - \vec{u}\cdot\grad j_x \\
+%     &\qquad + \partial_y\vec{b}\cdot\grad u_z - \partial_z\vec{b}\cdot\grad u_y + \partial_z\vec{u}\cdot\grad b_y - \partial_y\vec{u}\cdot\grad b_z \\
+%     \intertext{Letting $B_0=S=0$, the expanded current-density equation is given by}
+%     \partial_tj_x &= \eta\laplacian j_x \\
+%     &\qquad + \vec{b} \cdot\grad\omega_x - \vec{u}\cdot\grad j_x\\
+%     &\qquad +  \partial_y\vec{b}\cdot\grad u_z - \partial_z \vec{b}\cdot\grad u_y + \partial_z\vec{u}\cdot\grad b_y - \partial_y\vec{u}\cdot\grad b_z \\
+%     &= \eta\laplacian j_x + \vhat{x}\cdot \curl\curl (\vec{u} \cross \vec{b}).
+%     \intertext{by symmetry we have}
+%     \partial_t \vec{j} &= \eta\veclaplacian \vec{j} + \curl\curl (\vec{u} \cross \vec{b})
+%     \intertext{We can ``uncurl'' this equation, and if we assume the unknown scalar potential-gradient term $\grad \phi = \vec{0}$, we have}
+%     \partial_t \vec{b} &= \curl (\vec{u}\cross\vec{b}) + \eta\veclaplacian\vec{b}
+%     \intertext{which is the usual form of the induction equation}
+% \end{align*}
 \end{document}
  
