@@ -159,5 +159,24 @@ The MHD induction equation (\textit{Fluid Mechanics of Planets and Stars, 2019})
     \partial_t \vec{b} &= \curl (\vec{u}\cross\vec{b}) + \eta\veclaplacian\vec{b}
     \intertext{which is the usual form of the induction equation}
 \end{align*}
+\newpage
+
+\begin{align*}
+    \intertext{Navier-Stokes:}
+    &\partial_t \vec{u} + Sx\partial_y \vec{u} + f\hat{z}\times\vec{u} + [S\vec{u}\cdot\hat{x}]\hat{y} + \grad p - \nu \laplacian \vec{u} - \vec{B}\cdot \grad\vec{b} = \vec{b} \cdot \grad\vec{b} - \vec{u} \cdot \grad\vec{u}\\
+    \intertext{Induction:}
+    &\partial_t \vec{A} -\grad\phi -\eta\laplacian\vec{A} - \vec{u}\times\vec{B} - Sx\hat{y}\times\vec{b} = \vec{u}\times\vec{b} \\
+    \intertext{Incompressibility and Coulomb gauge}
+    &\grad\cdot\vec{u} = \grad \cdot\vec{A} = 0\\
+    \intertext{$\vec{A}$ definition}
+    &\vec{b} = \curl \vec{A} 
+    \intertext{We define the Lagrangian with multipliers $\vec{\mu},\vec{\Lambda},\pi,\alpha,\vec{\beta}$}
+    &\mathcal{L} \equiv \int_0^T \Big\langle \vec{\mu}\cdot\Big[ \partial_t \vec{u} + Sx\partial_y \vec{u} + f\hat{z}\times\vec{u} + [S\vec{u}\cdot\hat{x}]\hat{y} + \grad p - \nu \laplacian \vec{u} - \vec{B}\cdot \grad\vec{b} - \vec{b} \cdot \grad\vec{b} + \vec{u} \cdot \grad\vec{u} \Big] \Big\rangle dt \\
+    &+ \int_0^T \Big\langle\vec{\Lambda}\cdot\Big[ \partial_t \vec{A} -\grad\phi -\eta\laplacian\vec{A} - \vec{u}\times\vec{B} - Sx\hat{y}\times\vec{b} - \vec{u}\times\vec{b} \Big]  \Big\rangle dt \\
+    &+ \int_0^T \Big\langle \pi \grad\cdot\vec{u} \Big\rangle dt + \int_0^T \Big\langle \alpha \grad\cdot\vec{A} \Big\rangle dt + \int_0^T \Big\langle \vec{\beta} \cdot \Big[ \vec{b} - \curl\vec{A} \Big]  \Big\rangle dt
+    \intertext{The variation with respect to $\vec{u}$}
+    &\frac{\delta \mathcal{L}}{\delta \vec{u}}\delta \vec{u} = \\
+    &\int_0^T \Big\langle \delta\vec{u} \cdot \Big[ -\partial_t\mu - Sx\partial_y\vec{\mu} + f\hat{z}\times\vec{\mu} + [S\vec{\mu}\cdot\hat{y}]\hat{x} + (\grad\vec{u})^T \cdot \vec{\mu} - \vec{u}\cdot\vec{\mu} - \nu\laplacian\vec{\mu} - \vec{\Lambda}\times\vec{B} - \vec{\Lambda}\times\vec{b} - \grad\pi \Big]  \Big\rangle dt
+\end{align*}
 \end{document}
  
