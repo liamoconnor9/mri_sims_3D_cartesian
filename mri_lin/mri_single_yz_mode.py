@@ -79,6 +79,10 @@ logger.info("S = " + str(S))
 # Use COMM_SELF so keep calculations independent between processes
 x_basis = de.Chebyshev('x', Nx, interval=(-Lx/2, Lx/2))
 domain = de.Domain([x_basis], grid_dtype=np.complex128, comm=MPI.COMM_SELF)
+B_f = domain.new_field()
+x_g = x_basis.grid()
+B_f['g'] = 1.
+# B_f['g'] = np.sin(2*x_g)
 
 # 3D MRI
 
@@ -92,7 +96,7 @@ problem.meta[:]['x']['dirichlet'] = True
 
 problem.parameters['S'] = S
 problem.parameters['f'] = f
-problem.parameters['B'] = B
+problem.parameters['B'] = B_f
 
 problem.parameters['ky'] = ky
 problem.parameters['kz'] = kz

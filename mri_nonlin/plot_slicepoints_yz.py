@@ -52,7 +52,7 @@ def midplane(filename, start, count, output):
                 axes = mfig.add_axes(i, j, [0, 0, 1, 1])
                 # Call plotting helper (dset axes: [t, x, y, z])
                 dset = file['tasks'][task]
-                image_axes = (3, 1)
+                image_axes = (1, 2)
                 data_slices = (index, slice(None), slice(None), 0)
                 # if (index % 5 != 0):
                 #     continue
@@ -80,7 +80,7 @@ def midplane(filename, start, count, output):
             # Save figure
             savename = savename_func(file['scales/write_number'][index])
             savepath = output.joinpath(savename)
-            if (index % 25 == 0):
+            if (index % 10 == 0):
                 fig.savefig(str(savepath), dpi=dpi)
             fig.clear()
     plt.close(fig)

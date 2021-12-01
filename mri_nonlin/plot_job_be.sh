@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
-#PBS -l select=10:ncpus=28:mpiprocs=28:model=bro
-#PBS -l walltime=24:00:00
+#PBS -l select=1:ncpus=28:mpiprocs=28:model=bro
+#PBS -l walltime=8:00:00
 #PBS -j oe
 file=${0##*/}
 job_name="${file%.*}"
@@ -17,11 +17,8 @@ conda activate dedalus
 # support lots of text output to stdio for analysis
 export MPI_UNBUFFERED_STDIO=true
 
-source ~/png2mp4.sh
 cd ~/scratch/dedalus/mri/mri_nonlin
 
 SUFF="diff1en2_R1p01_lr"
 
-# mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs scalars_${SUFF}
-mpiexec_mpt -np 1 python3 plot_ke.py ${SUFF}/scalars_${SUFF}/*.h5 --suffix=$SUFF
-mpiexec_mpt -np 1 python3 plot_be.py ${SUFF}/scalars_${SUFF}/*.h5 --suffix=$SUFF
+mpiexec_mpt -np 1 python3 plot_be_dirs.py ${SUFF}/checkpoints_${SUFF}/*.h5 --suffix=$SUFF

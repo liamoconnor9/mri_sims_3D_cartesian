@@ -1,8 +1,10 @@
 #PBS -S /bin/bash
-#PBS -N mri_nonlin_diff1en3_L8
 #PBS -l select=10:ncpus=28:mpiprocs=28:model=bro
 #PBS -l walltime=24:00:00
 #PBS -j oe
+file=${0##*/}
+job_name="${file%.*}"
+#PBS -N ${job_name}
 
 module load mpi-sgi/mpt
 module load comp-intel

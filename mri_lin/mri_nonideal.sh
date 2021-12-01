@@ -13,7 +13,7 @@ export PYTHONNOUSERSITE=1
 conda activate dedalus
 # support lots of text output to stdio for analysis
 export MPI_UNBUFFERED_STDIO=true
-cd ~/scratch/dedalus/mri_simulations/
+cd ~/scratch/dedalus/mri/
 source png2mp4.sh
 
 mpiexec_mpt -np 32 python3 mri_nonideal_bc.py
