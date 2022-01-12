@@ -21,7 +21,7 @@ export MPI_UNBUFFERED_STDIO=true
 source ~/png2mp4.sh
 cd ~/scratch/dedalus/mri/mri_nonlin
 
-SUFF="viff1en2_R0p6_Bsin2x_N128_tau1en2"
+SUFF="viff1en2_R0p6_Bsin2x_N128_tau1en1"
 DIFF=0.01
 MPIPROC=256
 
