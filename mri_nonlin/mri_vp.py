@@ -79,8 +79,8 @@ else:
     logger.info("Using default suffix \'" + str(run_suffix) + "\'")
 
 
-logger.info('Running mri.py with the following parameters:')
-logger.info(config.items('parameters'))
+# logger.info('Running mri.py with the following parameters:')
+# logger.info(config.items('parameters'))
 
 Nx = config.getint('parameters','Nx')
 Ny = eval(config.get('parameters','Ny'))
@@ -99,6 +99,30 @@ Lx = eval(config.get('parameters','Lx'))
 
 B = config.getfloat('parameters','B')
 R      =  config.getfloat('parameters','R')
+if ('R' in run_suffix):
+    if ('R0p4' in run_suffix):
+        R = 0.4
+    elif ('R0p6' in run_suffix):
+        R = 0.6
+    elif ('R1p01' in run_suffix):
+        R = 1.01
+    logger.info('R-parameter provided in run suffix: R = ' + str(R))
+else:
+    logger.info('R-parameter NOT provided in run suffix: R = ' + str(R))
+
+tau = np.inf
+if ('tau' in run_suffix):
+    if ('tau1en1' in run_suffix):
+        tau = 0.1
+    elif ('tau1e0' in run_suffix):
+        tau = 1.0
+    elif ('tau1e1' in run_suffix):
+        tau = 10.0
+    logger.info('tau-parameter provided in run suffix: tau = ' + str(tau))
+else:
+    logger.info('tau-parameter NOT provided in run suffix: tau = ' + str(tau))
+    
+
 q      =  config.getfloat('parameters','q')
 
 ν = config.getfloat('parameters','ν')
@@ -118,8 +142,8 @@ else:
     logger.info("cmd arguments: " + str(sys.argv))
     logger.info("Using nu, eta = " + str(ν) + ", " + str(η))
 
-S      = -R*B*np.sqrt(q)
-f      =  R*B/np.sqrt(q)
+S      = -R*np.sqrt(q)
+f      =  R/np.sqrt(q)
 logger.info("S = " + str(S))
 logger.info("Sc = " + str(-1.0 / f))
 logger.info("S/Sc = " + str(S / -1.0 * f))
@@ -142,13 +166,27 @@ logger.info("running on processor mesh={}".format(mesh))
 domain = de.Domain([y_basis, z_basis, x_basis], grid_dtype=np.float64, mesh=mesh)
 
 # 3D MRI
-problem_variables = ['p','vx','vy','vz','Ax','Ay','Az','Axx','Ayx','Azx', 'phi', 'ωy','ωz']
+problem_variables = ['p', 'vx','vy','vz','Ax','Ay','Az','Axx','Ayx','Azx', 'phi', 'ωy','ωz']
 problem = de.IVP(domain, variables=problem_variables, time='t')
 
 # Local parameters
 problem.parameters['S'] = S
+problem.parameters['Lx'] = Lx
 problem.parameters['f'] = f
-problem.parameters['B'] = B
+
+# problem.parameters['B'] = 0
+# logger.info("B = " + str(B))
+
+B = domain.new_field()
+B_x = domain.new_field()
+B['g'] = np.sin(2.0*domain.grid(2))
+# 0.007634955768260147
+de.operators.differentiate(B, 'x', out=B_x)
+B_x = B.differentiate(2)
+
+problem.parameters['B'] = 0
+problem.parameters['B_x'] = 0
+problem.parameters['tau'] = tau
 
 # non ideal
 problem.parameters['ν'] = ν
@@ -166,19 +204,18 @@ problem.substitutions['by'] = "dz(Ax) - Azx"
 problem.substitutions['bz'] = "Ayx - dy(Ax)"
 
 problem.substitutions['jx'] = "dy(bz) - dz(by)"
-problem.substitutions['jy'] = "dz(bx) - dx(bz)"
-problem.substitutions['jz'] = "dx(by) - dy(bx)"
 
 problem.substitutions['L(A)'] = "dy(dy(A)) + dz(dz(A))"
 problem.substitutions['A_dot_grad_C(Ax, Ay, Az, C)'] = "Ax*dx(C) + Ay*dy(C) + Az*dz(C)"
 
-
-# Variable substitutions
 problem.add_equation("dx(vx) + dy(vy) + dz(vz) = 0")
 
-problem.add_equation("Dt(vx) -     f*vy + dx(p) - B*dz(bx) + ν*(dy(ωz) - dz(ωy)) = b_dot_grad(bx) - v_dot_grad(vx)")
-problem.add_equation("Dt(vy) + (f+S)*vx + dy(p) - B*dz(by) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy)")
-problem.add_equation("Dt(vz)            + dz(p) - B*dz(bz) + ν*(dx(ωy) - dy(ωx)) = b_dot_grad(bz) - v_dot_grad(vz)")
+# tau = 1
+# problem.add_equation("Dt(vy) + vy / tau + (f+S)*vx + dy(p) - B*dz(by) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy)")
+
+problem.add_equation("Dt(vx) -                f*vy + dx(p) + ν*(dy(ωz) - dz(ωy)) = b_dot_grad(bx) - v_dot_grad(vx) + B*dz(bx) + bx*B_x")
+problem.add_equation("Dt(vy) + vy / tau + (f+S)*vx + dy(p) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy) + B*dz(by)")
+problem.add_equation("Dt(vz)                       + dz(p) + ν*(dx(ωy) - dy(ωx)) = b_dot_grad(bz) - v_dot_grad(vz) + B*dz(bz)")
 
 problem.add_equation("ωy - dz(vx) + dx(vz) = 0")
 problem.add_equation("ωz - dx(vy) + dy(vx) = 0")
@@ -186,13 +223,21 @@ problem.add_equation("ωz - dx(vy) + dy(vx) = 0")
 # MHD equations: bx, by, bz, jxx
 problem.add_equation("Axx + dy(Ay) + dz(Az) = 0")
 
-problem.add_equation("dt(Ax) + η * (L(Ax) + dx(Axx)) - dx(phi) = ((vy + S*x) * (bz + B) - vz*by) ")
-problem.add_equation("dt(Ay) + η * (L(Ay) + dx(Ayx)) - dy(phi) = (vz*bx - vx*bz)")
-problem.add_equation("dt(Az) + η * (L(Az) + dx(Azx)) - dz(phi) = (vx*by - vy*bx)")
+# problem.add_equation("dt(Ax) + η * (L(Ax) + dx(Axx)) - dx(phi) = ((vy + S*x) * (bz + B) - vz*by) ")
+
+problem.add_equation("dt(Ax) - η * (L(Ax) + dx(Axx)) - dx(phi) - (S*x*bz) = vy*B + vy*bz - vz*by ")
+problem.add_equation("dt(Ay) - η * (L(Ay) + dx(Ayx)) - dy(phi) = -vx*B + (vz*bx - vx*bz)")
+problem.add_equation("dt(Az) - η * (L(Az) + dx(Azx)) - dz(phi) + S*x*bx = (vx*by - vy*bx)")
+
+# problem.add_equation("dt(Ax) - η * (L(Ax) + dx(Axx)) - dx(phi) - (vy*B + S*x*bz) = vy*bz - vz*by ")
+# problem.add_equation("dt(Ay) - η * (L(Ay) + dx(Ayx)) - dy(phi) + vx*B = (vz*bx - vx*bz)")
+# problem.add_equation("dt(Az) - η * (L(Az) + dx(Azx)) - dz(phi) + S*x*bx = (vx*by - vy*bx)")
+
 
 problem.add_equation("Axx - dx(Ax) = 0")
 problem.add_equation("Ayx - dx(Ay) = 0")
 problem.add_equation("Azx - dx(Az) = 0")
+# problem.add_equation("bz - Ayx + dy(Ax) = 0")
 
 problem.add_bc("left(vx) = 0")
 problem.add_bc("right(vx) = 0", condition="(ny != 0) or (nz != 0)")
@@ -210,16 +255,20 @@ problem.add_equation("left(phi) = 0")
 problem.add_equation("right(phi) = 0")
 
 # setup
-dt = 1e0
+dt = 1e-2
 solver = problem.build_solver(de.timesteppers.SBDF2)
 restart_state_dir = 'restart_' + run_suffix + '.h5'
 
 if not pathlib.Path(restart_state_dir).exists():
     # ICs
     z = domain.grid(0)
+    y = domain.grid(1)
     x = domain.grid(2)
     p = solver.state['p']
     vx = solver.state['vx']
+    Ay = solver.state['Ay']
+    Ayx = solver.state['Ayx']
+    # bz = solver.state['bz']
 
     # Random perturbations, initialized globally for same results in parallel
     lshape = domain.dist.grid_layout.local_shape(scales=1)
@@ -228,7 +277,10 @@ if not pathlib.Path(restart_state_dir).exists():
     slices = domain.dist.grid_layout.slices(scales=1)
 
     # Linear background + perturbations damped at walls
-    vx['g'] += 1e0*np.cos(x)*noise
+    vx['g'] += noise / 1e3
+    # bz['g'] = 1e2*(np.sin((x))*np.cos(y) - 2.0/np.pi)
+    Ay['g'] += -(np.cos(2*x) + 1) / 2.0 / 1e3
+    Ay.differentiate(0, out = Ayx)
     filter_field(vx)
     fh_mode = 'overwrite'
 
@@ -285,7 +337,7 @@ slicepoints.add_task(NU, name='nu')
 slicepoints.add_task(ETA, name='eta')
 slicepoints.add_task(aspect_ratio, name='ar')
 
-scalars = solver.evaluator.add_file_handler('scalars_' + run_suffix, sim_dt=0.01, max_writes=1000, mode=fh_mode)
+scalars = solver.evaluator.add_file_handler('scalars_' + run_suffix, sim_dt=0.1, max_writes=1000, mode=fh_mode)
 scalars.add_task("integ(integ(integ(vx*vx + vy*vy + vz*vz, 'x'), 'y'), 'z')", name="ke")
 scalars.add_task("integ(integ(integ(bx*bx + by*by + bz*bz, 'x'), 'y'), 'z')", name="be")
 
@@ -312,30 +364,30 @@ scalars.add_task(aspect_ratio, name='ar')
 
 path = os.path.dirname(os.path.abspath(__file__))
 
-CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.3,
+CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.1,
                      max_change=1.5, min_change=0.5, max_dt=dt, threshold=0.05)
 CFL.add_velocities(('vy', 'vz', 'vx'))
 
 # Flow properties
-flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
-flow.add_property("sqrt(vx*vx + vy*vy + vz*vz)", name='Re')
+flow = flow_tools.GlobalFlowProperty(solver, cadence=1)
+flow.add_property("sqrt(vx*vx + vy*vy + vz*vz) * Lx / ν", name='Re')
 
-solver.stop_sim_time = 1000
-solver.stop_wall_time = 120*60*60.
+solver.stop_sim_time = 500
+solver.stop_wall_time = 1.25*60.*60.
+# solver.stop_wall_time = *60.
 solver.stop_iteration = np.inf
 nan_count = 0
 max_nan_count = 1
 try:
     logger.info('Starting loop')
     start_run_time = time.time()
+    
     while solver.ok:
-        dt = CFL.compute_dt()
         solver.step(dt)
-        if (solver.iteration-1) % 1 == 0:
+        dt = CFL.compute_dt()
+        if (solver.iteration-1) % 10 == 0:
             logger.info('Iteration: %i, Time: %e, dt: %e' %(solver.iteration, solver.sim_time, dt))
             logger.info('Max Re = %f' %flow.max('Re'))
-            if (np.abs(solver.sim_time - 9) < 1e-4):
-                dt = 0.05        
 
             if (np.isnan(flow.max('Re'))):
                 nan_count += 1

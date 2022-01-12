@@ -206,7 +206,7 @@ problem.add_bc("right(bx) = 0", condition="(ny != 0) or (nz != 0)")
 problem.add_bc("right(jxx) = 0", condition="(ny != 0) or (nz != 0)")
 
 # setup
-dt = 1e0
+dt = 1e-2
 solver = problem.build_solver(de.timesteppers.SBDF2)
 restart_state_dir = 'restart_' + run_suffix + '.h5'
 
@@ -316,8 +316,9 @@ CFL.add_velocities(('vy', 'vz', 'vx'))
 flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
 flow.add_property("sqrt(vx*vx + vy*vy + vz*vz)", name='Re')
 
-solver.stop_sim_time = 1000
-solver.stop_wall_time = 120*60*60.
+
+solver.stop_sim_time = 300
+solver.stop_wall_time = 1.5*60*60.
 solver.stop_iteration = np.inf
 nan_count = 0
 max_nan_count = 1
@@ -327,11 +328,9 @@ try:
     while solver.ok:
         dt = CFL.compute_dt()
         solver.step(dt)
-        if (solver.iteration-1) % 1 == 0:
+        if (solver.iteration-1) % 10 == 0:
             logger.info('Iteration: %i, Time: %e, dt: %e' %(solver.iteration, solver.sim_time, dt))
-            logger.info('Max Re = %f' %flow.max('Re'))
-            if (np.abs(solver.sim_time - 9) < 1e-4):
-                dt = 0.05        
+            logger.info('Max Re = %f' %flow.max('Re'))      
 
             if (np.isnan(flow.max('Re'))):
                 nan_count += 1

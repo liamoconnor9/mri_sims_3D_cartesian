@@ -41,3 +41,4 @@ restart.h5
 *.fdb_latexmk
 *.gz
 *.synctex
+core.*
