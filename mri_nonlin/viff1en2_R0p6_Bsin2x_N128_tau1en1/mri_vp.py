@@ -210,7 +210,7 @@ problem.substitutions['A_dot_grad_C(Ax, Ay, Az, C)'] = "Ax*dx(C) + Ay*dy(C) + Az
 
 problem.add_equation("dx(vx) + dy(vy) + dz(vz) = 0")
 
-# tau = 1
+# tau dampening timescale
 problem.add_equation("Dt(vx) -                f*vy + dx(p) + ν*(dy(ωz) - dz(ωy)) = b_dot_grad(bx) - v_dot_grad(vx) + B*dz(bx) + bx*B_x")
 problem.add_equation("Dt(vy) +            (f+S)*vx + dy(p) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy) + B*dz(by)", condition= "(ny != 0) or (nz != 0)")
 problem.add_equation("Dt(vy) + vy / tau + (f+S)*vx + dy(p) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy) + B*dz(by)", condition = "(ny == 0) and (nz == 0)")
@@ -276,7 +276,7 @@ if not pathlib.Path(restart_state_dir).exists():
     # Linear background + perturbations damped at walls
     vx['g'] += noise / 1e3
     # bz['g'] = 1e2*(np.sin((x))*np.cos(y) - 2.0/np.pi)
-    Ay['g'] += -(np.cos(2*x) + 1) / 2.0 / 1e3
+    Ay['g'] += -(np.cos(2*x) + 1) / 2.0
     Ay.differentiate(0, out = Ayx)
     filter_field(vx)
     fh_mode = 'overwrite'
