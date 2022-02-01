@@ -31,9 +31,9 @@ append = args['--append']
 filename = Path(args['<config_file>'])
 outbase = Path("data")
 
-kys = [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.50, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75, 5.0, 5.25, 5.5, 5.75, 6.0]
+kys = [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.50, 1.75, 2.0, 2.25, 2.5]
 # kzs = [0.25]
-kzs = [0.0, 0.25, 0.5, 0.75, 1.0]
+kzs = [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.50, 1.75, 2.0, 2.25, 2.5]
 evs = []
 ks = []
 
@@ -41,7 +41,7 @@ csv_edit = 'w'
 if (append):
     csv_edit = 'a'
 
-with open('vp_growth_rates_Bsin2x.txt', csv_edit) as ftxt:
+with open('vp_growth_rates_Bsin2x_noslip.txt', csv_edit) as ftxt:
     # Parse .cfg file to set global parameters for script
     config = ConfigParser()
     config.read(str(filename))
@@ -167,10 +167,18 @@ with open('vp_growth_rates_Bsin2x.txt', csv_edit) as ftxt:
             problem.add_bc("left(vx) = 0")
             problem.add_bc("right(vx) = 0")
             # problem.add_bc("right(p) = 0", condition="(ny == 0) and (nz == 0)")
-            problem.add_bc("left(ωy)   = 0")
-            problem.add_bc("left(ωz)   = 0")
-            problem.add_bc("right(ωy)  = 0")
-            problem.add_bc("right(ωz)  = 0")
+
+            # Stress free
+            # problem.add_bc("left(ωy)   = 0")
+            # problem.add_bc("left(ωz)   = 0")
+            # problem.add_bc("right(ωy)  = 0")
+            # problem.add_bc("right(ωz)  = 0")
+
+            # No slip
+            problem.add_bc("left(vy) = 0")
+            problem.add_bc("left(vz) = 0")
+            problem.add_bc("right(vy) = 0")
+            problem.add_bc("right(vz) = 0")
 
             problem.add_equation("left(Ay) = 0")
             problem.add_equation("right(Ay) = 0")
