@@ -1,0 +1,155 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx,amsmath,amsfonts,amssymb,mathtools}
+\usepackage{enumitem}
+\usepackage{empheq}
+\usepackage{xcolor}
+
+\newcommand\Ra{\mathrm{Ra}}
+\newcommand\Pran{\mathrm{Pr}}
+\newcommand\Rac{\mathrm{Ra}_{\mathrm{c}}}
+\newcommand\Ek{\mathrm{Ek}}
+\newcommand\Ro{\mathrm{Ro}}
+\newcommand\Nu{\mathrm{Nu}}
+\newcommand\Sc{\mathrm{Sc}}
+
+\newcommand\eps{\varepsilon}
+\renewcommand\L {\mathcal{L}}
+
+\newcommand{\n}{\\ \nonumber \\ }
+\newcommand{\nn}{\nonumber}
+\newcommand{\nnn}{\\ \nonumber \\ \nonumber}
+
+\newcommand\ie{\textit{i.e.},~}
+\newcommand\eg{\textit{e.g.},~}
+\newcommand{\omicron}{o}
+\newcommand*\widefbox[1]{\fbox{\hspace{2em}#1\hspace{2em}}}
+
+\newcommand{\pd}[1]{\partial_{#1}}
+\newcommand{\vhat}[1]{\hat{\boldsymbol{#1}}}
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\M}[1]{\mathbf{#1}}
+\newcommand{\grad}{\vec{\nabla}}
+\newcommand{\cross}{\vec{\times}}
+\newcommand{\curl}{\grad \vec{\times}}
+\newcommand{\divergence}{\grad \cdot}
+\newcommand{\laplacian}{\nabla^2}
+\newcommand{\veclaplacian}{\grad^2}
+
+\newcommand{\sump}[2]{\sideset{}{'}\sum_{{#1}=0}^{#2}}
+
+\newcommand{\eq}[1]{(\ref{#1})}
+\newcommand{\eqs}[2]{(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\eqss}[2]{(\ref{#1})--(\ref{#2})}
+
+\newcommand{\Eq}[1]{Eq.~(\ref{#1})}
+\newcommand{\Eqs}[2]{Eqs.~(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\Eqss}[2]{Eqs.~(\ref{#1})--(\ref{#2})}
+
+\newcommand{\fig}[1]{Fig.~(\ref{#1})}
+\newcommand{\figs}[2]{Figs.~(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\T}{{\cal T}}
+\newcommand{\Z}{{\cal Z}}
+
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+\section*{Adjoint MRI Derivation}
+\subsection*{Definitions}
+\begin{align*}
+    \intertext{Navier-Stokes:}
+    &\partial_t \vec{u} + Sx\partial_y \vec{u} + f\hat{z}\times\vec{u} + [S\vec{u}\cdot\hat{x}]\hat{y} + \grad p - \nu \laplacian \vec{u} = (\grad \times \vec{b})\times\vec{b} - \vec{u} \cdot \grad\vec{u}\\
+    \intertext{Induction:}
+    &\partial_t \vec{b} -\eta\laplacian\vec{b} - \grad\cross(Sx\hat{y}\times\vec{b}) = \grad\cross(\vec{u}\times\vec{b}) \\
+    \intertext{Divergence-free constraints}
+    &\grad\cdot\vec{u} = \grad \cdot\vec{b} = 0\\
+    % \intertext{$\vec{A}$ definition}
+    % &\vec{b} = \curl \vec{A} 
+    \intertext{We define the Lagrangian with multipliers $\vec{\mu},\pi,\vec{\beta},\alpha$}
+    &\mathcal{L} \equiv \int_0^T \Big\langle \vec{\mu}\cdot\Big[ \partial_t \vec{u} + Sx\partial_y \vec{u} + f\hat{z}\times\vec{u} + [S\vec{u}\cdot\hat{x}]\hat{y} + \grad p - \nu \laplacian \vec{u} - \vec{b} \cdot \grad\vec{b} + \vec{u} \cdot \grad\vec{u} \Big] \Big\rangle dt \\
+    &+ \int_0^T \Big\langle\vec{\beta}\cdot\Big[ \partial_t \vec{b} - \eta\laplacian\vec{b} - \grad\times(Sx\hat{y}\times\vec{b}) - \grad\times(\vec{u}\times\vec{b})  \Big]  \Big\rangle dt \\
+    &+ \int_0^T \Big\langle \pi \grad\cdot\vec{u} \Big\rangle dt + \int_0^T \Big\langle \alpha \grad\cdot\vec{b} \Big\rangle dt
+\end{align*}
+\newline
+
+\subsection*{Incompressibility}
+\begin{align*}
+    \intertext{Taking the variation with respect to $p$ gives}
+    \int_0^T \Big\langle \vec{\mu} \cdot \grad \delta p \Big\rangle dt &= \int_0^T \Big\langle   \grad \cdot (\delta p\,\vec{\mu})  - \delta p\grad\cdot\vec{\mu}\Big\rangle dt \\
+    &= \int_0^T \Big\langle  - \delta p\grad\cdot\vec{\mu}\Big\rangle dt \\
+    \intertext{Making the adjoint velocity divergenceless, i.e. $\grad\cdot\vec{\mu} = 0$.}
+\end{align*}
+
+\subsection*{Navier-Stokes}
+\begin{align*}
+    \intertext{Taking the variation with respect to $\vec{u}$, the first term in Navier-Stokes integrand becomes}
+    \int_0^T \Big\langle \vec{\mu} \cdot \partial_t\delta \vec{u} \Big\rangle dt &= \int_0^T \Big\langle \partial_t (\vec{\mu} \cdot \delta \vec{u}) - \delta \vec{u}\cdot\partial_t \vec{\mu} \Big\rangle dt\\
+    &= \Big\langle\int_0^T \partial_t (\vec{\mu} \cdot \delta \vec{u}) dt \Big\rangle - \int_0^T \Big\langle \delta \vec{u}\cdot\partial_t \vec{\mu} \Big\rangle dt\\
+    &= \Big\langle \vec{\mu}(\vec{x}, T) \cdot \delta \vec{u}(\vec{x}, T) - \vec{\mu}(\vec{x}, 0) \cdot \delta \vec{u}(\vec{x}, 0) \Big\rangle - \int_0^T \Big\langle \delta \vec{u}\cdot\partial_t \vec{\mu} \Big\rangle dt\\
+    \intertext{The second term becomes}
+    \int_0^T \Big\langle \vec{\mu} \cdot Sx\partial_y\delta\vec{u} \Big\rangle dt &= \int_0^T \Big\langle Sx \, \big(\partial_y(\vec{\mu} \cdot \delta\vec{u}) - \delta\vec{u}\cdot\partial_y\vec{\mu}\big) \Big\rangle dt\\
+    &= -\int_0^T \Big\langle  \delta\vec{u}\cdot(Sx\partial_y\vec{\mu})\Big\rangle dt\\
+    \intertext{The third term becomes}
+    \int_0^T \Big\langle \vec{\mu} \cdot (f\hat{z}\times\delta\vec{u}) \Big\rangle dt &= -\int_0^T \Big\langle  \delta\vec{u}\cdot (f\hat{z}\times\vec{\mu}) \Big\rangle dt\\
+    \intertext{The fourth term becomes}
+    \int_0^T \Big\langle \vec{\mu} \cdot \big( \big[ S\delta\vec{u}\cdot\hat{x} \big] \hat{y}\big) \Big\rangle dt &= \int_0^T \Big\langle \delta\vec{u}\cdot \big(\big[ S\vec{\mu} \cdot\hat{x} \big] \hat{y}\big) \Big\rangle dt\\
+    \intertext{The fifth term $\grad p$ has no variation with respect to $\vec{u}$. Using Green's vector identity and applying impenetrable and (no-slip or stress-free) boundary conditions, the sixth term becomes}
+    \int_0^T \Big\langle \vec{\mu} \cdot \nu\laplacian\delta\vec{u} \Big\rangle dt &= \int_0^T \Big\langle \delta\vec{u} \cdot \nu\laplacian\vec{\mu} + \grad\cdot(\vec{\mu}\times(\grad\times\delta\vec{u}) - \delta\vec{u}\times(\grad\times\vec{\mu})) \Big\rangle dt\\
+    &= \int_0^T \Big\langle \delta\vec{u} \cdot \nu\laplacian\vec{\mu}\Big\rangle + \iint (\vec{\mu}\times(\grad\times\delta\vec{u}) - \delta\vec{u}\times(\grad\times\vec{\mu})) \cdot \hat{n}\, dS\, dt\\
+    &= \int_0^T \Big\langle \delta\vec{u} \cdot \nu\laplacian\vec{\mu}\Big\rangle dt\\
+    \intertext{The seventh (lorenz force) term has no variation in $\vec{u}$. The eighth and final term in Navier-Stokes  can be rewritten as}
+    \vec{u}\cdot\grad\vec{u} &= \frac{1}{2}\grad |\vec{u}|^2 - \vec{u}\times(\grad\times\vec{u}) \\
+\end{align*}
+\begin{align*}
+    \intertext{Absorbing the magnitude term into the hydrodynamic pressure, we replace the advection term with the cross-curl term which follows}
+    \int_0^T \Big\langle \vec{\mu} \cdot \delta\big( \vec{u}\times(\grad\times\vec{u}) \big) \Big\rangle dt &= \int_0^T \Big\langle \vec{\mu} \cdot \big(\delta \vec{u}\times(\grad\times\vec{u}) + \vec{u}\times(\grad\times\delta\vec{u}) \big) \Big\rangle dt\\
+    &= \int_0^T \Big\langle  \delta \vec{u} \cdot \big( (\grad\times\vec{u}) \times\vec{\mu}\big) +  (\grad\times\delta\vec{u})  \cdot (\vec{\mu}\times\vec{u})  \Big\rangle dt\\
+    &= \int_0^T \Big\langle  \delta \vec{u} \cdot \big( (\grad\times\vec{u}) \times\vec{\mu}\big) \\
+    &\qquad\qquad +  \grad\cdot\big( \delta\vec{u}\times(\vec{\mu}\times \vec{u}) \big) + \delta\vec{u}\cdot\big( \grad\times (\vec{\mu} \times \vec{u}) \big) \Big\rangle dt\\
+    &= \int_0^T \Big\langle  \delta \vec{u} \cdot \big( (\grad\times\vec{u}) \times\vec{\mu} +  \grad\times (\vec{\mu} \times \vec{u}) \big) \Big\rangle dt\\
+    \intertext{The last term in the induction equation becomes}
+    \int_0^T \Big\langle \vec{\beta}\cdot\big(\grad\times(\delta\vec{u} \times \vec{b}) \big)\Big\rangle dt &= \int_0^T \Big\langle \grad\cdot((\delta\vec{u} \times \vec{b})\times \vec{\beta}) + (\grad\times \vec{\beta})\cdot (\delta\vec{u} \times \vec{b})  \Big\rangle dt\\
+    &= \int_0^T \Big\langle (\grad\times \vec{\beta})\cdot (\delta\vec{u} \times \vec{b})  \Big\rangle dt\\
+    &= \int_0^T \Big\langle \delta\vec{u}\cdot  (  \vec{b} \times (\grad\times \vec{\beta}))  \Big\rangle dt\\
+    \intertext{The penultimate term in the Lagrangian becomes}
+    \int_0^T \Big\langle \pi \grad\cdot \delta\vec{u}\Big\rangle dt &= \int_0^T \Big\langle  \grad\cdot (\pi\delta\vec{u}) - \delta\vec{u}\cdot\grad\pi\Big\rangle dt\\
+    &= \int_0^T \Big\langle - \delta\vec{u}\cdot\grad\pi\Big\rangle dt
+    \intertext{Gathering terms which have $\delta\vec{u}\cdot()$ in common, we obtain the adjoint Navier Stokes Equation}
+    \partial_t\vec{\mu} + Sx\partial_y\vec{\mu} - \big[ S\vec{\mu} \cdot\hat{x} \big]\hat{y} + &f\hat{z}\times\vec{\mu} + \grad \pi + \nu\laplacian\vec{\mu} = -(\grad\times\vec{u})\times\vec{\mu} - \grad\times(\vec{\mu}\times\vec{u}) - \vec{b}\times(\grad\times\vec{\beta}) 
+\end{align*}
+
+\newpage
+\subsection*{Induction Equation}
+\begin{align*}
+    \intertext{Taking the variation with respect to $\vec{b}$, we begin with the Lorenz force in Navier Stokes}
+    \int_0^T \Big\langle \vec{\mu}\cdot\delta \big( (\grad\times\vec{b})\times\vec{b} \big)\Big\rangle dt &= \int_0^T \Big\langle \vec{\mu}\cdot\big( (\grad\times\delta\vec{b})\times\vec{b} + (\grad\times\vec{b})\times\delta \vec{b} \big)\Big\rangle dt \\
+    &= \int_0^T \Big\langle (\grad\times\delta\vec{b})\cdot(\vec{b}\times\vec{\mu}) + \delta\vec{b}\cdot\big( \vec{\mu}\times(\grad\times\vec{b}) \big)\Big\rangle dt \\
+    &= \int_0^T \Big\langle \grad\cdot\big( \delta\vec{b}\times (\vec{b}\times\vec{\mu}) \big) +  \delta\vec{b}\cdot(\grad\times (\vec{b}\times\vec{\mu})) + \delta\vec{b}\cdot\big( \vec{\mu}\times(\grad\times\vec{b}) \big)\Big\rangle dt \\
+    &= \int_0^T \Big\langle  \delta\vec{b}\cdot\big(\grad\times (\vec{b}\times\vec{\mu}) +  \vec{\mu}\times(\grad\times\vec{b}) \big)\Big\rangle dt \\
+    \intertext{The time-derivative (first term) in the induction equation becomes}
+    \int_0^T \Big\langle \vec{\beta} \cdot \partial_t\delta \vec{b} \Big\rangle dt &= \int_0^T \Big\langle \partial_t (\vec{\beta} \cdot \delta \vec{b}) - \delta \vec{b}\cdot\partial_t \vec{\beta} \Big\rangle dt\\
+    &= \Big\langle\int_0^T \partial_t (\vec{\beta} \cdot \delta \vec{b}) dt \Big\rangle - \int_0^T \Big\langle \delta \vec{b}\cdot\partial_t \vec{\beta} \Big\rangle dt\\
+    &= \Big\langle \vec{\beta}(\vec{x}, T) \cdot \delta \vec{b}(\vec{x}, T) - \vec{\beta}(\vec{x}, 0) \cdot \delta \vec{b}(\vec{x}, 0) \Big\rangle - \int_0^T \Big\langle \delta \vec{b}\cdot\partial_t \vec{\beta} \Big\rangle dt\\
+    \intertext{Repeating the earlier procedure, the diffusive (second) term in the induction equation becomes}
+    \int_0^T \Big\langle \vec{\beta} \cdot \eta\laplacian\delta\vec{b} \Big\rangle dt &= \int_0^T \Big\langle \delta\vec{b} \cdot \eta\laplacian\vec{\beta} + \grad\cdot(\vec{\beta}\times(\grad\times\delta\vec{b}) - \delta\vec{b}\times(\grad\times\vec{\beta})) \Big\rangle dt\\
+    &= \int_0^T \Big\langle \delta\vec{b} \cdot \eta\laplacian\vec{\beta}\Big\rangle + \iint (\vec{\beta}\times(\grad\times\delta\vec{b}) - \delta\vec{b}\times(\grad\times\vec{\beta})) \cdot \hat{n}\, dS\, dt\\
+    &= \int_0^T \Big\langle \delta\vec{b} \cdot \eta\laplacian\vec{\beta}\Big\rangle dt\\
+    \intertext{The third term in the induction equation becomes}
+    \int_0^T \Big\langle\vec{\beta}\cdot\Big[ \grad\times(Sx\hat{y}\times\delta\vec{b}) \Big]  \Big\rangle dt &= \int_0^T \Big\langle \grad\cdot((Sx\hat{y}\times\delta\vec{b})\times \vec{\beta}) + (Sx\hat{y}\times\delta\vec{b})\cdot (\grad\times \vec{\beta})  \Big\rangle dt \\
+    &= \int_0^T \Big\langle (Sx\hat{y}\times\delta\vec{b})\cdot (\grad\times \vec{\beta})  \Big\rangle dt \\
+    &= \int_0^T \Big\langle \delta\vec{b}\cdot (\grad\times \vec{\beta})\times (Sx\hat{y})  \Big\rangle dt 
+\end{align*}
+\begin{align*}
+    \intertext{Using the same procedure, the fourth and final term in the induction equation becomes}
+    \int_0^T \Big\langle\vec{\beta}\cdot\Big[ \grad\cross(\vec{u}\times\delta\vec{b}) \Big]  \Big\rangle dt &= \int_0^T \Big\langle \delta\vec{b}\cdot (\grad\times \vec{\beta})\times \vec{u}  \Big\rangle dt \\
+    \intertext{Again repeating one of the earlier procedures,}
+    \int_0^T \Big\langle \alpha \grad\cdot \delta\vec{b}\Big\rangle dt &= \int_0^T \Big\langle  \grad\cdot (\alpha\delta\vec{b}) - \delta\vec{b}\cdot\grad\alpha\Big\rangle dt\\
+    &= \int_0^T \Big\langle - \delta\vec{b}\cdot\grad\alpha\Big\rangle dt   
+    \intertext{Therefore the adjoint induction equation is given by}
+    \partial_t\vec{\beta} + \grad\alpha + \eta \laplacian\vec{\beta} + (\grad\times \vec{\beta})\times (Sx\hat{y}) &= -\big(\grad\times (\vec{b}\times\vec{\mu}) +  \vec{\mu}\times(\grad\times\vec{b}) \big) - (\grad\times \vec{\beta})\times \vec{u}
+    % (\grad\times (Sx\hat{y}\times\delta\vec{b}))\cdot \vec{\beta} &= \grad\cdot((Sx\hat{y}\times\delta\vec{b})\times \vec{\beta}) + (Sx\hat{y}\times\delta\vec{b})\cdot (\grad\times \vec{\beta})
+    % \int_0^T \Big\langle\vec{\beta}\cdot\Big[ \grad\times(Sx\hat{y}\times\vec{b}) - \grad\times(\vec{u}\times\vec{b})  \Big]  \Big\rangle dt \\
+\end{align*}
+\end{document}
+ 
