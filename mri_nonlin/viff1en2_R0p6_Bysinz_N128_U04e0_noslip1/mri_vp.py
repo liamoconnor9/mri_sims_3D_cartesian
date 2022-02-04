@@ -291,7 +291,7 @@ if not pathlib.Path(restart_state_dir).exists():
     slices = domain.dist.grid_layout.slices(scales=1)
 
     # Linear background + perturbations damped at walls
-    vx['g'] += noise / 1e1
+    vx['g'] += noise * U0
     # bz['g'] = 1e2*(np.sin((x))*np.cos(y) - 2.0/np.pi)
     # Ay['g'] += -(np.cos(2*x) + 1) / 2.0
     # Ay.differentiate('x', out = Ayx)
@@ -350,6 +350,10 @@ slicepoints.add_task("interp(bz, y={})".format(ar * Lx / 2.0), name="bz_midy")
 slicepoints.add_task("interp(bz, z={})".format(ar * Lx / 2.0), name="bz_midz")
 slicepoints.add_task("interp(bz, x={})".format(0.0), name="bz_midx")
 
+slicepoints.add_task("integ(integ(integ(vx*vx + vy*vy + vz*vz, 'x'), 'y'), 'z') / (Lx**3 * ar**2)", name="ke")
+slicepoints.add_task("integ(integ(integ(bx*bx + by*by + bz*bz, 'x'), 'y'), 'z') / (Lx**3 * ar**2)", name="be")
+
+slicepoints.add_task("integ(integ(integ(sqrt(vx*vx + vy*vy + vz*vz), 'x'), 'y'), 'z') / (Lx**3 * ar**2)", name="Re")
 
 slicepoints.add_task("integ(integ(vx, 'y'), 'z') / (Lx**2 * ar**2)", name="vx_profs")
 slicepoints.add_task("integ(integ(bx, 'y'), 'z') / (Lx**2 * ar**2)", name="bx_profs")
@@ -366,19 +370,19 @@ scalars = solver.evaluator.add_file_handler('scalars_' + run_suffix, sim_dt=0.1,
 scalars.add_task("integ(integ(integ(vx*vx + vy*vy + vz*vz, 'x'), 'y'), 'z')", name="ke")
 scalars.add_task("integ(integ(integ(bx*bx + by*by + bz*bz, 'x'), 'y'), 'z')", name="be")
 
-scalars.add_task("integ(integ(integ(vx*vx, 'x'), 'y'), 'z') / (Lx**3 * ar**2)", name="ke_x")
-scalars.add_task("integ(integ(integ(bx*bx, 'x'), 'y'), 'z') / (Lx**3 * ar**2)", name="be_x")
+scalars.add_task("integ(integ(integ(vx*vx, 'x'), 'y'), 'z')", name="ke_x")
+scalars.add_task("integ(integ(integ(bx*bx, 'x'), 'y'), 'z')", name="be_x")
 
 scalars.add_task("integ(integ(integ(vy*vy, 'x'), 'y'), 'z')", name="ke_y")
 scalars.add_task("integ(integ(integ((vy + S*x)*(vy + S*x), 'x'), 'y'), 'z')", name="ke_y_tot")
 scalars.add_task("integ(integ(integ(by*by, 'x'), 'y'), 'z')", name="be_y")
 
-scalars.add_task("integ(integ(integ(vz*vz, 'x'), 'y'), 'z') / (Lx**3 * ar**2)", name="ke_z")
-scalars.add_task("integ(integ(integ(bz*bz, 'x'), 'y'), 'z') / (Lx**3 * ar**2)", name="be_z")
+scalars.add_task("integ(integ(integ(vz*vz, 'x'), 'y'), 'z')", name="ke_z")
+scalars.add_task("integ(integ(integ(bz*bz, 'x'), 'y'), 'z')", name="be_z")
 scalars.add_task("integ(integ(integ((bz + B)*(bz + B), 'x'), 'y'), 'z')", name="be_z_tot")
 
-scalars.add_task("integ(integ(integ(vx*vx + (vy + S*x)*(vy + S*x) + vz*vz, 'x'), 'y'), 'z') / (Lx**3 * ar**2)", name="ke_tot")
-scalars.add_task("integ(integ(integ(bx*bx + by*by + (bz + B)*(bz + B), 'x'), 'y'), 'z') / (Lx**3 * ar**2)", name="be_tot")
+scalars.add_task("integ(integ(integ(vx*vx + (vy + S*x)*(vy + S*x) + vz*vz, 'x'), 'y'), 'z')", name="ke_tot")
+scalars.add_task("integ(integ(integ(bx*bx + by*by + (bz + B)*(bz + B), 'x'), 'y'), 'z')", name="be_tot")
 
 scalars.add_task("integ(integ(integ(sqrt(vx*vx + vy*vy + vz*vz), 'x'), 'y'), 'z')", name="Re")
 
