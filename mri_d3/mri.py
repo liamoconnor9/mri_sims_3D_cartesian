@@ -117,7 +117,7 @@ grad_A = d3.grad(A) + ex*lift(tau1A,-1) # First-order reduction
 problem = d3.IVP([p, phi, u, A, taup, tau1u, tau2u, tau1A, tau2A], namespace=locals())
 problem.add_equation("trace(grad_u) + taup = 0")
 problem.add_equation("trace(grad_A) = 0")
-problem.add_equation("dt(u) + dot(u,grad(U0)) + dot(U0,grad(u)) - nu*div(grad_u) + grad(p) + lift(tau2u,-1) = cross(curl(b), b) - dot(u,grad(u)) - cross(fz_hat, u)")
+problem.add_equation("dt(u) + dot(u,grad(U0)) + dot(U0,grad(u)) + cross(fz_hat, u) - nu*div(grad_u) + grad(p) + lift(tau2u,-1) = cross(curl(b), b) - dot(u,grad(u))")
 problem.add_equation("dt(A) + grad(phi) - eta*div(grad_A) + lift(tau2A,-1) = cross(u, b) + cross(U0, b)")
 problem.add_equation("u(x=0) = 0")
 problem.add_equation("u(x=Lx) = 0")
