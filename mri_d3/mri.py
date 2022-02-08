@@ -1,44 +1,17 @@
-"""
-Dedalus script simulating 2D horizontally-periodic Rayleigh-Benard convection.
-This script demonstrates solving a 2D cartesian initial value problem. It can
-be ran serially or in parallel, and uses the built-in analysis framework to save
-data snapshots to HDF5 files. The `plot_snapshots.py` script can be used to
-produce plots from the saved data. The simulation should take roughly 10
-cpu-minutes to run.
-The problem is non-dimensionalized using the box height and freefall time, so
-the resulting thermal diffusivity and viscosity are related to the Prandtl
-and Rayleigh numbers as:
-    kappa = (Rayleigh * Prandtl)**(-1/2)
-    nu = (Rayleigh / Prandtl)**(-1/2)
-For incompressible hydro with two boundaries, we need two tau terms for each the
-velocity and buoyancy. Here we choose to use a first-order formulation, putting
-one tau term each on auxiliary first-order gradient variables and the others in
-the PDE, and lifting them all to the first derivative basis. This formulation puts
-a tau term in the divergence constraint, as required for this geometry.
-To run and plot using e.g. 4 processes:
-    $ mpiexec -n 4 python3 rayleigh_benard.py
-    $ mpiexec -n 4 python3 plot_snapshots.py snapshots/*.h5
-"""
-
 import numpy as np
 import dedalus.public as d3
 import logging
 from mpi4py import MPI
 logger = logging.getLogger(__name__)
 
-# TODO: maybe fix plotting to directly handle vectors
-# TODO: get unit vectors from coords?
-# TODO: cleanup integ shortcuts
-
-
 # Parameters
 Lx = np.pi
 ar = 8
 Ly = Lz = ar * Lx
-Nx, Ny, Nz = 32, 128, 128
+Nx, Ny, Nz = 4, 16, 16
 Rayleigh = 1e6
 Prandtl = 1
-dealias = 3/2
+dealias = 1
 stop_sim_time = 25
 timestepper = d3.RK222
 max_timestep = 0.01
@@ -117,7 +90,7 @@ grad_A = d3.grad(A) + ex*lift(tau1A,-1) # First-order reduction
 problem = d3.IVP([p, phi, u, A, taup, tau1u, tau2u, tau1A, tau2A], namespace=locals())
 problem.add_equation("trace(grad_u) + taup = 0")
 problem.add_equation("trace(grad_A) = 0")
-problem.add_equation("dt(u) + dot(u,grad(U0)) + dot(U0,grad(u)) + cross(fz_hat, u) - nu*div(grad_u) + grad(p) + lift(tau2u,-1) = cross(curl(b), b) - dot(u,grad(u))")
+problem.add_equation("dt(u) + dot(u,grad(U0)) + dot(U0,grad(u)) - nu*div(grad_u) + grad(p) + lift(tau2u,-1) = cross(curl(b), b) - dot(u,grad(u)) - cross(fz_hat, u)")
 problem.add_equation("dt(A) + grad(phi) - eta*div(grad_A) + lift(tau2A,-1) = cross(u, b) + cross(U0, b)")
 problem.add_equation("u(x=0) = 0")
 problem.add_equation("u(x=Lx) = 0")
@@ -139,22 +112,14 @@ u.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
 A['g'][0] = -(np.cos(2*x) + 1) / 2.0
 fh_mode = 'overwrite'
 
-# Analysis
-# snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.25, max_writes=50)
-# snapshots.add_task(p)
-# snapshots.add_task(b)
-# snapshots.add_task(d3.dot(u,ey), name='uy')
-# snapshots.add_task(d3.dot(u,ez), name='uz')
-# snapshots.add_task(d3.dot(u,ex), name='ux')
+# run_suffix = 'mri_d3_test'
+# slicepoints = solver.evaluator.add_file_handler('slicepoints_' + run_suffix, sim_dt=0.1, max_writes=50, mode=fh_mode)
 
-run_suffix = 'mri_d3_test'
-slicepoints = solver.evaluator.add_file_handler('slicepoints_' + run_suffix, sim_dt=0.1, max_writes=50, mode=fh_mode)
-
-for field in [b, u]:
-    for d,p in zip(('x', 'y', 'z'), (0, ar*Lx / 2.0, ar*Lx / 2.0)):
-        slicepoints.add_task(d3.dot(field, ex)(x = 0), name = "{}x_mid{}".format(field, d))
-        # slicepoints.add_task(d3.dot(field, ey)(x = 0), name = "{}y_mid{}".format(field, d))
-        # slicepoints.add_task(d3.dot(field, ez)(x = 0), name = "{}z_mid{}".format(field, d))
+# for field in [b, u]:
+#     for d,p in zip(('x', 'y', 'z'), (0, ar*Lx / 2.0, ar*Lx / 2.0)):
+#         slicepoints.add_task(d3.dot(field, ex)(x = 0), name = "{}x_mid{}".format(field, d))
+#         # slicepoints.add_task(d3.dot(field, ey)(x = 0), name = "{}y_mid{}".format(field, d))
+#         # slicepoints.add_task(d3.dot(field, ez)(x = 0), name = "{}z_mid{}".format(field, d))
 
 # CFL
 CFL = d3.CFL(solver, initial_dt=max_timestep, cadence=10, safety=0.5, threshold=0.05,

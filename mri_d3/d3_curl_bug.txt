@@ -1,0 +1,7 @@
+d3 curl bug:
+- Everything works fine in serial with dealias = 1
+- When either or both of those criteria are not satisfied, the bug is this:
+
+- Defining omega as a substitution (line 44) and including curl(omega) in the PDE's RHS gives error
+- If we move this term to the LHS, different error (singular matrix). Appending the laplacian term eliminates singular error.
+- If we define omega as a problem variable instead of a substitution, no error.
