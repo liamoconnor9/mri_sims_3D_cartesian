@@ -88,8 +88,9 @@ S      = -R*np.sqrt(q)
 f      =  R/np.sqrt(q)
 
 dealias = 3/2
-stop_sim_time = 500
-max_timestep = 0.01
+stop_sim_time = 10
+timestepper = d3.RK222
+max_timestep = 0.001
 dtype = np.float64
 
 ncpu = MPI.COMM_WORLD.size
@@ -137,8 +138,8 @@ tau1A = dist.VectorField(coords, name='tau1A', bases=(ybasis,zbasis))
 tau2A = dist.VectorField(coords, name='tau2A', bases=(ybasis,zbasis))
 
 # operations
-b = d3.Curl(A)
-b.store_last = True
+# b = d3.Curl(A)
+# b.store_last = True
 
 ey = dist.VectorField(coords, name='ey')
 ez = dist.VectorField(coords, name='ez')
@@ -157,54 +158,81 @@ grad_A = d3.grad(A) + ex*lift(tau1A,-1) # First-order reduction
 # Problem
 # First-order form: "div(f)" becomes "trace(grad_f)"
 # First-order form: "lap(f)" becomes "div(grad_f)"
-problem = d3.IVP([p, phi, u, A, taup, tau1u, tau2u, tau1A, tau2A], namespace=locals())
+problem = d3.IVP([p, phi, u, A, b, taup, tau1u, tau2u, tau1A, tau2A], namespace=locals())
 problem.add_equation("trace(grad_u) + taup = 0")
 problem.add_equation("trace(grad_A) = 0")
 problem.add_equation("dt(u) + dot(u,grad(U0)) + dot(U0,grad(u)) - nu*div(grad_u) + grad(p) + lift(tau2u,-1) = cross(curl(b), b) - dot(u,grad(u)) - cross(fz_hat, u)")
 problem.add_equation("dt(A) + grad(phi) - eta*div(grad_A) + lift(tau2A,-1) = cross(u, b) + cross(U0, b)")
-# problem.add_equation("b - curl(A) = 0")
-problem.add_equation("u(x='left') = 0")
-problem.add_equation("u(x='right') = 0")
+problem.add_equation("b - curl(A) = 0")
+problem.add_equation("u(x=0) = 0")
+problem.add_equation("u(x=Lx) = 0")
 problem.add_equation("integ(p) = 0") # Pressure gauge
 
-problem.add_equation("dot(A, ey)(x='left') = 0")
-problem.add_equation("dot(A, ez)(x='left') = 0")
-problem.add_equation("dot(A, ey)(x='right') = 0")
-problem.add_equation("dot(A, ez)(x='right') = 0")
-problem.add_equation("phi(x='left') = 0")
-problem.add_equation("phi(x='right') = 0")
+problem.add_equation("dot(A, ey)(x=0) = 0")
+problem.add_equation("dot(A, ez)(x=0) = 0")
+problem.add_equation("dot(A, ey)(x=Lx) = 0")
+problem.add_equation("dot(A, ez)(x=Lx) = 0")
+problem.add_equation("phi(x=0) = 0")
+problem.add_equation("phi(x=Lx) = 0")
 
 # Solver
-solver = problem.build_solver(d3.SBDF2)
+solver = problem.build_solver(timestepper)
 solver.stop_sim_time = stop_sim_time
 
-for i, subproblem in enumerate(solver.subproblems):
-    M = subproblem.M_min
-    L = subproblem.L_min
-    if (CW.rank == 0):
-        print(i, subproblem.group, np.linalg.cond((M+L).A))
-
 # Initial conditions
-# u.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
-# u['g'] *= x * (Lx - x) # Damp noise at walls
+# p.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
+u['g'][2] = x * (Lx - x)
 
-lshape = dist.grid_layout.local_shape(u.domain, scales=1)
-rand = np.random.RandomState(seed=23 + CW.rank)
-noise = rand.standard_normal(lshape)
+A['g'][0] = -(np.cos(2*x) + 1) / 2.0
 
-u.set_scales(1)
-u['g'][2] += noise / 1e1
-A['g'][0] += -(np.cos(2*x) + 1) / 2.0
+# fh_mode = 'overwrite'
+# u['g'][2] += noise / 1e1
 
-fh_mode = 'overwrite'
-slicepoints = solver.evaluator.add_file_handler('slicepoints_' + run_suffix, sim_dt=0.1, max_writes=50, mode=fh_mode)
+# bz['g'] = 1e2*(np.sin((x))*np.cos(y) - 2.0/np.pi)
+# A['g'][0] += -(np.cos(2*x) + 1) / 2.0
+# Ay.differentiate('x', out = Ayx)
+# Ax['g'] += U0 * np.cos(x) * (np.cos(z) + 1) * 2.0
+
+# checkpoints = solver.evaluator.add_file_handler('checkpoints_' + run_suffix, sim_dt=1.0, max_writes=10, mode=fh_mode)
+# checkpoints.add_system(solver.state)
+
+slicepoints = solver.evaluator.add_file_handler('slicepoints_' + run_suffix, sim_dt=0.1, max_writes=50)
 
 for field, field_name in [(b, 'b'), (u, 'v')]:
     for d2, unit_vec in zip(('x', 'y', 'z'), (ex, ey, ez)):
-        slicepoints.add_task(d3.dot(field, unit_vec)(x = 'center'), name = "{}{}_mid{}".format(field_name, d2, 'x'))
-        slicepoints.add_task(d3.dot(field, unit_vec)(y = 'center'), name = "{}{}_mid{}".format(field_name, d2, 'y'))
-        slicepoints.add_task(d3.dot(field, unit_vec)(z = 'center'), name = "{}{}_mid{}".format(field_name, d2, 'z'))
+        slicepoints.add_task(d3.dot(field, unit_vec)(x = 0), name = "{}{}_mid{}".format(field_name, d2, 'x'))
+        slicepoints.add_task(d3.dot(field, unit_vec)(y = 0), name = "{}{}_mid{}".format(field_name, d2, 'y'))
+        slicepoints.add_task(d3.dot(field, unit_vec)(z = 0), name = "{}{}_mid{}".format(field_name, d2, 'z'))
 
+# scalars = solver.evaluator.add_file_handler('scalars_' + run_suffix, sim_dt=0.1, max_writes=1000, mode=fh_mode)
+# scalars.add_task("integ(d3.integ(d3.integ(vx*vx + vy*vy + vz*vz, 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="ke")
+# scalars.add_task("integ(integ(integ(bx*bx + by*by + bz*bz, 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="be")
+
+# scalars.add_task("integ(integ(integ(vx*vx, 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="ke_x")
+# scalars.add_task("integ(integ(integ(bx*bx, 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="be_x")
+
+# scalars.add_task("integ(integ(integ(vy*vy, 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="ke_y")
+# scalars.add_task("integ(integ(integ((vy + S*x)*(vy + S*x), 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="ke_y_tot")
+# scalars.add_task("integ(integ(integ(by*by, 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="be_y")
+
+# scalars.add_task("integ(integ(integ(vz*vz, 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="ke_z")
+# scalars.add_task("integ(integ(integ(bz*bz, 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="be_z")
+# scalars.add_task("integ(integ(integ((bz + B)*(bz + B), 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="be_z_tot")
+
+# scalars.add_task("integ(integ(integ(vx*vx + (vy + S*x)*(vy + S*x) + vz*vz, 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="ke_tot")
+# scalars.add_task("integ(integ(integ(bx*bx + by*by + (bz + B)*(bz + B), 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="be_tot")
+
+# scalars.add_task("integ(integ(integ(sqrt(vx*vx + vy*vy + vz*vz), 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="Re")
+
+
+
+# for field in ['b', 'v']:
+#     for d,p in zip(('x', 'y', 'z'), (0, ary*Lx / 2.0, arz*Lx / 2.0)):
+#         slicepoints.add_task(d3.dot(field, ex)(x = 0), name = "{}x_mid{}".format(field, d))
+#         # slicepoints.add_task(d3.dot(field, ey)(x = 0), name = "{}y_mid{}".format(field, d))
+#         # slicepoints.add_task(d3.dot(field, ez)(x = 0), name = "{}z_mid{}".format(field, d))
+
+# CFL
 CFL = d3.CFL(solver, initial_dt=max_timestep, cadence=10, safety=0.5, threshold=0.05,
              max_change=1.5, min_change=0.5, max_dt=max_timestep)
 CFL.add_velocity(u)
@@ -215,6 +243,7 @@ flow = d3.GlobalFlowProperty(solver, cadence=10)
 flow.add_property(np.sqrt(d3.dot(u,u))/nu, name='Re')
 
 # Main loop
+startup_iter = 10
 try:
     logger.info('Starting main loop')
     while solver.proceed:
@@ -226,5 +255,5 @@ try:
 except:
     logger.error('Exception raised, triggering end of main loop.')
     raise
-# finally:
-    # solver.log_stats()
+finally:
+    solver.log_stats()

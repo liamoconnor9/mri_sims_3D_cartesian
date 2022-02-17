@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
-#PBS -l select=19:ncpus=28:mpiprocs=28:model=bro
-#PBS -l walltime=8:00:00
+#PBS -l select=10:ncpus=28:mpiprocs=28:model=bro
+#PBS -l walltime=2:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -21,8 +21,8 @@ export MPI_UNBUFFERED_STDIO=true
 source ~/png2mp4.sh
 cd ~/scratch/dedalus/mri/mri_nonlin
 
-SUFF="viff1en2_R0p6_Bsin2x_N128_test"
-MPIPROC=512
+SUFF="viff1en2_R0p866_Bysinz_N128_ARy10_ARz3"
+MPIPROC=256
 
 mkdir $SUFF
 cp $file $SUFF

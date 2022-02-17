@@ -212,14 +212,14 @@ problem.substitutions['A_dot_grad_C(Ax, Ay, Az, C)'] = "Ax*dx(C) + Ay*dy(C) + Az
 problem.add_equation("dx(vx) + dy(vy) + dz(vz) = 0")
 
 # tau dampening timescale
-problem.add_equation("Dt(vx)                  + dx(p) + ν*(dy(ωz) - dz(ωy)) = b_dot_grad(bx) - v_dot_grad(vx) + f*vy")
+problem.add_equation("Dt(vx) -                f*vy + dx(p) + ν*(dy(ωz) - dz(ωy)) = b_dot_grad(bx) - v_dot_grad(vx) + B*dz(bx) + bx*B_x")
 if (tau != 0.0):
-    problem.add_equation("Dt(vy) +            (S)*vx + dy(p) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy) - f*vx", condition= "(ny != 0) or (nz != 0)")
-    problem.add_equation("Dt(vy) + vy / tau + (S)*vx + dy(p) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy) - f*vx", condition = "(ny == 0) and (nz == 0)")
+    problem.add_equation("Dt(vy) +            (f+S)*vx + dy(p) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy) + B*dz(by)", condition= "(ny != 0) or (nz != 0)")
+    problem.add_equation("Dt(vy) + vy / tau + (f+S)*vx + dy(p) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy) + B*dz(by)", condition = "(ny == 0) and (nz == 0)")
 else:
-    problem.add_equation("Dt(vy) +            (S)*vx + dy(p) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy) - f*vx")
+    problem.add_equation("Dt(vy) +            (f+S)*vx + dy(p) + ν*(dz(ωx) - dx(ωz)) = b_dot_grad(by) - v_dot_grad(vy) + B*dz(by)")
     
-problem.add_equation("Dt(vz)                       + dz(p) + ν*(dx(ωy) - dy(ωx)) = b_dot_grad(bz) - v_dot_grad(vz)")
+problem.add_equation("Dt(vz)                       + dz(p) + ν*(dx(ωy) - dy(ωx)) = b_dot_grad(bz) - v_dot_grad(vz) + B*dz(bz)")
 
 problem.add_equation("ωy - dz(vx) + dx(vz) = 0")
 problem.add_equation("ωz - dx(vy) + dy(vx) = 0")
@@ -231,9 +231,9 @@ problem.add_equation("Axx + dy(Ay) + dz(Az) = 0")
 # problem.add_equation("dt(Ay) - η * (L(Ay) + dx(Ayx)) - dy(phi) = -vx*B + (vz*bx - vx*bz)")
 # problem.add_equation("dt(Az) - η * (L(Az) + dx(Azx)) - dz(phi) + S*x*bx = (vx*by - vy*bx)")
 
-problem.add_equation("dt(Ax) - η * (L(Ax) + dx(Axx)) - dx(phi) - (vy*B) = S*x*bz + vy*bz - vz*by ")
+problem.add_equation("dt(Ax) - η * (L(Ax) + dx(Axx)) - dx(phi) - (vy*B + S*x*bz) = vy*bz - vz*by ")
 problem.add_equation("dt(Ay) - η * (L(Ay) + dx(Ayx)) - dy(phi) + vx*B = (vz*bx - vx*bz)")
-problem.add_equation("dt(Az) - η * (L(Az) + dx(Azx)) - dz(phi) = - S*x*bx + (vx*by - vy*bx)")
+problem.add_equation("dt(Az) - η * (L(Az) + dx(Azx)) - dz(phi) + S*x*bx = (vx*by - vy*bx)")
 
 
 problem.add_equation("Axx - dx(Ax) = 0")
@@ -297,12 +297,12 @@ if not pathlib.Path(restart_state_dir).exists():
     # Linear background + perturbations damped at walls
     vx['g'] += noise / 1e1
     # bz['g'] = 1e2*(np.sin((x))*np.cos(y) - 2.0/np.pi)
-    Ay['g'] += -(np.cos(2*x) + 1) / 2.0
+    # Ay['g'] += -(np.cos(2*x) + 1) / 2.0
     # Ay.differentiate('x', out = Ayx)
-    # Ax['g'] += U0 * np.cos(x) * (np.cos(4*np.pi*z / (Lx * arz))) * 2.0
+    Ax['g'] += U0 * np.cos(x) * (np.cos(4*np.pi*z / (Lx * arz))) * 2.0
     # Ax.differentiate('y', out = Axy)
     
-    # filter_field(vx)
+    filter_field(vx)
     fh_mode = 'overwrite'
 
 else:
@@ -391,14 +391,17 @@ path = os.path.dirname(os.path.abspath(__file__))
 CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.1,
                      max_change=1.5, min_change=0.5, max_dt=dt, threshold=0.05)
 CFL.add_velocities(('vy', 'vz', 'vx'))
-CFL.add_velocities(('by', 'bz', 'bx'))
+
+CFL_B = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.1,
+                     max_change=1.5, min_change=0.5, max_dt=dt, threshold=0.05)
+CFL_B.add_velocities(('by', 'bz', 'bx'))
 
 # Flow properties
 flow = flow_tools.GlobalFlowProperty(solver, cadence=1)
-flow.add_property("sqrt(vx*vx + vy*vy + vz*vz) / ν", name='Re')
+flow.add_property("sqrt(vx*vx + vy*vy + vz*vz) * Lx / ν", name='Re')
 
-solver.stop_sim_time = 500
-solver.stop_wall_time = 7*60.*60.
+solver.stop_sim_time = 1000
+solver.stop_wall_time = 4*60.*60.
 solver.stop_iteration = np.inf
 nan_count = 0
 max_nan_count = 1
@@ -408,7 +411,7 @@ try:
     
     while solver.ok:
         solver.step(dt)
-        dt = CFL.compute_dt()
+        dt = min(CFL.compute_dt(), CFL_B.compute_dt())
         if (solver.iteration-1) % 10 == 0:
             logger.info('Iteration: %i, Time: %e, dt: %e' %(solver.iteration, solver.sim_time, dt))
             logger.info('Max Re = %f' %flow.max('Re'))
