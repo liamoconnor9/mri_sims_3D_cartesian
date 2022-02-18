@@ -88,7 +88,7 @@ S      = -R*np.sqrt(q)
 f      =  R/np.sqrt(q)
 
 dealias = 3/2
-stop_sim_time = 500
+stop_sim_time = 10
 max_timestep = 0.01
 dtype = np.float64
 
@@ -162,10 +162,22 @@ problem.add_equation("trace(grad_u) + taup = 0")
 problem.add_equation("trace(grad_A) = 0")
 problem.add_equation("dt(u) + dot(u,grad(U0)) + dot(U0,grad(u)) - nu*div(grad_u) + grad(p) + lift(tau2u,-1) = cross(curl(b), b) - dot(u,grad(u)) - cross(fz_hat, u)")
 problem.add_equation("dt(A) + grad(phi) - eta*div(grad_A) + lift(tau2A,-1) = cross(u, b) + cross(U0, b)")
-# problem.add_equation("b - curl(A) = 0")
-problem.add_equation("u(x='left') = 0")
-problem.add_equation("u(x='right') = 0")
-problem.add_equation("integ(p) = 0") # Pressure gauge
+
+if (isNoSlip):
+    # no-slip BCs
+    problem.add_equation("u(x='left') = 0")
+    problem.add_equation("u(x='right') = 0")
+else:
+    # stress-free BCs
+    problem.add_equation("dot(u, ex)(x='left') = 0")
+    problem.add_equation("dot(u, ex)(x='right') = 0")
+    problem.add_equation("dot(dx(u), ey)(x='left') = 0")
+    problem.add_equation("dot(dx(u), ey)(x='right') = 0")
+    problem.add_equation("dot(dx(u), ez)(x='left') = 0")
+    problem.add_equation("dot(dx(u), ez)(x='right') = 0")
+
+# Pressure gauge
+problem.add_equation("integ(p) = 0") 
 
 problem.add_equation("dot(A, ey)(x='left') = 0")
 problem.add_equation("dot(A, ez)(x='left') = 0")
@@ -192,7 +204,7 @@ lshape = dist.grid_layout.local_shape(u.domain, scales=1)
 rand = np.random.RandomState(seed=23 + CW.rank)
 noise = rand.standard_normal(lshape)
 
-u.set_scales(1)
+u.change_scales(1)
 u['g'][2] += noise / 1e1
 A['g'][0] += -(np.cos(2*x) + 1) / 2.0
 
