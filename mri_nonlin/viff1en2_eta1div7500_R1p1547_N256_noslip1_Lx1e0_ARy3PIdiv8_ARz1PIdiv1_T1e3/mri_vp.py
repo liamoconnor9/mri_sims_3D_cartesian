@@ -348,7 +348,7 @@ if not pathlib.Path(restart_state_dir).exists():
     rand = np.random.RandomState(seed=23 + CW.rank)
     noise = rand.standard_normal(lshape)
     slices = domain.dist.grid_layout.slices(scales=1)
-    vx['g'] = np.cos(np.pi*x) * noise
+    vx['g'] = 1e-3 * np.cos(np.pi*x) * noise
 
     Ay.differentiate('x', out = Ayx)
     Az.differentiate('x', out = Azx)

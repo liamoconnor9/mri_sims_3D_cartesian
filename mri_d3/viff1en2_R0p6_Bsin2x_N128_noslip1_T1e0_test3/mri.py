@@ -222,7 +222,7 @@ u['g'][2] = np.cos(x) * noise
 A['g'][0] = -(np.cos(2*x) + 1) / 2.0
 
 fh_mode = 'overwrite'
-slicepoints = solver.evaluator.add_file_handler('slicepoints_' + run_suffix, sim_dt=0.1, max_writes=50, mode=fh_mode)
+slicepoints = solver.evaluator.add_file_handler('slicepoints_' + run_suffix, sim_dt=0.1, max_writes=1, mode=fh_mode)
 
 for field, field_name in [(b, 'b'), (u, 'v')]:
     for d2, unit_vec in zip(('x', 'y', 'z'), (ex, ey, ez)):

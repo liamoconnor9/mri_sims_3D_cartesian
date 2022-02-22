@@ -89,7 +89,6 @@ f      =  R/np.sqrt(q)
 
 dealias = 3/2
 stop_sim_time = 30
-stop_sim_time = get_param_from_suffix(run_suffix, "T", stop_sim_time)
 max_timestep = 0.01
 dtype = np.float64
 
@@ -162,7 +161,7 @@ grad_b = d3.grad(b)
 problem = d3.IVP([p, phi, u, A, taup, tau1u, tau2u, tau1A, tau2A], namespace=locals())
 problem.add_equation("trace(grad_u) + taup = 0")
 problem.add_equation("trace(grad_A) = 0")
-problem.add_equation("dt(u) + dot(u,grad(U0)) + dot(U0,grad(u)) - nu*div(grad_u) + grad(p) + lift(tau2u,-1) = dot(b, grad_b) - dot(u,grad(u)) - cross(fz_hat, u)")
+problem.add_equation("dt(u) + dot(u,grad(U0)) + dot(U0,grad(u)) - nu*div(grad_u) + grad(p) + lift(tau2u,-1) = cross(curl(b), b) - dot(u,grad(u)) - cross(fz_hat, u)")
 problem.add_equation("dt(A) + grad(phi) - eta*div(grad_A) + lift(tau2A,-1) = cross(u, b) + cross(U0, b)")
 
 if (isNoSlip):
@@ -199,21 +198,20 @@ noise = rand.standard_normal(lshape)
 
 u.set_scales(1)
 # logger.info('noise000 = {}'.format(noise[0, 0, 0]))
-# noise[0,0,0] = 100
+noise[0,0,0] = 100
 # sys.exit()
 
-# x_rand_big = (np.pi**(2.9827)*(x + np.exp(5.123423)))**1.24
-# y_rand_big = (np.pi**(3.235)*(y + np.exp(4.2342346)))**1.935
-# z_rand_big = (np.pi**(1.98234)*(z + np.exp(4.9283753)))**0.978214
+x_rand_big = (np.pi**(2.9827)*(x + np.exp(5.123423)))**1.24
+y_rand_big = (np.pi**(3.235)*(y + np.exp(4.2342346)))**1.935
+z_rand_big = (np.pi**(1.98234)*(z + np.exp(4.9283753)))**0.978214
 
-# x_rand = x_rand_big - np.floor(x_rand_big) - 0.5
-# y_rand = y_rand_big - np.floor(y_rand_big) - 0.5
-# z_rand = z_rand_big - np.floor(z_rand_big) - 0.5
-# rand_boi = (np.sin(1e5 * x_rand*y_rand*z_rand))*1e5 - np.round((np.sin(1e5 * x_rand*y_rand*z_rand))*1e5)
+x_rand = x_rand_big - np.floor(x_rand_big) - 0.5
+y_rand = y_rand_big - np.floor(y_rand_big) - 0.5
+z_rand = z_rand_big - np.floor(z_rand_big) - 0.5
+rand_boi = (np.sin(1e5 * x_rand*y_rand*z_rand))*1e5 - np.round((np.sin(1e5 * x_rand*y_rand*z_rand))*1e5)
 
 
-# u['g'][2] = np.cos(x) * rand_boi
-u['g'][2] = np.cos(x) * noise
+u['g'][2] = np.cos(x) * rand_boi
 
 # u['g'][2] = np.sin(4*z)*np.cos(y)
 # u['g'][0] = np.cos(x) * np.cos(4*z) + y*np.sin(x) / 10
@@ -222,7 +220,7 @@ u['g'][2] = np.cos(x) * noise
 A['g'][0] = -(np.cos(2*x) + 1) / 2.0
 
 fh_mode = 'overwrite'
-slicepoints = solver.evaluator.add_file_handler('slicepoints_' + run_suffix, sim_dt=0.1, max_writes=50, mode=fh_mode)
+slicepoints = solver.evaluator.add_file_handler('slicepoints_' + run_suffix, sim_dt=0.03, max_writes=50, mode=fh_mode)
 
 for field, field_name in [(b, 'b'), (u, 'v')]:
     for d2, unit_vec in zip(('x', 'y', 'z'), (ex, ey, ez)):

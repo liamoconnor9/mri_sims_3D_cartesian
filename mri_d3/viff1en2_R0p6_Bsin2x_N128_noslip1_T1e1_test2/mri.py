@@ -199,7 +199,7 @@ noise = rand.standard_normal(lshape)
 
 u.set_scales(1)
 # logger.info('noise000 = {}'.format(noise[0, 0, 0]))
-# noise[0,0,0] = 100
+noise[0,0,0] = 100
 # sys.exit()
 
 # x_rand_big = (np.pi**(2.9827)*(x + np.exp(5.123423)))**1.24

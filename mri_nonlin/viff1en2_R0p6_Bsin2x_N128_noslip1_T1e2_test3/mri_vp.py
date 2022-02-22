@@ -57,20 +57,10 @@ def get_param_from_suffix(suffix, param_prefix, default_param):
                     magnitude = 0.0
 
             p_ind = val_str.find('p')
-            div_ind = val_str.find('div')
             if (p_ind != -1):
                 whole_val = val_str[:p_ind]
                 decimal_val = val_str[p_ind + 1:]
                 param = float(whole_val + '.' + decimal_val) * 10**(magnitude)
-            elif (div_ind != -1):
-                num_str = val_str[:div_ind]
-                pi_ind = num_str.find('PI')
-                if (pi_ind != -1):
-                    num = np.pi * int(num_str[:pi_ind])
-                else:
-                    num = int(num_str)
-                den = int(val_str[div_ind + 3:])
-                param = num / den 
             else:
                 param = float(val_str) * 10**(magnitude)  
             logger.info("Parameter " + param_prefix + " = " + str(param) + " : provided in write suffix")
@@ -124,39 +114,6 @@ def global_noise(domain, seed=42, **kwargs):
     filter_field(noise_field, **kwargs)
     return noise_field
 
-def vp_bvp_func(domain, by, bz, bx):
-    problem = de.LBVP(domain, variables=['Ax','Ay', 'Az', 'phi'])
-
-    problem.parameters['by'] = by
-    problem.parameters['bz'] = bz
-    problem.parameters['bx'] = bx
-
-    problem.add_equation("phi = 0", condition="(ny==0) and (nz==0)")
-    problem.add_equation("Ax = 0", condition="(ny==0) and (nz==0)")
-    problem.add_equation("Ay = 0", condition="(ny==0) and (nz==0)")
-    problem.add_equation("Az = 0", condition="(ny==0) and (nz==0)")
-
-    problem.add_equation("dx(Ax) + dy(Ay) + dz(Az) = 0", condition="(ny!=0) or (nz!=0)")
-    problem.add_equation("dy(Az) - dz(Ay) + dx(phi) = bx", condition="(ny!=0) or (nz!=0)")
-    problem.add_equation("dz(Ax) - dx(Az) + dy(phi) = by", condition="(ny!=0) or (nz!=0)")
-    problem.add_equation("dx(Ay) - dy(Ax) + dz(phi) = bz", condition="(ny!=0) or (nz!=0)")
-
-    problem.add_bc("left(Ay) = 0", condition="(ny!=0) or (nz!=0)")
-    problem.add_bc("left(Az) = 0", condition="(ny!=0) or (nz!=0)")
-    problem.add_bc("right(Ay) = 0", condition="(ny!=0) or (nz!=0)")
-    problem.add_bc("right(Az) = 0", condition="(ny!=0) or (nz!=0)")
-
-    # Build solver
-    solver = problem.build_solver()
-    solver.solve()
-
-    # Plot solution
-    Ay = solver.state['Ay']
-    Az = solver.state['Az']
-    Ax = solver.state['Ax']
-
-    return Ay, Az, Ax
-
 hardwall = False
 
 if len(sys.argv) > 1:
@@ -170,8 +127,7 @@ else:
 N = int(get_param_from_suffix(run_suffix, "N", np.NaN))
 R = get_param_from_suffix(run_suffix, "R", np.NaN)
 Nx = N // 4
-Ny = Nx
-Nz = N
+Ny = Nz = N
 diffusivities = get_param_from_suffix(run_suffix, "viff", np.NaN)
 
 # Optional parameters (default values provided)
@@ -190,9 +146,6 @@ isNoSlip = get_param_from_suffix(run_suffix, 'noslip', 0)
 S      = -R*np.sqrt(q)
 f      =  R/np.sqrt(q)
 
-Ly = Lx * ary
-Lz = Lx * arz
-
 # logger.info("S = " + str(S))
 # logger.info("Sc = " + str(-1.0 / f))
 # logger.info("S/Sc = " + str(S / -1.0 * f))
@@ -200,8 +153,8 @@ Lz = Lx * arz
 # Create bases and domain
 # Use COMM_SELF so keep calculations independent between processes
 x_basis = de.Chebyshev('x', Nx, interval=(-Lx/2, Lx/2))
-y_basis = de.Fourier('y', Ny, interval=(0, Ly))
-z_basis = de.Fourier('z', Nz, interval=(0, Lz))
+y_basis = de.Fourier('y', Ny, interval=(0, Lx * ary))
+z_basis = de.Fourier('z', Nz, interval=(0, Lx * arz))
 
 ncpu = MPI.COMM_WORLD.size
 log2 = np.log2(ncpu)
@@ -313,7 +266,7 @@ problem.add_equation("left(phi) = 0")
 problem.add_equation("right(phi) = 0")
 
 # setup
-dt = 2e-3
+dt = 1e-2
 
 solver = problem.build_solver(de.timesteppers.SBDF2)
 restart_state_dir = 'restart_' + run_suffix + '.h5'
@@ -331,32 +284,42 @@ if not pathlib.Path(restart_state_dir).exists():
     Ayx = solver.state['Ayx']
     Ax = solver.state['Ax']
     Axx = solver.state['Axx']
-    Az = solver.state['Az']
-    Azx = solver.state['Azx']
     # bz = solver.state['bz']
 
-    # Random perturbations, initialized globally for same results in parallel
-    bx = domain.new_field()
-    bz = domain.new_field()
-    by = domain.new_field()
-    bx['g'] = U0 * np.cos(np.pi * x) * np.sin(4*np.pi * z / Lz)
-    bz['g'] = -U0*Lz/4.0 * np.sin(np.pi*x) * np.cos(4*np.pi*z / Lz)
-    Ay, Az, Ax = vp_bvp_func(domain, by, bz, bx)
-    
     # Random perturbations, initialized globally for same results in parallel
     lshape = domain.dist.grid_layout.local_shape(scales=1)
     rand = np.random.RandomState(seed=23 + CW.rank)
     noise = rand.standard_normal(lshape)
     slices = domain.dist.grid_layout.slices(scales=1)
-    vx['g'] = np.cos(np.pi*x) * noise
+    # logger.info('noise000 = {}'.format(noise[0, 0, 0]))
+    # sys.exit()
 
+    # noise[0,0,0] = 100
+
+
+    # Linear background + perturbations damped at walls
+
+    # x_rand_big = (np.pi**(2.9827)*(x + np.exp(5.123423)))**1.24
+    # y_rand_big = (np.pi**(3.235)*(y + np.exp(4.2342346)))**1.935
+    # z_rand_big = (np.pi**(1.98234)*(z + np.exp(4.9283753)))**0.978214
+
+    # x_rand = x_rand_big - np.floor(x_rand_big) - 0.5
+    # y_rand = y_rand_big - np.floor(y_rand_big) - 0.5
+    # z_rand = z_rand_big - np.floor(z_rand_big) - 0.5
+    # rand_boi = (np.sin(1e5 * x_rand*y_rand*z_rand))*1e5 - np.round((np.sin(1e5 * x_rand*y_rand*z_rand))*1e5)
+    # vx['g'] = np.cos(x) * rand_boi
+
+    vx['g'] = np.cos(x) * noise
+    # vx['g'] = np.cos(x) / 10
+    # vy['g'] = np.cos(x)*np.cos(4*z) + y*np.sin(x) / 10
+    # vz['g'] = np.cos(x)*np.sin(4*y) / 10
+    
+    # bz['g'] = 1e2*(np.sin((x))*np.cos(y) - 2.0/np.pi)
+    Ay['g'] = -(np.cos(2*x) + 1) / 2.0
     Ay.differentiate('x', out = Ayx)
-    Az.differentiate('x', out = Azx)
-    Ax.differentiate('x', out = Axx)
     # Ax['g'] = U0 * np.cos(x) * (np.cos(4*np.pi*z / (Lx * arz))) * 2.0
-    # Ax.differentiate('y', out = Axy)    
-
-
+    # Ax.differentiate('y', out = Axy)
+    
     # filter_field(vx)
     fh_mode = 'overwrite'
 
@@ -443,7 +406,7 @@ scalars.add_task(aspect_ratio, name='ar')
 
 path = os.path.dirname(os.path.abspath(__file__))
 
-CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.1,
+CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.5,
                      max_change=1.5, min_change=0.5, max_dt=dt, threshold=0.05)
 CFL.add_velocities(('vy', 'vz', 'vx'))
 CFL.add_velocities(('by', 'bz', 'bx'))
@@ -455,7 +418,7 @@ flow.add_property("sqrt(vx*vx + vy*vy + vz*vz) / ν", name='Re')
 stop_sim_time = 30
 solver.stop_sim_time = get_param_from_suffix(run_suffix, "T", stop_sim_time)
 
-solver.stop_wall_time = 6*60.*60.
+solver.stop_wall_time = 7*60.*60.
 solver.stop_iteration = np.inf
 nan_count = 0
 max_nan_count = 1

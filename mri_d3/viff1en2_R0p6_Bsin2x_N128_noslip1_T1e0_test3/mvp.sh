@@ -23,7 +23,7 @@ export MPI_UNBUFFERED_STDIO=true
 source ~/png2mp4.sh
 cd ~/mri/mri_d3
 
-SUFF="viff1en2_R0p6_Bsin2x_N128_noslip1_T1e2_test3"
+SUFF="viff1en2_R0p6_Bsin2x_N128_noslip1_T1e0_test3"
 MPIPROC=256
 
 mkdir $SUFF

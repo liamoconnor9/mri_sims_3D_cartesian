@@ -48,12 +48,8 @@ sim_params = {
 # keys are forward variables
 # items are (backward variables, adjoint initial condition function: i.e. ux(T) = func(ux_t(T)))
 lagrangian_dict = {
-    'ux' : ('ux_t', lambda p: -p),
-    'uy' : ('uy_t', lambda p: -p),
-    'uz' : ('uz_t', lambda p: -p),
-    'bx' : ('bx_t', lambda p: -p),
-    'by' : ('by_t', lambda p: -p),
-    'bz' : ('bz_t', lambda p: -p)
+    'u' : ('u_t', lambda p: -p),
+    'b' : ('b_t', lambda p: -p)
 }
 
 class OptParams:
@@ -62,7 +58,7 @@ class OptParams:
         self.num_cp = num_cp
         self.dt = dt
         self.grad_mag = grad_mag
-        self.dT = T / numCheckpoints
+        self.dT = T / num_cp
         self.dt_per_cp = self.dT // dt
 
 opt_params = OptParams(1.0, 1.0, 0.01)

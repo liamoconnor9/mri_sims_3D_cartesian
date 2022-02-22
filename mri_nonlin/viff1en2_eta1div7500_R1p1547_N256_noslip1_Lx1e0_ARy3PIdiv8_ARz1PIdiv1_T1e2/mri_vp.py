@@ -313,7 +313,7 @@ problem.add_equation("left(phi) = 0")
 problem.add_equation("right(phi) = 0")
 
 # setup
-dt = 2e-3
+dt = 1e-2
 
 solver = problem.build_solver(de.timesteppers.SBDF2)
 restart_state_dir = 'restart_' + run_suffix + '.h5'
@@ -443,7 +443,7 @@ scalars.add_task(aspect_ratio, name='ar')
 
 path = os.path.dirname(os.path.abspath(__file__))
 
-CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.1,
+CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.5,
                      max_change=1.5, min_change=0.5, max_dt=dt, threshold=0.05)
 CFL.add_velocities(('vy', 'vz', 'vx'))
 CFL.add_velocities(('by', 'bz', 'bx'))
@@ -455,7 +455,7 @@ flow.add_property("sqrt(vx*vx + vy*vy + vz*vz) / ν", name='Re')
 stop_sim_time = 30
 solver.stop_sim_time = get_param_from_suffix(run_suffix, "T", stop_sim_time)
 
-solver.stop_wall_time = 6*60.*60.
+solver.stop_wall_time = 3*60.*60.
 solver.stop_iteration = np.inf
 nan_count = 0
 max_nan_count = 1

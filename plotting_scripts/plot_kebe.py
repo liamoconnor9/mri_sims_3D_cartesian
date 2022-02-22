@@ -55,10 +55,20 @@ def get_param_from_suffix(suffix, param_prefix, default_param):
                     magnitude = 0.0
 
             p_ind = val_str.find('p')
+            div_ind = val_str.find('div')
             if (p_ind != -1):
                 whole_val = val_str[:p_ind]
                 decimal_val = val_str[p_ind + 1:]
                 param = float(whole_val + '.' + decimal_val) * 10**(magnitude)
+            elif (div_ind != -1):
+                num_str = val_str[:div_ind]
+                pi_ind = num_str.find('PI')
+                if (pi_ind != -1):
+                    num = np.pi * int(num_str[:pi_ind])
+                else:
+                    num = int(num_str)
+                den = int(val_str[div_ind + 3:])
+                param = num / den 
             else:
                 param = float(val_str) * 10**(magnitude)  
             logger.info("Parameter " + param_prefix + " = " + str(param) + " : provided in write suffix")
