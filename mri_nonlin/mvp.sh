@@ -29,6 +29,7 @@ cp $file $SUFF
 cp mri_vp.py $SUFF
 cd $SUFF
 
+#TODO: update all calls to point to proper directory ($SUFF/stuff/)
 mpiexec_mpt -np $MPIPROC python3 mri_vp.py $SUFF
 mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs scalars_${SUFF} --cleanup
 mpiexec_mpt -np 1 python3 ../../plotting_scripts/plot_kebe.py scalars_${SUFF}/*.h5 --suffix=$SUFF

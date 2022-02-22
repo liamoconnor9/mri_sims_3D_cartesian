@@ -160,11 +160,16 @@ def vp_bvp_func(domain, by, bz, bx):
 hardwall = False
 
 if len(sys.argv) > 1:
-    run_suffix = sys.argv[1]
+    run_suffix = data_dir = sys.argv[1]
     logger.info("suffix provided for write data: " + run_suffix)
 else:
     logger.error("run suffix not provided")
     raise
+if MPI.COMM_WORLD.rank == 0:
+    if not os.path.exists('{:s}'.format(data_dir)):
+        os.makedirs('{:s}'.format(data_dir))
+logger.info("saving run in: {}".format(data_dir))
+
 
 # Mandatory parameters (must be provided in run suffix)
 N = int(get_param_from_suffix(run_suffix, "N", np.NaN))
@@ -316,6 +321,7 @@ problem.add_equation("right(phi) = 0")
 dt = 2e-3
 
 solver = problem.build_solver(de.timesteppers.SBDF2)
+#TODO: update this to new directory structure
 restart_state_dir = 'restart_' + run_suffix + '.h5'
 
 if not pathlib.Path(restart_state_dir).exists():
@@ -376,10 +382,10 @@ NU.value = ν
 ETA.value = η
 aspect_ratio = ar
 
-checkpoints = solver.evaluator.add_file_handler('checkpoints_' + run_suffix, sim_dt=1.0, max_writes=10, mode=fh_mode)
+checkpoints = solver.evaluator.add_file_handler('{}/checkpoints'.format(data_dir), sim_dt=1.0, max_writes=10, mode=fh_mode)
 checkpoints.add_system(solver.state)
 
-slicepoints = solver.evaluator.add_file_handler('slicepoints_' + run_suffix, sim_dt=0.1, max_writes=50, mode=fh_mode)
+slicepoints = solver.evaluator.add_file_handler('{}/slicepoints'.format(data_dir), sim_dt=0.1, max_writes=50, mode=fh_mode)
 
 slicepoints.add_task("interp(vx, y={})".format(ary * Lx / 2.0), name="vx_midy")
 slicepoints.add_task("interp(vx, z={})".format(arz * Lx / 2.0), name="vx_midz")
@@ -417,7 +423,7 @@ slicepoints.add_task("integ(integ(by, 'y'), 'z') / (Lx**2 * ary * arz)", name="b
 slicepoints.add_task("integ(integ(vz, 'y'), 'z') / (Lx**2 * ary * arz)", name="vz_profs")
 slicepoints.add_task("integ(integ(bz, 'y'), 'z') / (Lx**2 * ary * arz)", name="bz_profs")
 
-scalars = solver.evaluator.add_file_handler('scalars_' + run_suffix, sim_dt=0.1, max_writes=1000, mode=fh_mode)
+scalars = solver.evaluator.add_file_handler('{}/scalars'.format(data_dir), sim_dt=0.1, max_writes=1000, mode=fh_mode)
 scalars.add_task("integ(integ(integ(vx*vx + vy*vy + vz*vz, 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="ke")
 scalars.add_task("integ(integ(integ(bx*bx + by*by + bz*bz, 'x'), 'y'), 'z') / (Lx**3 * ary * arz)", name="be")
 
