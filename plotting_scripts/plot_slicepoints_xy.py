@@ -2,10 +2,11 @@
 Plot planes from joint analysis files.
 
 Usage:
-    plot_slices.py <files>... [--output=<dir>]
+    plot_slices.py <files>... [--output=<dir> --suffix=<suff>]
 
 Options:
     --output=<dir>  Output directory [default: ./frames]
+    --suffix=<suff>  write suffix (parameters)
 
 """
 
@@ -18,6 +19,7 @@ from matplotlib import ticker
 plt.ioff()
 from dedalus.extras import plot_tools
 import logging
+import sys
 logger = logging.getLogger(__name__)
 
 def get_param_from_suffix(suffix, param_prefix, default_param):
@@ -88,14 +90,20 @@ def midplane(filename, start, count, output):
 
     # Plot settings
     normal_dir = 'z'
-    tasks = ['vx_mid'+normal_dir, 'vy_mid'+normal_dir, 'vz_mid'+normal_dir, 'bx_mid'+normal_dir, 'by_mid'+normal_dir, 'bz_mid'+normal_dir]
     scale = 2.5
     dpi = 100
     title_func = lambda sim_time: 't = {:.3f}'.format(sim_time)
     savename_func = lambda write: 'mid_{:06}.png'.format(write)
     # Layout
-    nrows, ncols = 6, 1
-    image = plot_tools.Box(4, 4 / ary)
+    # if (round(ary) > 1):
+    if (False):
+        nrows, ncols = 6, 1
+        tasks = ['vx_mid'+normal_dir, 'vy_mid'+normal_dir, 'vz_mid'+normal_dir, 'bx_mid'+normal_dir, 'by_mid'+normal_dir, 'bz_mid'+normal_dir]
+    else:
+        nrows, ncols = 3, 2
+        tasks = ['vx_mid'+normal_dir, 'bx_mid'+normal_dir, 'vy_mid'+normal_dir, 'by_mid'+normal_dir, 'vz_mid'+normal_dir, 'bz_mid'+normal_dir]
+
+    image = plot_tools.Box(2, 2 / ary)
     pad = plot_tools.Frame(0.2, 0.2, 0.1, 0.1)
     margin = plot_tools.Frame(0.3, 0.2, 0.1, 0.1)
 
@@ -113,25 +121,8 @@ def midplane(filename, start, count, output):
                 dset = file['tasks'][task]
                 image_axes = (1, 3)
                 data_slices = (index, slice(None), 0, slice(None))
-                # if (index % 5 != 0):
-                #     continue
                 plot_tools.plot_bot(dset, image_axes, data_slices, axes=axes, title=task, even_scale=True)
 
-                # x = file['scales/x/1.0'][()]
-                # y = file['scales/y/1.0'][()]
-                # yy, xx = np.meshgrid(y.flatten(), x.flatten())
-                # data = dset[data_slices]
-                # plot = plt.pcolormesh(xx, yy, data)
-                # cbar = plt.colorbar(plot, cax=axes, orientation='horizontal',
-                #     ticks=ticker.MaxNLocator(nbins=5))
-                # cbar.outline.set_visible(False)
-                # axes.xaxis.set_ticks_position('top')                # plt.pcolor(dset[data_slices])
-                # axes.xaxis.set_label_position('top')
-                # plt.xlabel("x")
-                # plt.ylabel("y")
-                # plt.title(task)
-                
-                # plot_tools.plot_bot(dset, image_axes, data_slices, axes=axes, title=task, even_scale=True)
             # Add time title
             title = title_func(file['scales/sim_time'][index])
             title_height = 1 - 0.5 * mfig.margin.top / mfig.fig.y
@@ -155,7 +146,7 @@ if __name__ == "__main__":
     args = docopt(__doc__)
 
     output_path = pathlib.Path(args['--output']).absolute()
-    suffix = args['--output'][9:]
+    suffix = args['--suffix']
 
     global ar, ary, arz
     ar = get_param_from_suffix(suffix, "AR", 8)    

@@ -1,6 +1,6 @@
 """
+3D cartesian MRI initial value problem using vector potential formulation
 Modified from: The magnetorotational instability prefers three dimensions.
-3D MHD initial value problem
 """
 
 from unicodedata import decimal
@@ -154,8 +154,9 @@ def vp_bvp_func(domain, by, bz, bx):
     Ay = solver.state['Ay']
     Az = solver.state['Az']
     Ax = solver.state['Ax']
+    phi = solver.state['phi']
 
-    return Ay, Az, Ax
+    return Ay['g'], Az['g'], Ax['g'], phi['g']
 
 hardwall = False
 
@@ -321,7 +322,6 @@ problem.add_equation("right(phi) = 0")
 dt = 2e-3
 
 solver = problem.build_solver(de.timesteppers.SBDF2)
-#TODO: update this to new directory structure
 restart_state_dir = 'restart_' + run_suffix + '.h5'
 
 if not pathlib.Path(restart_state_dir).exists():
@@ -333,6 +333,8 @@ if not pathlib.Path(restart_state_dir).exists():
     vx = solver.state['vx']
     vy = solver.state['vy']
     vz = solver.state['vz']
+
+    phi = solver.state['phi']
     Ay = solver.state['Ay']
     Ayx = solver.state['Ayx']
     Ax = solver.state['Ax']
@@ -346,15 +348,15 @@ if not pathlib.Path(restart_state_dir).exists():
     bz = domain.new_field()
     by = domain.new_field()
     bx['g'] = U0 * np.cos(np.pi * x) * np.sin(4*np.pi * z / Lz)
-    bz['g'] = -U0*Lz/4.0 * np.sin(np.pi*x) * np.cos(4*np.pi*z / Lz)
-    Ay, Az, Ax = vp_bvp_func(domain, by, bz, bx)
+    bz['g'] = -U0 * Lz/4.0 * np.sin(np.pi*x) * np.cos(4*np.pi*z / Lz)
+    Ay['g'], Az['g'], Ax['g'], phi['g'] = vp_bvp_func(domain, by, bz, bx)
     
     # Random perturbations, initialized globally for same results in parallel
     lshape = domain.dist.grid_layout.local_shape(scales=1)
     rand = np.random.RandomState(seed=23 + CW.rank)
     noise = rand.standard_normal(lshape)
     slices = domain.dist.grid_layout.slices(scales=1)
-    vx['g'] = np.cos(np.pi*x) * noise
+    vx['g'] = U0 * 1e-4 * np.cos(np.pi*x) * noise
 
     Ay.differentiate('x', out = Ayx)
     Az.differentiate('x', out = Azx)
@@ -449,7 +451,7 @@ scalars.add_task(aspect_ratio, name='ar')
 
 path = os.path.dirname(os.path.abspath(__file__))
 
-CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.1,
+CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=1, safety=0.2,
                      max_change=1.5, min_change=0.5, max_dt=dt, threshold=0.05)
 CFL.add_velocities(('vy', 'vz', 'vx'))
 CFL.add_velocities(('by', 'bz', 'bx'))
@@ -457,11 +459,12 @@ CFL.add_velocities(('by', 'bz', 'bx'))
 # Flow properties
 flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
 flow.add_property("sqrt(vx*vx + vy*vy + vz*vz) / ν", name='Re')
+flow.add_property("sqrt(bx*bx + by*by + bz*bz) / η", name='Rm')
 
-stop_sim_time = 30
+stop_sim_time = 1000
 solver.stop_sim_time = get_param_from_suffix(run_suffix, "T", stop_sim_time)
 
-solver.stop_wall_time = 6*60.*60.
+solver.stop_wall_time = 8*60.*60.
 solver.stop_iteration = np.inf
 nan_count = 0
 max_nan_count = 1
@@ -473,10 +476,12 @@ try:
         dt = CFL.compute_dt()
         solver.step(dt)
         if (solver.iteration-1) % 10 == 0:
-            logger.info('Iteration: %i, Time: %e, dt: %e' %(solver.iteration, solver.sim_time, dt))
-            logger.info('Max Re = %f' %flow.max('Re'))
+            string = 'Iteration: %i, Time: %e, dt: %e' %(solver.iteration, solver.sim_time, dt)
+            string += ', Max Re = %e' %flow.max('Re')
+            string += ', Max Rm = %e' %flow.max('Rm')
+            logger.info(string)
 
-            if (np.isnan(flow.max('Re'))):
+            if (np.isnan(flow.max('Re')) or np.isnan(flow.max('Rm'))):
                 nan_count += 1
                 logger.warning('Max Re is nan! Strike ' + str(nan_count) + ' of ' + str(max_nan_count))
                 if (nan_count >= max_nan_count):
