@@ -5,11 +5,8 @@ import os
 import sys
 import h5py
 import gc
-import pickle
-import dedalus.public as de
-from dedalus.core.field import Scalar
-from dedalus.extras import flow_tools
-from dedalus.extras.plot_tools import plot_bot_2d
+import dedalus.public as d3
+from dedalus.core import domain
 from mpi4py import MPI
 CW = MPI.COMM_WORLD
 import logging
@@ -17,13 +14,11 @@ import pathlib
 logger = logging.getLogger(__name__)
 from OptimizationContext import OptimizationContext
 import ForwardMHD
-import BackwardMHD
+# import BackwardMHD
 from collections import OrderedDict
 
-def build_domain(Lx, ar, Ny, Nz, Nx):
-    x_basis = de.Chebyshev('x', Nx, interval=(-Lx/2, Lx/2))
-    y_basis = de.Fourier('y', Ny, interval=(0, Lx * ar))
-    z_basis = de.Fourier('z', Nz, interval=(0, Lx * ar))    
+def build_domain(Ly, Lz, Lx, Ny, Nz, Nx, dealias, dtype):
+    coords = d3.CartesianCoordinates('y', 'z', 'x')
     ncpu = MPI.COMM_WORLD.size
     log2 = np.log2(ncpu)
     if log2 == int(log2):
@@ -31,18 +26,26 @@ def build_domain(Lx, ar, Ny, Nz, Nx):
     else:
         logger.error("pretty sure this shouldn't happen... log2(ncpu) is not an int?")
     logger.info("running on processor mesh={}".format(mesh))
-    return de.Domain([y_basis, z_basis, x_basis], grid_dtype=np.float64, mesh=mesh)
+    dist = d3.Distributor(coords, dtype=dtype, mesh=mesh)
+    # print(coords)
+    # coords = dist.coords
+    # print(coords)
+    ybasis = d3.RealFourier(coords[0], size=Ny, bounds=(0, Ly), dealias=dealias)
+    zbasis = d3.RealFourier(coords[1], size=Nz, bounds=(0, Lz), dealias=dealias)
+    xbasis = d3.ChebyshevT(coords[2], size=Nx, bounds=(-Lx / 2.0, Lx / 2.0), dealias=dealias)
+    return (domain.Domain(dist, [ybasis, zbasis, xbasis]), coords)
 
+
+
+# TODO: replace below with .cfg file
 q = 0.75
 R = 0.6
 sim_params = {
-    'B' : 0,
-    'B_x' : 0,
+    'isNoSlip' : 1,
     'S' : -R*np.sqrt(q),
     'f' : R/np.sqrt(q),
-    'ν' : 0.01,
-    'η' : 0.01,
-    'tau' : 10
+    'nu' : 0.01,
+    'eta' : 0.01
     }
 
 # keys are forward variables
@@ -61,13 +64,15 @@ class OptParams:
         self.dT = T / num_cp
         self.dt_per_cp = self.dT // dt
 
-opt_params = OptParams(1.0, 1.0, 0.01)
-domain = build_domain(np.pi, 8, 256, 256, 64)
-forward_problem = ForwardMHD.build_problem(domain, sim_params)
-backward_problem = BackwardMHD.build_problem(domain, sim_params)
-timestepper = de.timesteppers.SBDF2
+opt_params = OptParams(1.0, 1.0, 0.01, 1e-3)
+domain, coords = build_domain(8*np.pi, 8*np.pi, np.pi, 256, 256, 64, 3/2, np.float64)
+
+forward_problem = ForwardMHD.build_problem(domain, coords, sim_params)
+# backward_problem = BackwardMHD.build_problem(domain, sim_params)
+timestepper = d3.SBDF2
 write_suffix = 'init0'
-opt = OptimizationContext(forward_problem, backward_problem, lagrangian_dict, opt_params, sim_params, timestepper, write_suffix)
+
+opt = OptimizationContext(forward_problem, forward_problem, lagrangian_dict, opt_params, sim_params, timestepper, write_suffix)
 opt.ic.field_dict['u']['g'] = np.sin(domain.grid(0))
 opt.build_var_hotel()
 opt.loop()

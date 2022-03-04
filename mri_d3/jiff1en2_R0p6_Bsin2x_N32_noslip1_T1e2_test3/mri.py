@@ -68,8 +68,7 @@ else:
 N = int(get_param_from_suffix(run_suffix, "N", np.NaN))
 R = get_param_from_suffix(run_suffix, "R", np.NaN)
 Nx = N // 4
-Ny = Nx
-Nz = N
+Ny = Nz = N
 diffusivities = get_param_from_suffix(run_suffix, "viff", np.NaN)
 
 # Parameters (Varied and Optional)
@@ -91,7 +90,7 @@ f      =  R/np.sqrt(q)
 dealias = 3/2
 stop_sim_time = 30
 stop_sim_time = get_param_from_suffix(run_suffix, "T", stop_sim_time)
-max_timestep = 0.002
+max_timestep = 0.01
 dtype = np.float64
 
 ncpu = MPI.COMM_WORLD.size
@@ -198,8 +197,28 @@ lshape = dist.grid_layout.local_shape(u.domain, scales=1)
 rand = np.random.RandomState(seed=23 + CW.rank)
 noise = rand.standard_normal(lshape)
 
-u.change_scales(1)
+u.set_scales(1)
+# logger.info('noise000 = {}'.format(noise[0, 0, 0]))
+# noise[0,0,0] = 100
+# sys.exit()
+
+# x_rand_big = (np.pi**(2.9827)*(x + np.exp(5.123423)))**1.24
+# y_rand_big = (np.pi**(3.235)*(y + np.exp(4.2342346)))**1.935
+# z_rand_big = (np.pi**(1.98234)*(z + np.exp(4.9283753)))**0.978214
+
+# x_rand = x_rand_big - np.floor(x_rand_big) - 0.5
+# y_rand = y_rand_big - np.floor(y_rand_big) - 0.5
+# z_rand = z_rand_big - np.floor(z_rand_big) - 0.5
+# rand_boi = (np.sin(1e5 * x_rand*y_rand*z_rand))*1e5 - np.round((np.sin(1e5 * x_rand*y_rand*z_rand))*1e5)
+
+
+# u['g'][2] = np.cos(x) * rand_boi
 u['g'][2] = np.cos(x) * noise
+
+# u['g'][2] = np.sin(4*z)*np.cos(y)
+# u['g'][0] = np.cos(x) * np.cos(4*z) + y*np.sin(x) / 10
+# u['g'][1] = np.cos(x) * np.sin(4*y) / 10
+
 A['g'][0] = -(np.cos(2*x) + 1) / 2.0
 
 fh_mode = 'overwrite'
@@ -224,11 +243,11 @@ flow.add_property(np.sqrt(d3.dot(u,u))/nu, name='Re')
 try:
     logger.info('Starting main loop')
     while solver.proceed:
-        if (solver.iteration-1) % 1 == 0:
-            max_Re = flow.max('Re')
-            logger.info('Iteration=%i, Time=%e, dt=%e, max(Re)=%f' %(solver.iteration, solver.sim_time, timestep, max_Re))
         timestep = CFL.compute_timestep()
         solver.step(timestep)
+        if (solver.iteration-1) % 10 == 0:
+            max_Re = flow.max('Re')
+            logger.info('Iteration=%i, Time=%e, dt=%e, max(Re)=%f' %(solver.iteration, solver.sim_time, timestep, max_Re))
 except:
     logger.error('Exception raised, triggering end of main loop.')
     raise
