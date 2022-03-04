@@ -23,15 +23,15 @@ export MPI_UNBUFFERED_STDIO=true
 source ~/png2mp4.sh
 cd ~/mri/mri_d3
 
-SUFF="viff1en2_R0p6_N64_noslip1"
+SUFF="jiff1en2_R0p6_Bsin2x_N32_noslip1_T1e2_test3"
 MPIPROC=4
 
 mkdir $SUFF
 cp $file $SUFF
-cp mri.py $SUFF
+cp mri_adj.py $SUFF
 cd $SUFF
 
-mpiexec_mpt -np $MPIPROC python3 mri.py $SUFF
+mpiexec_mpt -np $MPIPROC python3 mri_adj.py $SUFF
 # # mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs scalars_${SUFF} --cleanup
 # mpiexec_mpt -np 1 python3 ../../plotting_scripts/plot_kebe.py scalars_${SUFF}/*.h5 --suffix=$SUFF
 # mpiexec_mpt -np 1 python3 ../../plotting_scripts/plot_ke.py scalars_${SUFF}/*.h5 --suffix=$SUFF

@@ -15,7 +15,6 @@ import logging
 import pathlib
 logger = logging.getLogger(__name__)
 from OptParams import OptParams
-from Forward_problem import Forward_problem
 from collections import OrderedDict
 
 class OptimizationContext:
@@ -32,14 +31,9 @@ class OptimizationContext:
         self.write_suffix = write_suffix
         self.ic = FieldSystem([self.domain.new_field(name=var) for var in forward_problem.variables])
         # self.fc = FieldSystem([self.domain.new_field(name=var) for var in backward_problem.variables])
-        # self.integrand_ = np.zeros(opt_params.T // opt_params.dt)
         self.loop_index = 0
 
-    def build_integrator(self, time_dependent_integrad):
-        self.backward_problem.append('integrad')
-        self.backward_problem.add_equation('integrad = ' + time_dependent_integrad)
-        self.backward_solver = self.backward_problem.build_solver(self.timestepper)
-
+    # Hotel stores the forward variables, at each timestep, in memory to inform adjoint solve
     def build_var_hotel(self):
         self.hotel = OrderedDict()
         shape = [self.opt_params.dt_per_cp]
@@ -50,11 +44,13 @@ class OptimizationContext:
             # if (var in self.backward_problem.parameters):
             self.hotel[var] = np.zeros(shape)
 
+    # Set starting point for loop
     def set_forward_ic(self):
         for var in self.forward_problem.variables:
             if (var in self.ic.field_dict.keys()):
                 self.forward_solver.state[var]['c'] = self.ic.field_dict[var]['c']
 
+    # Set ic for adjoint problem for loop
     def set_backward_fc(self):
         for forward_var in self.lagrangian_dict.keys():
             backward_var, fc_func = self.lagrangian_dict[forward_var]
@@ -68,6 +64,20 @@ class OptimizationContext:
         self.set_backward_fc()
         self.solve_backward()
         self.loop_index += 1
+
+    def solve_forward(self):
+        checkpoints = self.forward_solver.evaluator.add_file_handler('checkpoints_' + self.write_suffix, sim_dt=self.opt_params.dTcp, max_writes=10, mode='overwrite')
+        checkpoints.add_system(self.forward_solver.state)
+        self.forward_solver.stop_sim_time = self.opt_params.T
+        try:
+            logger.info('Starting forward solve')
+            while self.forward_solver.ok:
+                self.forward_solver.step(self.opt_params.dt)
+        except:
+            logger.error('Exception raised in forward solve, triggering end of main loop.')
+            raise
+        finally:
+            logger.info('Completed forward solve')
 
     def solve_backward(self):
         for cp_index in range(self.opt_params.num_cp):
@@ -86,19 +96,6 @@ class OptimizationContext:
                 self.backward_solver().step(self.opt_params.dt)
                 # self.integrand_array[cp_index * self.opt_params.dt_per_cp + t_ind] = self.backward_problem.state['integrand']['g']
 
-    # def solve_forward(self):
-    #     checkpoints = self.forward_solver.evaluator.add_file_handler('checkpoints_' + self.write_suffix, sim_dt=self.opt_params.dTcp, max_writes=10, mode='overwrite')
-    #     checkpoints.add_system(self.forward_solver.state)
-    #     self.forward_solver.stop_sim_time = self.opt_params.T
-    #     try:
-    #         logger.info('Starting forward solve')
-    #         while self.forward_solver.ok:
-    #             self.forward_solver.step(self.opt_params.dt)
-    #     except:
-    #         logger.error('Exception raised in forward solve, triggering end of main loop.')
-    #         raise
-    #     finally:
-    #         logger.info('Completed forward solve')
 
     def evaluate_state_T(self):
         return

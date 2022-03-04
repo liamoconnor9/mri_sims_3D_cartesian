@@ -1,0 +1,67 @@
+# D2 version: noise
+(dedalus-d3) liamo@liamo-930QDB:~/dev/mri/mri_nonlin$ bash mvp.sh 
+mvp.sh: line 15: deactivate: command not found
+mvp.sh: line 24: cd: /home/liamo/scratch/dedalus/mri/mri_nonlin: No such file or directory
+mkdir: cannot create directory ‘viff1en2_R0p6_N64_noslip1’: File exists
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: suffix provided for write data: viff1en2_R0p6_N64_noslip1
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: saving run in: viff1en2_R0p6_N64_noslip1
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Parameter N = 64.0 : provided in write suffix
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Parameter R = 0.6 : provided in write suffix
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Parameter viff = 0.01 : provided in write suffix
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Using default parameter: tau = 0.0
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Using default parameter: B = 0.0
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Using default parameter: Lx = 3.141592653589793
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Using default parameter: q = 0.75
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Using default parameter: AR = 8
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Using default parameter: ARy = 8
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Using default parameter: ARz = 8
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Using default parameter: U0 = 1
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Using default parameter: nu = 0.01
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Using default parameter: eta = 0.01
+2022-03-04 01:29:43,999 __main__ 0/4 INFO :: Parameter noslip = 1.0 : provided in write suffix
+2022-03-04 01:29:44,000 __main__ 0/4 INFO :: running on processor mesh=[2, 2]
+2022-03-04 01:29:44,043 __main__ 0/4 INFO :: Adding no slip BCs
+2022-03-04 01:29:44,096 pencil 0/4 INFO :: Building pencil matrix 1/128 (~1%) Elapsed: 0s, Remaining: 3s, Rate: 4.0e+01/s
+2022-03-04 01:29:44,434 pencil 0/4 INFO :: Building pencil matrix 13/128 (~10%) Elapsed: 0s, Remaining: 3s, Rate: 3.6e+01/s
+2022-03-04 01:29:44,749 pencil 0/4 INFO :: Building pencil matrix 26/128 (~20%) Elapsed: 1s, Remaining: 3s, Rate: 3.8e+01/s
+2022-03-04 01:29:45,025 pencil 0/4 INFO :: Building pencil matrix 39/128 (~30%) Elapsed: 1s, Remaining: 2s, Rate: 4.1e+01/s
+2022-03-04 01:29:45,306 pencil 0/4 INFO :: Building pencil matrix 52/128 (~41%) Elapsed: 1s, Remaining: 2s, Rate: 4.2e+01/s
+2022-03-04 01:29:45,593 pencil 0/4 INFO :: Building pencil matrix 65/128 (~51%) Elapsed: 2s, Remaining: 1s, Rate: 4.3e+01/s
+2022-03-04 01:29:45,883 pencil 0/4 INFO :: Building pencil matrix 78/128 (~61%) Elapsed: 2s, Remaining: 1s, Rate: 4.3e+01/s
+2022-03-04 01:29:46,179 pencil 0/4 INFO :: Building pencil matrix 91/128 (~71%) Elapsed: 2s, Remaining: 1s, Rate: 4.3e+01/s
+2022-03-04 01:29:46,498 pencil 0/4 INFO :: Building pencil matrix 104/128 (~81%) Elapsed: 2s, Remaining: 1s, Rate: 4.3e+01/s
+2022-03-04 01:29:46,820 pencil 0/4 INFO :: Building pencil matrix 117/128 (~91%) Elapsed: 3s, Remaining: 0s, Rate: 4.3e+01/s
+2022-03-04 01:29:47,096 pencil 0/4 INFO :: Building pencil matrix 128/128 (~100%) Elapsed: 3s, Remaining: 0s, Rate: 4.2e+01/s
+2022-03-04 01:29:47,322 __main__ 0/4 INFO :: Using default parameter: T = 30
+2022-03-04 01:29:47,322 __main__ 0/4 INFO :: Starting loop
+2022-03-04 01:29:47,868 __main__ 0/4 INFO :: Iteration: 1, Time: 2.000000e-03, dt: 2.000000e-03
+2022-03-04 01:29:47,869 __main__ 0/4 INFO :: Max Re = 344.801913
+2022-03-04 01:29:48,276 __main__ 0/4 INFO :: Iteration: 11, Time: 2.200000e-02, dt: 2.000000e-03
+2022-03-04 01:29:48,277 __main__ 0/4 INFO :: Max Re = 146.352539
+2022-03-04 01:29:48,595 __main__ 0/4 INFO :: Iteration: 21, Time: 4.200000e-02, dt: 2.000000e-03
+2022-03-04 01:29:48,597 __main__ 0/4 INFO :: Max Re = 145.376062
+2022-03-04 01:29:48,949 __main__ 0/4 INFO :: Iteration: 31, Time: 6.200000e-02, dt: 2.000000e-03
+2022-03-04 01:29:48,951 __main__ 0/4 INFO :: Max Re = 144.130332
+2022-03-04 01:29:49,349 __main__ 0/4 INFO :: Iteration: 41, Time: 8.200000e-02, dt: 2.000000e-03
+2022-03-04 01:29:49,352 __main__ 0/4 INFO :: Max Re = 142.629012
+2022-03-04 01:29:49,804 __main__ 0/4 INFO :: Iteration: 51, Time: 1.020000e-01, dt: 2.000000e-03
+2022-03-04 01:29:49,806 __main__ 0/4 INFO :: Max Re = 140.886708
+2022-03-04 01:29:50,175 __main__ 0/4 INFO :: Iteration: 61, Time: 1.220000e-01, dt: 2.000000e-03
+2022-03-04 01:29:50,175 __main__ 0/4 INFO :: Max Re = 138.918511
+2022-03-04 01:29:50,479 __main__ 0/4 INFO :: Iteration: 71, Time: 1.420000e-01, dt: 2.000000e-03
+2022-03-04 01:29:50,481 __main__ 0/4 INFO :: Max Re = 136.739693
+2022-03-04 01:29:50,755 __main__ 0/4 INFO :: Iteration: 81, Time: 1.620000e-01, dt: 2.000000e-03
+2022-03-04 01:29:50,757 __main__ 0/4 INFO :: Max Re = 134.365582
+2022-03-04 01:29:51,023 __main__ 0/4 INFO :: Iteration: 91, Time: 1.820000e-01, dt: 2.000000e-03
+2022-03-04 01:29:51,027 __main__ 0/4 INFO :: Max Re = 131.811674
+2022-03-04 01:29:51,350 __main__ 0/4 INFO :: Iteration: 101, Time: 2.020000e-01, dt: 2.000000e-03
+2022-03-04 01:29:51,350 __main__ 0/4 INFO :: Max Re = 129.093660
+2022-03-04 01:29:51,612 __main__ 0/4 INFO :: Iteration: 111, Time: 2.220000e-01, dt: 2.000000e-03
+2022-03-04 01:29:51,612 __main__ 0/4 INFO :: Max Re = 126.227155
+2022-03-04 01:29:51,868 __main__ 0/4 INFO :: Iteration: 121, Time: 2.420000e-01, dt: 2.000000e-03
+2022-03-04 01:29:51,871 __main__ 0/4 INFO :: Max Re = 123.229420
+2022-03-04 01:29:52,197 __main__ 0/4 INFO :: Iteration: 131, Time: 2.620000e-01, dt: 2.000000e-03
+2022-03-04 01:29:52,200 __main__ 0/4 INFO :: Max Re = 120.118203
+2022-03-04 01:29:52,520 __main__ 0/4 INFO :: Iteration: 141, Time: 2.820000e-01, dt: 2.000000e-03
+2022-03-04 01:29:52,522 __main__ 0/4 INFO :: Max Re = 116.911296
+
