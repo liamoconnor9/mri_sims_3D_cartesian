@@ -65,14 +65,14 @@ class OptParams:
         self.dt_per_cp = self.dT // dt
 
 opt_params = OptParams(1.0, 1.0, 0.01, 1e-3)
-domain, coords = build_domain(8*np.pi, 8*np.pi, np.pi, 256, 256, 64, 3/2, np.float64)
+domain, coords = build_domain(8*np.pi, 8*np.pi, np.pi, 8, 8, 4, 3/2, np.float64)
 
 forward_problem = ForwardMHD.build_problem(domain, coords, sim_params)
 # backward_problem = BackwardMHD.build_problem(domain, sim_params)
 timestepper = d3.SBDF2
 write_suffix = 'init0'
 
-opt = OptimizationContext(forward_problem, forward_problem, lagrangian_dict, opt_params, sim_params, timestepper, write_suffix)
+opt = OptimizationContext(domain, coords, forward_problem, forward_problem, lagrangian_dict, opt_params, sim_params, timestepper, write_suffix)
 opt.ic.field_dict['u']['g'] = np.sin(domain.grid(0))
 opt.build_var_hotel()
 opt.loop()

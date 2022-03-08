@@ -18,18 +18,19 @@ from OptParams import OptParams
 from collections import OrderedDict
 
 class OptimizationContext:
-    def __init__(self, forward_problem, backward_problem, lagrangian_dict, opt_params, sim_params, timestepper, write_suffix):
+    def __init__(self, domain, coords, forward_problem, backward_problem, lagrangian_dict, opt_params, sim_params, timestepper, write_suffix):
         self.forward_problem = forward_problem
         self.backward_problem = backward_problem
         self.lagrangian_dict = lagrangian_dict
         self.forward_solver = forward_problem.build_solver(timestepper)
         self.backward_solver = None
-        self.domain = forward_problem.domain
+        self.domain = domain
+        self.coords = coords
         self.opt_params = opt_params
         self.sim_params = sim_params
         self.timestepper = timestepper
         self.write_suffix = write_suffix
-        self.ic = FieldSystem([self.domain.new_field(name=var) for var in forward_problem.variables])
+        self.ic = FieldSystem([self.domain.dist.VectorField(coords, name=var, bases=domain.bases) for var in forward_problem.variables], solver.subproblems)
         # self.fc = FieldSystem([self.domain.new_field(name=var) for var in backward_problem.variables])
         self.loop_index = 0
 
