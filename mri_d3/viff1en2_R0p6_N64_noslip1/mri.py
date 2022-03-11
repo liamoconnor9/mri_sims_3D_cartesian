@@ -89,7 +89,7 @@ S      = -R*np.sqrt(q)
 f      =  R/np.sqrt(q)
 
 dealias = 3/2
-stop_sim_time = 30
+stop_sim_time = 1000
 stop_sim_time = get_param_from_suffix(run_suffix, "T", stop_sim_time)
 max_timestep = 0.002
 dtype = np.float64
@@ -152,7 +152,7 @@ ex['g'][2] = 1
 integ = lambda A: d3.Integrate(d3.Integrate(d3.Integrate(A, 'y'), 'z'), 'x')
 
 lift_basis = xbasis.clone_with(a=1/2, b=1/2) # First derivative basis
-lift = lambda A, n: d3.LiftTau(A, lift_basis, n)
+lift = lambda A, n: d3.Lift(A, lift_basis, n)
 grad_u = d3.grad(u) + ex*lift(tau1u,-1) # First-order reduction
 grad_A = d3.grad(A) + ex*lift(tau1A,-1) # First-order reduction
 grad_b = d3.grad(b)
@@ -203,6 +203,10 @@ u['g'][2] = np.cos(x) * noise
 A['g'][0] = -(np.cos(2*x) + 1) / 2.0
 
 fh_mode = 'overwrite'
+
+checkpoint = solver.evaluator.add_file_handler('checkpoint_{}'.format(run_suffix), max_writes=1, sim_dt=10.0)
+checkpoint.add_tasks(solver.state, layout='g')
+
 slicepoints = solver.evaluator.add_file_handler('slicepoints_' + run_suffix, sim_dt=0.1, max_writes=50, mode=fh_mode)
 
 for field, field_name in [(b, 'b'), (u, 'v')]:
@@ -217,17 +221,20 @@ CFL.add_velocity(u)
 CFL.add_velocity(b)
 
 # Flow properties
-flow = d3.GlobalFlowProperty(solver, cadence=10)
+flow = d3.GlobalFlowProperty(solver, cadence=1)
 flow.add_property(np.sqrt(d3.dot(u,u))/nu, name='Re')
 
 # Main loop
+# print(flow.properties.tasks)
+solver.evaluator.evaluate_handlers((flow.properties, ))
+
 try:
     logger.info('Starting main loop')
     while solver.proceed:
-        if (solver.iteration-1) % 1 == 0:
+        timestep = CFL.compute_timestep()
+        if (solver.iteration-1) % 100 == 0:
             max_Re = flow.max('Re')
             logger.info('Iteration=%i, Time=%e, dt=%e, max(Re)=%f' %(solver.iteration, solver.sim_time, timestep, max_Re))
-        timestep = CFL.compute_timestep()
         solver.step(timestep)
 except:
     logger.error('Exception raised, triggering end of main loop.')

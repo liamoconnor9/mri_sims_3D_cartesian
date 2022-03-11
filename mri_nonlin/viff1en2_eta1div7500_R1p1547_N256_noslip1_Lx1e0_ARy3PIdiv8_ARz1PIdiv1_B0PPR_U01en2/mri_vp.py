@@ -174,10 +174,10 @@ logger.info("saving run in: {}".format(data_dir))
 
 # Mandatory parameters (must be provided in run suffix)
 N = int(get_param_from_suffix(run_suffix, "N", np.NaN))
+R = get_param_from_suffix(run_suffix, "R", np.NaN)
 Nx = N // 4
 Ny = Nx
 Nz = N
-R = get_param_from_suffix(run_suffix, "R", np.NaN)
 diffusivities = get_param_from_suffix(run_suffix, "viff", np.NaN)
 
 # Optional parameters (default values provided)
@@ -362,7 +362,7 @@ if not pathlib.Path(restart_state_dir).exists():
     bz['g'] = -U0 * Lz/4.0 * np.sin(np.pi*x) * np.cos(4*np.pi*z / Lz) + U0 / 10 * noise2
 
     # b-field energy in Mannix et al is 5e-5
-    # we were too high by about 45%
+    # we were off by about 45%
     B0_sim = (5e-5)**(1/2)
     B0 = (de.operators.integrate(bx**2 + bz**2).evaluate())['g'][0,0,0]**(1/2)
     bx['g'] *= B0_sim / B0

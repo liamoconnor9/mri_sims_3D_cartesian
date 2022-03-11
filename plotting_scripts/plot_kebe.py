@@ -105,7 +105,7 @@ def main(filename, start, count, output):
         # ke_max_ar = be_data['ke_max_ar']
         sim_times_ar = be_data['sim_times_ar']
         for index in range(start, start+count):
-            ke_avg = file['tasks']['ke'][index][0, 0, 0]
+            ke_avg = file['tasks']['ke_tot'][index][0, 0, 0]
             be_avg = file['tasks']['be'][index][0, 0, 0]
             ke_ar.append(ke_avg)
             be_ar.append(be_avg)
@@ -197,4 +197,4 @@ if __name__ == "__main__":
 
         plt.title(title_string(write_suffix))
         plt.legend()        # plt.xlim(0, 400)
-        plt.savefig(path + '/kebe_nonlin_' + write_suffix + '.png')
+        plt.savefig(path + '/kebe_tot_nonlin_' + write_suffix + '.png')

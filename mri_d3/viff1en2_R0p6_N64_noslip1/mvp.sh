@@ -24,7 +24,7 @@ source ~/png2mp4.sh
 cd ~/mri/mri_d3
 
 SUFF="viff1en2_R0p6_N64_noslip1"
-MPIPROC=4
+MPIPROC=512
 
 mkdir $SUFF
 cp $file $SUFF
