@@ -131,20 +131,20 @@ def vp_bvp_func(domain, by, bz, bx):
     problem.parameters['bz'] = bz
     problem.parameters['bx'] = bx
 
-    problem.add_equation("dx(Ax) + dy(Ay) + dz(Az) = 0")
-    problem.add_equation("dy(Az) - dz(Ay) + dx(phi) = bx")
-    problem.add_equation("dz(Ax) - dx(Az) + dy(phi) = by")
-    problem.add_equation("dx(Ay) - dy(Ax) + dz(phi) = bz")
+    problem.add_equation("phi = 0", condition="(ny==0) and (nz==0)")
+    problem.add_equation("Ax = 0", condition="(ny==0) and (nz==0)")
+    problem.add_equation("Ay = 0", condition="(ny==0) and (nz==0)")
+    problem.add_equation("Az = 0", condition="(ny==0) and (nz==0)")
+
+    problem.add_equation("dx(Ax) + dy(Ay) + dz(Az) = 0", condition="(ny!=0) or (nz!=0)")
+    problem.add_equation("dy(Az) - dz(Ay) + dx(phi) = bx", condition="(ny!=0) or (nz!=0)")
+    problem.add_equation("dz(Ax) - dx(Az) + dy(phi) = by", condition="(ny!=0) or (nz!=0)")
+    problem.add_equation("dx(Ay) - dy(Ax) + dz(phi) = bz", condition="(ny!=0) or (nz!=0)")
 
     problem.add_bc("left(Ay) = 0", condition="(ny!=0) or (nz!=0)")
     problem.add_bc("left(Az) = 0", condition="(ny!=0) or (nz!=0)")
     problem.add_bc("right(Ay) = 0", condition="(ny!=0) or (nz!=0)")
     problem.add_bc("right(Az) = 0", condition="(ny!=0) or (nz!=0)")
-
-    problem.add_bc("left(Ax) = 0", condition="(ny==0) and (nz==0)")
-    problem.add_bc("left(Ay) = 0", condition="(ny==0) and (nz==0)")
-    problem.add_bc("left(Az) = 0", condition="(ny==0) and (nz==0)")
-    problem.add_bc("left(phi) = 0", condition="(ny==0) and (nz==0)")
 
     # Build solver
     solver = problem.build_solver()
@@ -156,8 +156,8 @@ def vp_bvp_func(domain, by, bz, bx):
     Ax = solver.state['Ax']
     phi = solver.state['phi']
 
-    return Ay['g'], Az['g'], Ax['g']
-    
+    return Ay['g'], Az['g'], Ax['g'], phi['g']
+
 hardwall = False
 
 if len(sys.argv) > 1:
@@ -360,7 +360,7 @@ if not pathlib.Path(restart_state_dir).exists():
     # bz['g'] = -U0 * Lz/4.0 * np.sin(np.pi*x) * np.cos(4*np.pi*z / Lz) + U0 / 10 * noise2
 
 
-    file = h5py.File('/home3/loconno2/mri/mri_nonlin/InitCond_Re20Pm75_T0p125Rm_M5en05_MinSeed.h5', 'r')
+    file = h5py.File('/home3/loconno2/mri/mri_lin/svd/slicepoints_s20.h5', 'r')
 
     by_vec = 0.1 * np.array(file['tasks']['by_midy'][49, :, :, :])
     by['g'] = by_vec[slices]
@@ -482,7 +482,7 @@ flow.add_property("sqrt(bx*bx + by*by + bz*bz) / η", name='Rm')
 stop_sim_time = 1000
 solver.stop_sim_time = get_param_from_suffix(run_suffix, "T", stop_sim_time)
 
-solver.stop_wall_time = 12*60.*60.
+solver.stop_wall_time = 18*60.*60.
 solver.stop_iteration = np.inf
 nan_count = 0
 max_nan_count = 1

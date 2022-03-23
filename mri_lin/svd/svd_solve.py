@@ -137,7 +137,7 @@ by_svd = s[0] * vh[0, :]
 
 # Run EVP over a grid of horizontal (y, z) wavenumbers
 kys = [0.0, 0.25, 0.5, 0.75, 1.0]
-kzs = [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.50, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0]
+kzs = [0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0]
 
 ks = []
 for ky in kys:
@@ -149,7 +149,7 @@ for ky in kys:
 nsolves = len(ks)
 
 # Run EVP for various b-field magnitudes
-B_vec = [i / 200 for i in range(101)]
+B_vec = [i / 50 for i in range(26)]
 
 csv_edit = 'w'
 if (append):
@@ -187,9 +187,13 @@ with open('vp_growth_rates_By_svd.txt', csv_edit) as ftxt:
 
             # if B is an ncc we need its derivative wrt x
 
+            x = x_basis.grid()
             B = domain.new_field()
             B.set_scales(0.25)
-            B['g'] = B0*by_svd
+            B['g'] = B0 * by_svd
+            integ = B.integrate()['g'].copy()
+            B['g'] -= integ[0]
+            
 
             B_x = domain.new_field()
             de.operators.differentiate(B, 'x', out=B_x)

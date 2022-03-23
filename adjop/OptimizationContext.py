@@ -15,7 +15,7 @@ import logging
 import pathlib
 logger = logging.getLogger(__name__)
 from OptParams import OptParams
-from collections import OrderedDict
+# from collections import OrderedDict
 
 class OptimizationContext:
     def __init__(self, domain, coords, forward_problem, backward_problem, lagrangian_dict, opt_params, sim_params, timestepper, write_suffix):
@@ -30,26 +30,29 @@ class OptimizationContext:
         self.sim_params = sim_params
         self.timestepper = timestepper
         self.write_suffix = write_suffix
-        self.ic = FieldSystem([self.domain.dist.VectorField(coords, name=var, bases=domain.bases) for var in forward_problem.variables], solver.subproblems)
+        # self.ic = FieldSystem([self.domain.dist.VectorField(coords, name=var, bases=domain.bases) for var in forward_problem.variables], self.forward_solver.subproblems)
+        # self.ic = [self.domain.dist.Field() for var in lagrangian_dict.keys()]
+        self.ic = {}
+        for var_name in lagrangian_dict.keys():
+            self.ic[var_name] = self.domain.dist.VectorField(coords, bases=domain.bases)
         # self.fc = FieldSystem([self.domain.new_field(name=var) for var in backward_problem.variables])
         self.loop_index = 0
 
     # Hotel stores the forward variables, at each timestep, in memory to inform adjoint solve
     def build_var_hotel(self):
-        self.hotel = OrderedDict()
-        shape = [self.opt_params.dt_per_cp]
-        for basis in self.domain.basis:
-            shape.append(basis.base_grid_size)
-        shape = tuple(shape)
+        self.hotel = {}
+        # shape = [self.opt_params.dt_per_cp]
+        grid_shape = self.ic['u']['g'].shape
+        grid_time_shape = (self.opt_params.dt_per_cp,) + grid_shape
         for var in self.forward_problem.variables:
             # if (var in self.backward_problem.parameters):
-            self.hotel[var] = np.zeros(shape)
+            self.hotel[var] = np.zeros(grid_time_shape)
 
     # Set starting point for loop
     def set_forward_ic(self):
         for var in self.forward_problem.variables:
-            if (var in self.ic.field_dict.keys()):
-                self.forward_solver.state[var]['c'] = self.ic.field_dict[var]['c']
+            if (var in self.ic.keys()):
+                self.forward_solver.state[var]['g'] = self.ic.field_dict[var]['g']
 
     # Set ic for adjoint problem for loop
     def set_backward_fc(self):
@@ -62,18 +65,25 @@ class OptimizationContext:
         self.set_forward_ic()
         self.solve_forward()
         self.evaluate_state_T()
+        sys.exit()
         self.set_backward_fc()
         self.solve_backward()
         self.loop_index += 1
 
     def solve_forward(self):
-        checkpoints = self.forward_solver.evaluator.add_file_handler('checkpoints_' + self.write_suffix, sim_dt=self.opt_params.dTcp, max_writes=10, mode='overwrite')
-        checkpoints.add_system(self.forward_solver.state)
+        checkpoints = self.forward_solver.evaluator.add_file_handler('checkpoints_' + self.write_suffix, sim_dt=self.opt_params.dT, max_writes=10, mode='overwrite')
+        checkpoints.add_tasks(self.forward_solver.state, layout='c')
         self.forward_solver.stop_sim_time = self.opt_params.T
         try:
             logger.info('Starting forward solve')
-            while self.forward_solver.ok:
+            index = 0
+            while self.forward_solver.proceed:
                 self.forward_solver.step(self.opt_params.dt)
+                for var in self.hotel.keys():
+                    print(self.forward_solver.state[var])
+                    sys.exit()
+                    self.hotel[var][index] = self.forward_solver.state[var]['g'].copy()
+                index += 1
         except:
             logger.error('Exception raised in forward solve, triggering end of main loop.')
             raise
