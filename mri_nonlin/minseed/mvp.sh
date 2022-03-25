@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
 #PBS -l select=19:ncpus=28:mpiprocs=28:model=bro
-#PBS -l walltime=2:00:00
+#PBS -l walltime=12:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -50,4 +50,3 @@ png2mp4 frames_xz/ mri_xz.mp4 60
 png2mp4 frames_yz/ mri_yz.mp4 60
 png2mp4 kebe_profiles/ kebe_profiles.mp4 60
 mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs checkpoints --cleanup
-# exit 1

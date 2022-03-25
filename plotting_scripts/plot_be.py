@@ -98,7 +98,8 @@ if __name__ == "__main__":
     if (plot):
         fig = plt.figure()
         nu = config.getfloat('parameters','nu')
-        eta = config.getfloat('parameters','eta')
+        Pm = config.getfloat('parameters','Pm')
+        eta = nu / Pm
         R = config.getfloat('parameters','R')
 
         be_data = pickle.load(open(path + '/be_data_' + write_suffix + '.pick', 'rb'))

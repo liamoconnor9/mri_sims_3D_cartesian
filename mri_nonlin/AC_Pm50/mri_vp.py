@@ -252,7 +252,7 @@ if not restart:
     lshape = domain.dist.grid_layout.local_shape(scales=1)
     slices = domain.dist.grid_layout.slices(scales=1)
 
-    file = h5py.File('/home3/loconno2/mri/mri_nonlin/AC_Pm35/checkpoints/checkpoints_s3.h5', 'r')
+    file = h5py.File('/home3/loconno2/mri/mri_nonlin/AC_Pm50/checkpoints/checkpoints_s1.h5', 'r')
     cp_index = -1
    
     Ay['g'] = file['tasks/Ay'][cp_index, :, :, :][slices]
@@ -347,7 +347,7 @@ scalars.add_task("integ(integ(integ(sqrt(vx*vx + vy*vy + vz*vz), 'x'), 'y'), 'z'
 
 path = os.path.dirname(os.path.abspath(__file__))
 
-CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.5,
+CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.2,
                      max_change=1.5, min_change=0.5, max_dt=dt, threshold=0.05)
 CFL.add_velocities(('vy', 'vz', 'vx'))
 CFL.add_velocities(('by', 'bz', 'bx'))
