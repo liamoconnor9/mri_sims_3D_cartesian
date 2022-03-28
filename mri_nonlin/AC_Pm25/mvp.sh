@@ -21,7 +21,7 @@ export MPI_UNBUFFERED_STDIO=true
 source ~/png2mp4.sh
 cd ~/scratch/dedalus/mri/mri_nonlin
 
-SUFF="AC_Pm35"
+SUFF="AC_Pm25"
 
 FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"

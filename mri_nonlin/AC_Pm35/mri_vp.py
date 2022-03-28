@@ -252,7 +252,7 @@ if not restart:
     lshape = domain.dist.grid_layout.local_shape(scales=1)
     slices = domain.dist.grid_layout.slices(scales=1)
 
-    file = h5py.File('/home3/loconno2/mri/mri_nonlin/AC_Pm35/checkpoints/checkpoints_s3.h5', 'r')
+    file = h5py.File('/home3/loconno2/mri/mri_nonlin/AC_Pm35/checkpoints/checkpoints_s10.h5', 'r')
     cp_index = -1
    
     Ay['g'] = file['tasks/Ay'][cp_index, :, :, :][slices]

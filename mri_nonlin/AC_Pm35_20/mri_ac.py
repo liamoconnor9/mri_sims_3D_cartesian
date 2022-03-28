@@ -18,6 +18,7 @@ import gc
 import pickle
 import dedalus.public as de
 from dedalus.core.field import Scalar
+from dedalus.core import pencil
 from dedalus.extras import flow_tools
 from dedalus.extras.plot_tools import plot_bot_2d
 from mpi4py import MPI
@@ -63,7 +64,9 @@ def vp_bvp_func(domain, by, bz, bx):
     phi = solver.state['phi']
 
     return Ay['g'], Az['g'], Ax['g']
-    
+
+Pm_vec = np.linspace(35, 25, 100)
+
 args = docopt(__doc__)
 filename = Path(args['<config_file>'])
 script_dir = args['<dir>']
@@ -359,12 +362,20 @@ flow.add_property("sqrt(bx*bx + by*by + bz*bz)", name='BE')
 
 nan_count = 0
 max_nan_count = 1
+update_cadence = 2000
+stop = solver.stop_sim_time
+num_iter = int(stop // dt)
 try:
     logger.info('Starting loop')
     start_run_time = time.time()
     
-    while solver.ok:
-        dt = CFL.compute_dt()
+    for iter in range(num_iter):
+        if (iter % update_cadence == 0):
+            solver.problem.namespace['eta'].value = nu / Pm_vec[iter // update_cadence]
+            logger.info('Updating Pm to: {}'.format(Pm_vec[iter // update_cadence]))
+            pencil.build_matrices(solver.pencils, problem, ['M', 'L'])
+            
+            # solver = problem.build_solver(de.timesteppers.SBDF2)
         solver.step(dt)
         if (solver.iteration-1) % 10 == 0:
             string = 'Iteration: %i, Time: %e, dt: %e' %(solver.iteration, solver.sim_time, dt)
