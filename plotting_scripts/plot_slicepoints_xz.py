@@ -2,14 +2,17 @@
 Plot planes from joint analysis files.
 
 Usage:
-    plot_slices.py <files>... [--output=<dir> --suffix=<suff>]
+    plot_slices.py <files>... [--output=<output> --dir=<dir>, --config=<config_file>, --suffix=<run_suffix>]
 
 Options:
-    --output=<dir>  Output directory [default: ./frames]
-    --suffix=<suff>  write suffix (parameters)
-
+    --output=<output>  Output directory [default: ./frames]
+    --dir=<dir> Dedalus run script directory
+    --config=<config_file> simulation config file
+    --suffix=<suff>  write suffix (run name)
 """
 
+from docopt import docopt
+from configparser import ConfigParser
 import h5py
 import numpy as np
 import matplotlib
@@ -19,67 +22,8 @@ from matplotlib import ticker
 plt.ioff()
 from dedalus.extras import plot_tools
 import logging
+import sys
 logger = logging.getLogger(__name__)
-
-def get_param_from_suffix(suffix, param_prefix, default_param):
-    required = np.isnan(default_param)
-    prefix_index = suffix.find(param_prefix)
-    if (prefix_index == -1):
-        if (required):
-            logger.warning("Required parameter " + param_prefix + ": value not provided in write suffix " + suffix)
-            raise 
-        else:
-            logger.info("Using default parameter: " + param_prefix + " = " + str(default_param))
-            return default_param
-    else:
-        try:
-            val_start_index = prefix_index + len(param_prefix)
-            end_ind = suffix[val_start_index:].find("_")
-            if (end_ind != -1):
-                val_end_index = val_start_index + suffix[val_start_index:].find("_")
-            else:
-                val_end_index = val_start_index + len(suffix[val_start_index:])
-            val_str = suffix[val_start_index:val_end_index]
-            en_ind = val_str.find('en')
-            if (en_ind != -1):
-                magnitude = -int(val_str[en_ind + 2:])
-                val_str = val_str[:en_ind]
-            else:
-                e_ind = val_str.find('e')
-                if (e_ind != -1):
-                    magnitude = int(val_str[e_ind + 1:])
-                    val_str = val_str[:e_ind]
-                else:
-                    magnitude = 0.0
-
-            p_ind = val_str.find('p')
-            div_ind = val_str.find('div')
-            if (p_ind != -1):
-                whole_val = val_str[:p_ind]
-                decimal_val = val_str[p_ind + 1:]
-                param = float(whole_val + '.' + decimal_val) * 10**(magnitude)
-            elif (div_ind != -1):
-                num_str = val_str[:div_ind]
-                pi_ind = num_str.find('PI')
-                if (pi_ind != -1):
-                    num = np.pi * int(num_str[:pi_ind])
-                else:
-                    num = int(num_str)
-                den = int(val_str[div_ind + 3:])
-                param = num / den 
-            else:
-                param = float(val_str) * 10**(magnitude)  
-            logger.info("Parameter " + param_prefix + " = " + str(param) + " : provided in write suffix")
-            return param
-        except Exception as e: 
-            if (required):
-                logger.warning("Required parameter " + param_prefix + ": failed to parse from write suffix")
-                logger.info(e)
-                raise 
-            else:
-                logger.info("Suffix parsing failed! Using default parameter: " + param_prefix + " = " + str(default_param))
-                logger.info(e)
-                return default_param
 
 def main(filename, start, count, output):
     midplane(filename, start, count, output)
@@ -148,12 +92,19 @@ if __name__ == "__main__":
     args = docopt(__doc__)
 
     output_path = pathlib.Path(args['--output']).absolute()
+    dir = args['--dir']
     suffix = args['--suffix']
+    filename = dir + suffix + '/' + args['--config']
+    config = ConfigParser()
+    config.read(str(filename))
 
     global ar, ary, arz
-    ar = get_param_from_suffix(suffix, "AR", 8)    
-    ary = get_param_from_suffix(suffix, "ARy", ar)    
-    arz = get_param_from_suffix(suffix, "ARz", ar)    
+    Ly = eval(config.get('parameters','Ly'))
+    Lz = eval(config.get('parameters','Lz'))
+    Lx = eval(config.get('parameters','Lx'))
+
+    ary = Ly / Lx
+    arz = Lz / Lx 
 
     # Create output directory if needed
     with Sync() as sync:
@@ -161,4 +112,3 @@ if __name__ == "__main__":
             if not output_path.exists():
                 output_path.mkdir()
     post.visit_writes(args['<files>'], main, output=output_path)
-

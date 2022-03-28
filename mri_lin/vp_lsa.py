@@ -3,7 +3,7 @@ Modified from: The magnetorotational instability prefers three dimensions.
 3D MHD eigenvalue value problem (vector potential form)
 
 Usage:
-    vp_lsa.py  [--ideal --hardwall --append] <config_file>
+    vp_lsa.py  [--ideal --hardwall --append]
 
 Options:
     --ideal     Use Ideal MHD
@@ -28,75 +28,54 @@ args = docopt(__doc__)
 ideal = args['--ideal']
 hardwall = args['--hardwall']
 append = args['--append']
-filename = Path(args['<config_file>'])
-outbase = Path("data")
 
-kys = [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.50, 1.75, 2.0, 2.25, 2.5]
-# kzs = [0.25]
-kzs = [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.50, 1.75, 2.0, 2.25, 2.5]
-evs = []
+sparse = True
+Nx = 256
+Lx = 1.0
+
+R = 1.1547
+q = 0.75
+
+Pm = 75
+nu = 1e-2
+eta = nu / Pm
+
+# Run EVP over a grid of horizontal (y, z) wavenumbers
+kys = [0.0, 0.25, 0.5, 0.75, 1.0]
+kzs = [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.50, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0]
+
 ks = []
+for ky in kys:
+    for kz in kzs:
+        if (ky == 0.0 and kz == 0.0):
+            continue
+        ks.append((ky,kz))
+
+nsolves = len(ks)
+
+# Run EVP for various b-field magnitudes
+B_vec = [i / 100 for i in range(31)]
 
 csv_edit = 'w'
 if (append):
     csv_edit = 'a'
 
-with open('vp_growth_rates_Bsin2x_noslip.txt', csv_edit) as ftxt:
-    # Parse .cfg file to set global parameters for script
-    config = ConfigParser()
-    config.read(str(filename))
+with open('vp_growth_rates_By_noslip_new.txt', csv_edit) as ftxt:
 
-    # logger.info('Running mri.py with the following parameters:')
-    # logger.info(config.items('parameters'))
-    try:
-        dense = config.getboolean('solver','dense')
-    except:
-        dense = False
-    if dense:
-        sparse = False
-        # logger.info("Using dense solver.")
-        # dense_threshold = config.getfloat('solver','dense_threshold')
-    else:
-        sparse = True
-        # logger.info("Using sparse solver.")
+    ftxt.write('By, ky, kz, growth_rate, frequency\n')
+    for B0 in B_vec:
+        
+        evs = np.zeros(nsolves)
+        freqs = np.zeros(nsolves)
 
-    Nx = config.getint('parameters','Nx')
-    Lx = eval(config.get('parameters','Lx'))
-    # B = config.getfloat('parameters','B')
+        kx     =  np.pi/Lx
+        S      = -R*B*kx*np.sqrt(q)
+        f      =  R*B*kx/np.sqrt(q)
+        cutoff =  kx*np.sqrt(R**2 - 1)
 
-    Nmodes = config.getint('parameters','Nmodes')
-
-    R      =  config.getfloat('parameters','R')
-    q      =  config.getfloat('parameters','q')
-
-    kymin = config.getfloat('parameters','kymin')
-    kymax = config.getfloat('parameters','kymax')
-    Nky = config.getint('parameters','Nky')
-
-    kzmin = config.getfloat('parameters','kzmin')
-    kzmax = config.getfloat('parameters','kzmax')
-    Nkz = config.getint('parameters','Nkz')
-
-    ν = config.getfloat('parameters','ν')
-    η = config.getfloat('parameters','η')
-
-    B = 1.0
-    k = 2.0
-    kx     =  np.pi/Lx
-    S      = -R*B*kx*np.sqrt(q)
-    f      =  R*B*kx/np.sqrt(q)
-    cutoff =  kx*np.sqrt(R**2 - 1)
-
-    ftxt.write('### DIFF = ' + str(ν) + '\n')
-    ftxt.write('### R = ' + str(R) + '\n')
-    ftxt.write('### q = ' + str(q) + '\n')
-    ftxt.write('### Bz(x) = sin' + str(k) + 'x\n')
-    ftxt.write('ky, kz, GROWTH_RATE\n')
-    for ky in kys:
-        for kz in kzs:
-            if (ky == 0.0 and kz == 0.0):
-                continue
-            logger.info("Solving for mode ky = {}, kz = {}".format(ky, kz))
+        logger.info('### By = {}'.format(B0))
+        for i in range(CW.rank, nsolves, CW.size):
+            (ky, kz) = ks[i]
 
             # Create bases and domain
             # Use COMM_SELF so keep calculations independent between processes
@@ -110,12 +89,13 @@ with open('vp_growth_rates_Bsin2x_noslip.txt', csv_edit) as ftxt:
             # Local parameters
             problem.parameters['S'] = S
             problem.parameters['f'] = f
+
+            # if B is an ncc we need its derivative wrt x
+
             B = domain.new_field()
             B_x = domain.new_field()
-            B['g'] = np.sin(2.0*x_basis.grid())
-            # 0.007634955768260147
-            # de.operators.differentiate(B, 'x', out=B_x)
-            B_x = B.differentiate(0)
+            B['g'] = B0*np.sin(np.pi*x_basis.grid())
+            de.operators.differentiate(B, 'x', out=B_x)
 
             problem.parameters['B'] = B
             problem.parameters['B_x'] = B_x
@@ -123,8 +103,8 @@ with open('vp_growth_rates_Bsin2x_noslip.txt', csv_edit) as ftxt:
             problem.parameters['kz'] = kz
 
             # non ideal
-            problem.parameters['ν'] = ν
-            problem.parameters['η'] = η
+            problem.parameters['nu'] = nu
+            problem.parameters['eta'] = eta
 
             # Operator substitutions for t derivative
             problem.substitutions['dy(A)'] = "1j*ky*A"
@@ -145,9 +125,9 @@ with open('vp_growth_rates_Bsin2x_noslip.txt', csv_edit) as ftxt:
 
             problem.add_equation("dx(vx) + dy(vy) + dz(vz) = 0")
 
-            problem.add_equation("Dt(vx) -     f*vy + dx(p) - B*dz(bx) - bx*B_x + ν*(dy(ωz) - dz(ωy)) = 0")
-            problem.add_equation("Dt(vy) + (f+S)*vx + dy(p) - B*dz(by) + ν*(dz(ωx) - dx(ωz)) = 0")
-            problem.add_equation("Dt(vz)            + dz(p) - B*dz(bz) + ν*(dx(ωy) - dy(ωx)) = 0")
+            problem.add_equation("Dt(vx) -     f*vy + dx(p) - B*dy(bx) - bx + nu*(dy(ωz) - dz(ωy)) = 0")
+            problem.add_equation("Dt(vy) + (f+S)*vx + dy(p) - B*dy(by) + nu*(dz(ωx) - dx(ωz)) = 0")
+            problem.add_equation("Dt(vz)            + dz(p) - B*dy(bz) + nu*(dx(ωy) - dy(ωx)) = 0")
 
             problem.add_equation("ωy - dz(vx) + dx(vz) = 0")
             problem.add_equation("ωz - dx(vy) + dy(vx) = 0")
@@ -155,10 +135,10 @@ with open('vp_growth_rates_Bsin2x_noslip.txt', csv_edit) as ftxt:
             # MHD equations: bx, by, bz, jxx
             problem.add_equation("Axx + dy(Ay) + dz(Az) = 0")
 
-            # problem.add_equation("dt(Ax) + η * (L(Ax) + dx(Axx)) - dx(phi) = ((vy + S*x) * (bz + B) - vz*by) ")
-            problem.add_equation("dt(Ax) - η * (L(Ax) + dx(Axx)) - dx(phi) - (vy*B + S*x*bz) = 0")
-            problem.add_equation("dt(Ay) - η * (L(Ay) + dx(Ayx)) - dy(phi) + vx*B = 0")
-            problem.add_equation("dt(Az) - η * (L(Az) + dx(Azx)) - dz(phi) + S*x*bx = 0")
+            # problem.add_equation("dt(Ax) + eta * (L(Ax) + dx(Axx)) - dx(phi) = ((vy + S*x) * (bz + B) - vz*by) ")
+            problem.add_equation("dt(Ax) - eta * (L(Ax) + dx(Axx)) - dx(phi) - S*x*bz + vz*B = 0")
+            problem.add_equation("dt(Ay) - eta * (L(Ay) + dx(Ayx)) - dy(phi)  = 0")
+            problem.add_equation("dt(Az) - eta * (L(Az) + dx(Azx)) - dz(phi) + S*x*bx - vx*B = 0")
 
             problem.add_equation("Axx - dx(Ax) = 0")
             problem.add_equation("Ayx - dx(Ay) = 0")
@@ -168,7 +148,7 @@ with open('vp_growth_rates_Bsin2x_noslip.txt', csv_edit) as ftxt:
             problem.add_bc("right(vx) = 0")
             # problem.add_bc("right(p) = 0", condition="(ny == 0) and (nz == 0)")
 
-            # Stress free
+            # Stress freePE;ladL
             # problem.add_bc("left(ωy)   = 0")
             # problem.add_bc("left(ωz)   = 0")
             # problem.add_bc("right(ωy)  = 0")
@@ -198,15 +178,18 @@ with open('vp_growth_rates_Bsin2x_noslip.txt', csv_edit) as ftxt:
             t1 = time.time()
             gr, idx, freq = EP.growth_rate(sparse=sparse)
             t2 = time.time()
-            logger.info("growth rate = {}, freq = {}".format(gr,freq))
-            ftxt.write(str(ky) + ', ' + str(kz) + ', ' + str(gr) + '\n')
-            evs.append(gr)
-            ks.append((ky,kz))
+            evs[i] = gr
+            freqs[i] = freq
 
-    ev_max = max(evs)
-    ind_max = evs.index(ev_max)
-    ftxt.write('DOMINANT MODE AT (ky,kz) = ' + str(ks[ind_max]) + '\n')
-    ftxt.write('DOMINANT GROWTH RATE = ' + str(ev_max) + '\n')
-    logger.info('DOMINANT MODE AT (ky,kz) = ' + str(ks[ind_max]) + '\n')
-    logger.info('DOMINANT GROWTH RATE = ' + str(ev_max) + '\n')
-    ftxt.write('\n')
+        CW.Barrier()
+        if CW.rank == 0:
+            CW.Reduce(MPI.IN_PLACE, evs, op=MPI.SUM, root=0)
+            CW.Reduce(MPI.IN_PLACE, freqs, op=MPI.SUM, root=0)
+            ev_max = max(evs)
+            ind_max = np.where(evs == ev_max)[0][0]
+            ftxt.write('{}, {}, {}, {}, {}\n'.format(B, ks[ind_max][0], ks[ind_max][1], ev_max, freqs[ind_max]))
+            logger.info('{}, {}, {}, {}, {}'.format(B, ks[ind_max][0], ks[ind_max][1], ev_max, freqs[ind_max]))
+        else:
+            CW.Reduce(evs, evs, op=MPI.SUM, root=0)
+            CW.Reduce(freqs, freqs, op=MPI.SUM, root=0)
+        CW.Barrier()

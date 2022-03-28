@@ -71,7 +71,7 @@ def build_problem(domain, coords, sim_params):
     integ = lambda A: d3.Integrate(d3.Integrate(d3.Integrate(A, 'y'), 'z'), 'x')
 
     lift_basis = xbasis.clone_with(a=1/2, b=1/2) # First derivative basis
-    lift = lambda A, n: d3.LiftTau(A, lift_basis, n)
+    lift = lambda A, n: d3.Lift(A, lift_basis, n)
     grad_u = d3.grad(u) + ex*lift(tau1u,-1) # First-order reduction
     grad_A = d3.grad(A) + ex*lift(tau1A,-1) # First-order reduction
     grad_b = d3.grad(b)
