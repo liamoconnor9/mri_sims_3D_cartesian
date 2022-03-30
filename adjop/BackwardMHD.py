@@ -1,4 +1,4 @@
-s"""
+"""
 Modified from: The magnetorotational instability prefers three dimensions.
 3D MHD initial value problem (simulation)
 """
@@ -35,8 +35,8 @@ def build_problem(domain, sim_params):
     problem.parameters['B'] = B
 
     # non ideal
-    problem.parameters['ν'] = ν
-    problem.parameters['η'] = η
+    problem.parameters['nu'] = nu
+    problem.parameters['eta'] = eta
 
     # Operator substitutions for t derivative
     problem.substitutions['b_dot_grad(A)'] = "bx * dx(A) + by * dy(A) + bz * dz(A)"
@@ -54,18 +54,18 @@ def build_problem(domain, sim_params):
     # Variable substitutions
     problem.add_equation("dx(vx_t) + dy(vy_t) + dz(vz_t) = 0")
 
-    problem.add_equation("-dt(vx_t) = N(v_t, v) + b cross (curl b_t) + ν laplacian(u_t) + grad p_t")
-    problem.add_equation("-dt(vy_t) = N(v_t, v) + b cross (curl b_t) + ν laplacian(u_t) + grad p_t")
-    problem.add_equation("-dt(vz_t) = N(v_t, v) + b cross (curl b_t) + ν laplacian(u_t) + grad p_t")
+    problem.add_equation("-dt(vx_t) = N(v_t, v) + b cross (curl b_t) + nu laplacian(u_t) + grad p_t")
+    problem.add_equation("-dt(vy_t) = N(v_t, v) + b cross (curl b_t) + nu laplacian(u_t) + grad p_t")
+    problem.add_equation("-dt(vz_t) = N(v_t, v) + b cross (curl b_t) + nu laplacian(u_t) + grad p_t")
 
     problem.add_equation("ωy_t - dz(vx_t) + dx(vz_t) = 0")
     problem.add_equation("ωz_t - dx(vy_t) + dy(vx_t) = 0")
 
     # MHD equations: bx, by, bz, jxx
     problem.add_equation("dx(bx) + dy(by) + dz(bz) = 0", condition='(ny != 0) or (nz != 0)')
-    problem.add_equation("Dt(bx) - B*dz(vx) + η*( dy(jz) - dz(jy) )            = b_dot_grad(vx) - v_dot_grad(bx)", condition='(ny != 0) or (nz != 0)')
+    problem.add_equation("Dt(bx) - B*dz(vx) + eta*( dy(jz) - dz(jy) )            = b_dot_grad(vx) - v_dot_grad(bx)", condition='(ny != 0) or (nz != 0)')
 
-    problem.add_equation("Dt(jx) - B*dz(ωx) + S*dz(bx) - η*( dx(jxx) + L(jx) ) = b_dot_grad(ωx) - v_dot_grad(jx)"
+    problem.add_equation("Dt(jx) - B*dz(ωx) + S*dz(bx) - eta*( dx(jxx) + L(jx) ) = b_dot_grad(ωx) - v_dot_grad(jx)"
     + "+ A_dot_grad_C(dy(bx), dy(by), dy(bz), vz) - A_dot_grad_C(dz(bx), dz(by), dz(bz), vy)"
     + "- A_dot_grad_C(dy(vx), dy(vy), dy(vz), bz) + A_dot_grad_C(dz(vx), dz(vy), dz(vz), by)", condition='(ny != 0) or (nz != 0)')
 
