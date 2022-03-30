@@ -24,7 +24,7 @@ class OptimizationContext:
         self.backward_problem = backward_problem
         self.lagrangian_dict = lagrangian_dict
         self.forward_solver = forward_problem.build_solver(timestepper)
-        self.backward_solver = None
+        self.backward_solver = backward_problem.build_solver(timestepper)
         self.domain = domain
         self.coords = coords
         self.opt_params = opt_params
@@ -58,6 +58,7 @@ class OptimizationContext:
 
     # Set ic for adjoint problem for loop
     def set_backward_fc(self):
+        return
         for forward_var in self.lagrangian_dict.keys():
             backward_var, fc_func = self.lagrangian_dict[forward_var]
             self.backward_solver.state[backward_var]['c'] = fc_func(self.forward_solver.state[forward_var]['c'])
@@ -66,11 +67,10 @@ class OptimizationContext:
     def loop(self): # move to main
         self.set_forward_ic()
         self.solve_forward()
-        print('success')
         self.evaluate_state_T()
-        sys.exit()
         self.set_backward_fc()
         self.solve_backward()
+        print('success')
         self.loop_index += 1
 
     def solve_forward(self):
@@ -94,21 +94,34 @@ class OptimizationContext:
             logger.info('Completed forward solve')
 
     def solve_backward(self):
-        for cp_index in range(self.opt_params.num_cp):
-            # load checkpoint for ic
-            self.forward_solver.load_state(self.write_suffix + '_loop_cps.h5', -cp_index - 1)
-
-            for t_ind in range(self.opt_params.dt_per_cp):
-                self.forward_solver().step(self.opt_params.dt)
-                for var in self.hotel.keys():
-                    self.hotel[var][t_ind] = self.forward_solver.state[var]['g']
-
+        # self.backward_solver.stop_sim_time = self.opt_params.T
+        try:
+            logger.info('Starting backward solve')
             for t_ind in range(self.opt_params.dt_per_cp):
                 for var in self.hotel.keys():
-                    self.backward_problem.parameters[var]['g'] = self.hotel[var][-t_ind - 1]
+                    self.backward_solver.problem.namespace[var] = self.hotel[var][-t_ind]
+                    logger.info('loading state t_ind = {}'.format(t_ind))
+                self.backward_solver.step(self.opt_params.dt)
+        except:
+            logger.error('Exception raised in forward solve, triggering end of main loop.')
+            raise
+        finally:
+            logger.info('Completed backward solve')
+        # for cp_index in range(self.opt_params.num_cp):
+        #     # load checkpoint for ic
+        #     self.forward_solver.load_state(self.write_suffix + '_loop_cps.h5', -cp_index - 1)
+
+        #     for t_ind in range(self.opt_params.dt_per_cp):
+        #         self.forward_solver().step(self.opt_params.dt)
+        #         for var in self.hotel.keys():
+        #             self.hotel[var][t_ind] = self.forward_solver.state[var]['g']
+
+        #     for t_ind in range(self.opt_params.dt_per_cp):
+        #         for var in self.hotel.keys():
+        #             self.backward_problem.parameters[var]['g'] = self.hotel[var][-t_ind - 1]
                 
-                self.backward_solver().step(self.opt_params.dt)
-                # self.integrand_array[cp_index * self.opt_params.dt_per_cp + t_ind] = self.backward_problem.state['integrand']['g']
+        #         self.backward_solver().step(self.opt_params.dt)
+        #         # self.integrand_array[cp_index * self.opt_params.dt_per_cp + t_ind] = self.backward_problem.state['integrand']['g']
 
 
     def evaluate_state_T(self):

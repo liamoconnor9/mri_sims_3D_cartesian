@@ -14,7 +14,7 @@ import pathlib
 logger = logging.getLogger(__name__)
 from OptimizationContext import OptimizationContext
 import ForwardVB
-# import BackwardMHD
+import BackwardVB
 # from collections import OrderedDict
 
 # keys are forward variables
@@ -45,11 +45,11 @@ dist = domain.dist
 x = dist.local_grid(xbasis)
 
 forward_problem = ForwardVB.build_problem(domain, xcoord, 1e-2)
-# backward_problem = BackwardMHD.build_problem(domain, sim_params)
+backward_problem = BackwardVB.build_problem(domain, xcoord, 1e-2)
 timestepper = d3.SBDF2
 write_suffix = 'vb0'
 
-opt = OptimizationContext(domain, xcoord, forward_problem, forward_problem, lagrangian_dict, opt_params, None, timestepper, write_suffix)
+opt = OptimizationContext(domain, xcoord, forward_problem, backward_problem, lagrangian_dict, opt_params, None, timestepper, write_suffix)
 n = 20
 opt.ic['u']['g'] = np.log(1 + np.cosh(n)**2/np.cosh(n*(x-0.2*Lx))**2) / (2*n)
 opt.build_var_hotel()

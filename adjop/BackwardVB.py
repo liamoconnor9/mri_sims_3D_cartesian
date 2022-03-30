@@ -17,6 +17,7 @@ def build_problem(domain, xcoord, nu):
     x = dist.local_grid(xbasis)
 
     # Fields
+    u_t = dist.Field(name='u_t', bases=xbasis)
     u = dist.Field(name='u', bases=xbasis)
     tau_1 = dist.Field(name='tau_1')
     tau_2 = dist.Field(name='tau_2')
@@ -25,12 +26,12 @@ def build_problem(domain, xcoord, nu):
     dx = lambda A: d3.Differentiate(A, xcoord)
     lift_basis = xbasis.clone_with(a=1/2, b=1/2) # First derivative basis
     lift = lambda A: d3.Lift(A, lift_basis, -1)
-    ux = dx(u) + lift(tau_1) # First-order reduction
+    u_tx = dx(u_t) + lift(tau_1) # First-order reduction
 
     # Problem
-    problem = d3.IVP([u, tau_1, tau_2], namespace=locals())
-    problem.add_equation("dt(u) - nu*dx(ux) + lift(tau_2) = - u*dx(u)")
-    problem.add_equation("u(x='left') = 0")
-    problem.add_equation("u(x='right') = 0")
+    problem = d3.IVP([u_t, tau_1, tau_2], namespace=locals())
+    problem.add_equation("-dt(u_t) + nu*dx(u_tx) + lift(tau_2) = dx(u*u_t)")
+    problem.add_equation("u_t(x='left') = 0")
+    problem.add_equation("u_t(x='right') = 0")
     
     return problem
