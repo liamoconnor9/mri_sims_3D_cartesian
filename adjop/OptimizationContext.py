@@ -44,10 +44,11 @@ class OptimizationContext:
         self.hotel = OrderedDict()
         # shape = [self.opt_params.dt_per_cp]
         grid_shape = self.ic['u']['g'].shape
-        grid_time_shape = (self.opt_params.dt_per_cp,) + grid_shape
+        grid_time_shape = (self.opt_params.dt_per_cp + 1,) + grid_shape
         for var in self.forward_problem.variables:
             # if (var in self.backward_problem.parameters):
-            self.hotel[var] = np.zeros(grid_time_shape)
+            if (not 'tau' in var.name):
+                self.hotel[var.name] = np.zeros(grid_time_shape)
 
     # Set starting point for loop
     def set_forward_ic(self):
@@ -65,6 +66,7 @@ class OptimizationContext:
     def loop(self): # move to main
         self.set_forward_ic()
         self.solve_forward()
+        print('success')
         self.evaluate_state_T()
         sys.exit()
         self.set_backward_fc()
@@ -82,6 +84,7 @@ class OptimizationContext:
                 self.forward_solver.step(self.opt_params.dt)
                 for var in self.forward_solver.state:
                     if (var.name in self.hotel.keys()):
+                        var.change_scales(1)
                         self.hotel[var.name][index] = var['g'].copy()
                 index += 1
         except:
@@ -89,8 +92,6 @@ class OptimizationContext:
             raise
         finally:
             logger.info('Completed forward solve')
-        # print('yay')
-        sys.exit()
 
     def solve_backward(self):
         for cp_index in range(self.opt_params.num_cp):

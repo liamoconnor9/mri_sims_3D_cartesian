@@ -21,7 +21,7 @@ Lx = 2
 Nx = 1024
 nu = 1e-2
 dealias = 3/2
-stop_sim_time = 10
+stop_sim_time = 1
 timestepper = d3.SBDF2
 timestep = 2e-3
 dtype = np.float64
@@ -44,7 +44,7 @@ ux = dx(u) + lift(tau_1) # First-order reduction
 
 # Problem
 problem = d3.IVP([u, tau_1, tau_2], namespace=locals())
-problem.add_equation("dt(u) - nu*dx(ux) + lift(tau_2) = - u*dx(u)")
+problem.add_equation("-dt(u) - nu*dx(ux) + lift(tau_2) = - u*dx(u)")
 problem.add_equation("u(x='left') = 0")
 problem.add_equation("u(x='right') = 0")
 
@@ -65,7 +65,7 @@ fig.canvas.draw()
 title = plt.title('t=%f' %solver.sim_time)
 
 while solver.proceed:
-    solver.step(timestep)
+    solver.step(-timestep)
     if solver.iteration % 100 == 0:
         logger.info('Iteration=%i, Time=%e, dt=%e' %(solver.iteration, solver.sim_time, timestep))
     if solver.iteration % 25 == 0:
