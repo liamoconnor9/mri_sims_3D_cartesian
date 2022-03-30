@@ -34,7 +34,7 @@ cp $FILE $SUFF
 cp $CONFIG $SUFF
 cp mri_vp.py $SUFF
 
-mpiexec_mpt -np $MPIPROC python3 mri_vp.py $CONFIG $DIR $SUFF
+# mpiexec_mpt -np $MPIPROC python3 mri_vp.py $CONFIG $DIR $SUFF
 cd $SUFF
 
 mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs scalars --cleanup
