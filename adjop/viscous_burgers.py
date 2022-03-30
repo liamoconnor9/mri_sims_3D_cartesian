@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import dedalus.public as d3
 import logging
 logger = logging.getLogger(__name__)
+import matplotlib.pyplot as plt
 
 
 # Parameters
@@ -28,17 +29,24 @@ dtype = np.float64
 # Bases
 xcoord = d3.Coordinate('x')
 dist = d3.Distributor(xcoord, dtype=dtype)
-xbasis = d3.RealFourier(xcoord, size=Nx, bounds=(-Lx / 2, Lx / 2), dealias=dealias)
+xbasis = d3.ChebyshevT(xcoord, size=Nx, bounds=(-Lx / 2, Lx / 2), dealias=dealias)
 
 # Fields
 u = dist.Field(name='u', bases=xbasis)
+tau_1 = dist.Field(name='tau_1')
+tau_2 = dist.Field(name='tau_2')
 
 # Substitutions
 dx = lambda A: d3.Differentiate(A, xcoord)
+lift_basis = xbasis.clone_with(a=1/2, b=1/2) # First derivative basis
+lift = lambda A: d3.Lift(A, lift_basis, -1)
+ux = dx(u) + lift(tau_1) # First-order reduction
 
 # Problem
-problem = d3.IVP([u], namespace=locals())
-problem.add_equation("dt(u) - nu*dx(dx(u)) = - u*dx(u)")
+problem = d3.IVP([u, tau_1, tau_2], namespace=locals())
+problem.add_equation("dt(u) - nu*dx(ux) + lift(tau_2) = - u*dx(u)")
+problem.add_equation("u(x='left') = 0")
+problem.add_equation("u(x='right') = 0")
 
 # Initial conditions
 x = dist.local_grid(xbasis)
@@ -51,16 +59,20 @@ solver.stop_sim_time = stop_sim_time
 
 # Main loop
 u.change_scales(1)
-u_list = [np.copy(u['g'])]
-t_list = [solver.sim_time]
+fig = plt.figure()
+p, = plt.plot(x, u['g'])
+fig.canvas.draw()
+title = plt.title('t=%f' %solver.sim_time)
+
 while solver.proceed:
     solver.step(timestep)
     if solver.iteration % 100 == 0:
         logger.info('Iteration=%i, Time=%e, dt=%e' %(solver.iteration, solver.sim_time, timestep))
     if solver.iteration % 25 == 0:
         u.change_scales(1)
-        u_list.append(np.copy(u['g']))
-        t_list.append(solver.sim_time)
+        p.set_ydata(u['g'])
+        plt.pause(1e-10)
+        fig.canvas.draw()
 
 # Plot
 # plt.figure(figsize=(6, 4))
