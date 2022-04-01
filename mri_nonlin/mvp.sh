@@ -21,7 +21,7 @@ export MPI_UNBUFFERED_STDIO=true
 source ~/png2mp4.sh
 cd ~/scratch/dedalus/mri/mri_nonlin
 
-SUFF="AC_Pm25"
+SUFF="AC_Pm30"
 
 FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"
@@ -34,7 +34,7 @@ cp $FILE $SUFF
 cp $CONFIG $SUFF
 cp mri_vp.py $SUFF
 
-# mpiexec_mpt -np $MPIPROC python3 mri_vp.py $CONFIG $DIR $SUFF
+mpiexec_mpt -np $MPIPROC python3 mri_vp.py $CONFIG $DIR $SUFF
 cd $SUFF
 
 mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs scalars --cleanup

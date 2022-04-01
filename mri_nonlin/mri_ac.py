@@ -63,7 +63,8 @@ def vp_bvp_func(domain, by, bz, bx):
 
     return Ay['g'], Az['g'], Ax['g']
 
-Pm_vec = np.linspace(35, 25, 100)
+Npm = 1000
+Pm_vec = np.linspace(35, 30, 1000)
 
 args = docopt(__doc__)
 filename = Path(args['<config_file>'])
@@ -253,7 +254,7 @@ if not restart:
     lshape = domain.dist.grid_layout.local_shape(scales=1)
     slices = domain.dist.grid_layout.slices(scales=1)
 
-    file = h5py.File('/home3/loconno2/mri/mri_nonlin/AC_Pm35/checkpoints/checkpoints_s10.h5', 'r')
+    file = h5py.File('/home3/loconno2/mri/mri_nonlin/AC_Pm35/checkpoints/checkpoints_s14.h5', 'r')
     cp_index = -1
    
     Ay['g'] = file['tasks/Ay'][cp_index, :, :, :][slices]
@@ -360,9 +361,9 @@ flow.add_property("sqrt(bx*bx + by*by + bz*bz)", name='BE')
 
 nan_count = 0
 max_nan_count = 1
-update_cadence = 2000
 stop = solver.stop_sim_time
 num_iter = int(stop // dt)
+update_cadence = int(num_iter // Npm)
 try:
     logger.info('Starting loop')
     start_run_time = time.time()
