@@ -23,7 +23,7 @@ nu = 1e-2
 dealias = 3/2
 stop_sim_time = 1
 timestepper = d3.SBDF2
-timestep = 2e-3
+timestep = 1e-2
 dtype = np.float64
 
 # Bases
@@ -51,7 +51,7 @@ problem.add_equation("u(x='right') = 0")
 # Initial conditions
 x = dist.local_grid(xbasis)
 n = 20
-u['g'] = np.log(1 + np.cosh(n)**2/np.cosh(n*(x-0.2*Lx))**2) / (2*n)
+u['g'] = np.log(1 + np.cosh(n)**2/np.cosh(n*(x))**2) / (2*n)
 
 # Solver
 solver = problem.build_solver(timestepper)

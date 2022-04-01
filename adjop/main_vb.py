@@ -77,14 +77,17 @@ backward_ic = {'u_t' : U - u}
 
 HTS = []
 nannorm_count = 0
-for j in range(30):
+for j in range(1):
     opt = OptimizationContext(domain, xcoord, forward_solver, backward_solver, timestepper, lagrangian_dict, opt_params, None, write_suffix)
     opt.x = x
     n = 20
     # ic = np.log(1 + np.cosh(n)**2/np.cosh(n*(x-0.21*Lx))**2) / (2*n)
-    ic = np.random.rand(*x.shape)
-    opt.ic['u']['g'] = ic.copy()
-    opt.ic['u']['c'][:N//2] = 0.0
+    rand = np.random.RandomState(seed=42)
+    ic = rand.rand(*x.shape)
+    guess = np.log(1 + np.cosh(n)**2/np.cosh(n*(x - 0.1))**2) / (2*n)
+    # guess = ic.copy()
+    opt.ic['u']['g'] = guess.copy()
+    # opt.ic['u']['c'][:N//2] = 0.0
     opt.backward_ic = backward_ic
     opt.HT = HT
     opt.U_data = U_data
@@ -95,10 +98,10 @@ for j in range(30):
     HT_norms = []
     dirs = []
     dir = 0
-    for i in range(501):
+    for i in range(101):
         opt.show = False
-        # if (i % 10 == 0):
-            # opt.show = True
+        if (True and i % 50 == 0):
+            opt.show = True
         opt.loop()
         indices.append(i)
         HT_norms.append(opt.HT_norm)
@@ -111,14 +114,8 @@ for j in range(30):
         if (i > 2 and HT_norms[-1] > HT_norms[-2]):
             dir += 1
 
-        # epsilon = (-1)**dir / 10 / 10**dir
-        if (i < 20):
-            epsilon = (-1)**dir * opt.HT_norm / (100.0 - 5*i)
-        elif (i < 100):
-            epsilon = (-1)**dir * opt.HT_norm / 2**dir
-        else:
-            epsilon = 100 * (-1)**dir * opt.HT_norm / 2**dir
-        #     epsilon = 4*np.log10(i) * (-1)**dir * opt.HT_norm
+        # epsilon = -opt.HT_norm / 100 / 2**dir
+        epsilon = 5 * opt.HT_norm / 1.2**dir
 
         opt.ic['u']['g'] = opt.ic['u']['g'].copy() + epsilon * backward_solver.state[0]['g']
     if not np.isnan(opt.HT_norm):
@@ -128,14 +125,25 @@ for j in range(30):
     logger.info('Dir switches {}'.format(dir))
     logger.info('####################################################')
 
-    plt.plot(indices, HT_norms)
+    plt.plot(indices, HT_norms, linewidth=2)
     plt.yscale('log')
+    plt.ylabel('Error')
+    plt.xlabel('Loop Index')
     plt.show()
-    plt.plot(indices, dirs)
+    # plt.plot(indices, dirs)
+    # plt.show()
+    n = 20
+    soln = np.log(1 + np.cosh(n)**2/np.cosh(n*(x))**2) / (2*n)
+    approx = opt.ic['u']['g'].flatten()
+    plt.plot(x, approx, label="Optimized IC")
+    plt.plot(x, soln, label="Real IC")
+    plt.plot(x, guess, label="Initial Guess")
+    plt.xlabel(r'$x$')
+    plt.ylabel(r'$u(x, 0)$')
+    plt.legend()
     plt.show()
-    sys.exit()
 
-plt.hist(HTS)
-logger.info('HTS average = {}'.format(np.mean(HTS)))
-logger.info('nannorm count = {}'.format(nannorm_count))
-plt.show()
+# plt.hist(HTS)
+# logger.info('HTS average = {}'.format(np.mean(HTS)))
+# logger.info('nannorm count = {}'.format(nannorm_count))
+# plt.show()

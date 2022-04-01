@@ -93,19 +93,20 @@ class OptimizationContext:
             fig = plt.figure()
             p, = plt.plot(self.x, u['g'])
             plt.plot(self.x, self.U_data)
+            plt.title('Loop Index = {}'.format(self.loop_index))
             fig.canvas.draw()
         try:
             logger.info('Starting forward solve')
-            for t_ind in range(self.opt_params.dt_per_cp):
+            for t_ind in range(self.opt_params.dt_per_cp + 1):
                 self.forward_solver.step(self.opt_params.dt)
                 for var in self.forward_solver.state:
                     if (var.name in self.hotel.keys()):
                         var.change_scales(1)
                         self.hotel[var.name][t_ind] = var['g'].copy()
-                if self.show and t_ind % 10 == 0:
+                if self.show and t_ind % 5 == 0:
                     u.change_scales(1)
                     p.set_ydata(u['g'])
-                    plt.pause(1e-3)
+                    plt.pause(5e-3)
                     fig.canvas.draw()
                 # logger.info('Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
         except:
@@ -119,10 +120,11 @@ class OptimizationContext:
         # self.backward_solver.stop_sim_time = self.opt_params.T
         try:
             logger.info('Starting backward solve')
-            for t_ind in range(self.opt_params.dt_per_cp):
+            for t_ind in range(self.opt_params.dt_per_cp + 1):
                 for var in self.hotel.keys():
                     self.backward_solver.problem.namespace[var] = self.hotel[var][-t_ind]
                 self.backward_solver.step(-self.opt_params.dt)
+                # logger.info('Backward solver: sim_time = {}'.format(self.backward_solver.sim_time))
         except:
             logger.error('Exception raised in forward solve, triggering end of main loop.')
             raise
@@ -147,7 +149,7 @@ class OptimizationContext:
 
 
     def evaluate_state_T(self):
-        self.HT_norm = np.sum(np.abs(self.HT.evaluate()['g']))
+        self.HT_norm = de.Integrate(self.HT).evaluate()['g'][0]
         logger.info('HT norm = {}'.format(self.HT_norm))
         return
   
