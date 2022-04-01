@@ -30,7 +30,7 @@ def build_problem(domain, xcoord, nu):
 
     # Problem
     problem = d3.IVP([u_t, tau_1, tau_2], namespace=locals())
-    problem.add_equation("-dt(u_t) + nu*dx(u_tx) + lift(tau_2) = dx(u*u_t)")
+    problem.add_equation("dt(u_t) + nu*dx(u_tx) + lift(tau_2) = dx(u*u_t)")
     problem.add_equation("u_t(x='left') = 0")
     problem.add_equation("u_t(x='right') = 0")
     

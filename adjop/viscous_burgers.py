@@ -14,11 +14,11 @@ import dedalus.public as d3
 import logging
 logger = logging.getLogger(__name__)
 import matplotlib.pyplot as plt
-
+import os
 
 # Parameters
 Lx = 2
-Nx = 1024
+Nx = 256
 nu = 1e-2
 dealias = 3/2
 stop_sim_time = 1
@@ -44,7 +44,7 @@ ux = dx(u) + lift(tau_1) # First-order reduction
 
 # Problem
 problem = d3.IVP([u, tau_1, tau_2], namespace=locals())
-problem.add_equation("-dt(u) - nu*dx(ux) + lift(tau_2) = - u*dx(u)")
+problem.add_equation("dt(u) - nu*dx(ux) + lift(tau_2) = - u*dx(u)")
 problem.add_equation("u(x='left') = 0")
 problem.add_equation("u(x='right') = 0")
 
@@ -65,7 +65,7 @@ fig.canvas.draw()
 title = plt.title('t=%f' %solver.sim_time)
 
 while solver.proceed:
-    solver.step(-timestep)
+    solver.step(timestep)
     if solver.iteration % 100 == 0:
         logger.info('Iteration=%i, Time=%e, dt=%e' %(solver.iteration, solver.sim_time, timestep))
     if solver.iteration % 25 == 0:
@@ -73,6 +73,13 @@ while solver.proceed:
         p.set_ydata(u['g'])
         plt.pause(1e-10)
         fig.canvas.draw()
+
+logger.info('solve complete, sim time = {}'.format(solver.sim_time))
+u.change_scales(1)
+u_T = u['g'].copy()
+path = os.path.dirname(os.path.abspath(__file__))
+np.savetxt(path + '/vb_U.txt', u_T)
+logger.info('saved final state')
 
 # Plot
 # plt.figure(figsize=(6, 4))

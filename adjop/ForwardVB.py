@@ -5,6 +5,7 @@ CW = MPI.COMM_WORLD
 import logging
 logger = logging.getLogger(__name__)
 import sys
+import matplotlib.pyplot as plt
 
 def build_problem(domain, xcoord, nu):
 
