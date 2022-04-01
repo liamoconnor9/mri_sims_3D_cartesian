@@ -79,6 +79,7 @@ class OptimizationContext:
             if (backward_field.name in flipped_ld.keys()):
                 field = self.backward_ic[backward_field.name].evaluate()
                 field.change_scales(1)
+                backward_field.change_scales(1)
                 backward_field['g'] = field['g'].copy()
         return
 
