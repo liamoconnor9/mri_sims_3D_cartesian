@@ -86,7 +86,7 @@ for j in range(1):
     ic = rand.rand(*x.shape)
     guess = np.log(1 + np.cosh(n)**2/np.cosh(n*(x - 0.1))**2) / (2*n)
     # guess = ic.copy()
-    opt.ic['u']['g'] = guess.copy()
+    opt.ic['u']['g'] = 0.0
     # opt.ic['u']['c'][:N//2] = 0.0
     opt.backward_ic = backward_ic
     opt.HT = HT
@@ -100,7 +100,7 @@ for j in range(1):
     dir = 0
     for i in range(101):
         opt.show = False
-        if (True and i % 50 == 0):
+        if (True and i % 1 == 0):
             opt.show = True
         opt.loop()
         indices.append(i)
@@ -115,7 +115,7 @@ for j in range(1):
             dir += 1
 
         # epsilon = -opt.HT_norm / 100 / 2**dir
-        epsilon = 5 * opt.HT_norm / 1.2**dir
+        epsilon = 0.5 * opt.HT_norm / 1.2**dir
 
         opt.ic['u']['g'] = opt.ic['u']['g'].copy() + epsilon * backward_solver.state[0]['g']
     if not np.isnan(opt.HT_norm):
