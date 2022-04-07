@@ -6,7 +6,7 @@ import sys
 import h5py
 import time
 import pickle
-import dedalus.public as de
+import dedalus.public as d3
 from dedalus.core.system import FieldSystem
 from dedalus.extras import flow_tools
 from dedalus.extras.plot_tools import plot_bot_2d
@@ -103,7 +103,7 @@ class OptimizationContext:
                     if (var.name in self.hotel.keys()):
                         var.change_scales(1)
                         self.hotel[var.name][t_ind] = var['g'].copy()
-                if self.show and t_ind % 5 == 0:
+                if self.show and t_ind % 25 == 0:
                     u.change_scales(1)
                     p.set_ydata(u['g'])
                     plt.pause(5e-3)
@@ -118,18 +118,33 @@ class OptimizationContext:
 
     def solve_backward(self):
         # self.backward_solver.stop_sim_time = self.opt_params.T
+        if (False and self.show):
+            u_t = self.backward_solver.state[0]
+            u_t.change_scales(1)
+            fig = plt.figure()
+            p, = plt.plot(self.x, u_t['g'])
+            # plt.plot(self.x, self.U_data)
+            plt.title('Loop Index = {}'.format(self.loop_index))
+            fig.canvas.draw()
         try:
             logger.info('Starting backward solve')
             for t_ind in range(self.opt_params.dt_per_cp + 1):
                 for var in self.hotel.keys():
-                    self.backward_solver.problem.namespace[var] = self.hotel[var][-t_ind]
+                    self.backward_solver.problem.namespace[var] = self.hotel[var][-t_ind - 1]
+                if False and (self.show and t_ind % 25) == 0:
+                    u_t.change_scales(1)
+                    p.set_ydata(u_t['g'])
+                    plt.pause(5e-3)
+                    fig.canvas.draw()
+                    # logger.info('Backward solver: sim_time = {}; u_t = {}'.format(self.backward_solver.sim_time, np.max(self.backward_solver.state[0]['g'])))
                 self.backward_solver.step(-self.opt_params.dt)
-                # logger.info('Backward solver: sim_time = {}'.format(self.backward_solver.sim_time))
         except:
             logger.error('Exception raised in forward solve, triggering end of main loop.')
             raise
         finally:
             logger.info('Completed backward solve')
+            for field in self.backward_solver.state:
+            field.change_scales(1)
 
         # for cp_index in range(self.opt_params.num_cp):
         #     # load checkpoint for ic
@@ -149,7 +164,7 @@ class OptimizationContext:
 
 
     def evaluate_state_T(self):
-        self.HT_norm = de.Integrate(self.HT).evaluate()['g'][0]
+        self.HT_norm = d3.Integrate(self.HT).evaluate()['g'][0]
         logger.info('HT norm = {}'.format(self.HT_norm))
         return
   
