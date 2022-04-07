@@ -67,13 +67,13 @@ U_data = np.loadtxt(path + '/vb_U.txt')
 u = next(field for field in forward_solver.state if field.name == 'u')
 U = dist.Field(name='U', bases=xbasis)
 U['g'] = U_data
-HT = 0.5*(u - U)**2
+HT = np.abs(u - U)
 
 # Adjoint source term: derivative of Gt wrt u
 backward_source = "0"
 
 # Adjoint ic: -derivative of HT wrt u(T)
-backward_ic = {'u_t' : U - u}
+backward_ic = {'u_t' : (U - u) / (((U - u)**2)**(0.5))}
 
 HTS = []
 nannorm_count = 0
@@ -84,10 +84,10 @@ for j in range(1):
     # ic = np.log(1 + np.cosh(n)**2/np.cosh(n*(x-0.21*Lx))**2) / (2*n)
     rand = np.random.RandomState(seed=42)
     ic = rand.rand(*x.shape)
-    guess = np.log(1 + np.cosh(n)**2/np.cosh(n*(x - 0.1))**2) / (2*n)
+    guess = np.log(1 + np.cosh(n)**2/np.cosh(n*(x - 0.3))**2) / (2*n)
     # guess = ic.copy()
-    opt.ic['u']['g'] = guess.copy()
-    # opt.ic['u']['c'][:N//2] = 0.0
+    opt.ic['u']['g'] = 0.0
+    # opt.ic['u']['c'][:int(0.8*N)] = 0.0
     opt.backward_ic = backward_ic
     opt.HT = HT
     opt.U_data = U_data
@@ -98,11 +98,19 @@ for j in range(1):
     HT_norms = []
     dirs = []
     dir = 0
+    old_ic = opt.ic['u']['g'].copy()
+    reduce_count = 0
     for i in range(101):
         opt.show = False
-        if (True and i % 50 == 0):
+        if (False and i % 25 == 0):
             opt.show = True
         opt.loop()
+        # if (i > 0):
+        #     if (opt.HT_norm >= HT_norms[-1]):
+        #         reduce_count += 1
+        #         epsilon = 5e-3 / 2**reduce_count
+        #         opt.ic['u']['g'] = old_ic + epsilon * old_grad
+        #         continue
         indices.append(i)
         HT_norms.append(opt.HT_norm)
         if (np.isnan(opt.HT_norm)):
@@ -111,18 +119,21 @@ for j in range(1):
             break
         dirs.append(dir)
         backward_solver.state[0].change_scales(1)
-        if (i > 2 and HT_norms[-1] > HT_norms[-2]):
-            dir += 1
+        if (i > 2 and i % 10 == 0 and HT_norms[-1] > min(HT_norms[-9:-2])):
+            reduce_count += 1
 
         # epsilon = -opt.HT_norm / 100 / 2**dir
-        epsilon = 5 * opt.HT_norm / 1.2**dir
-
-        opt.ic['u']['g'] = opt.ic['u']['g'].copy() + epsilon * backward_solver.state[0]['g']
+        # epsilon = 4 * opt.HT_norm / 1.2**dir
+        epsilon = 5e-2 / (-2)**reduce_count
+        old_ic = opt.ic['u']['g'].copy()
+        old_grad = backward_solver.state[0]['g']
+        opt.ic['u']['g'] = opt.ic['u']['g'] + epsilon * backward_solver.state[0]['g']
     if not np.isnan(opt.HT_norm):
         HTS.append(HT_norms[-1])
     logger.info('####################################################')
     logger.info('COMPLETED OPTIMIZATION RUN {}'.format(j))
     logger.info('Dir switches {}'.format(dir))
+    logger.info('Reduce Count {}'.format(reduce_count))
     logger.info('####################################################')
 
     plt.plot(indices, HT_norms, linewidth=2)
@@ -135,9 +146,11 @@ for j in range(1):
     n = 20
     soln = np.log(1 + np.cosh(n)**2/np.cosh(n*(x))**2) / (2*n)
     approx = opt.ic['u']['g'].flatten()
+    grad = backward_solver.state[0]['g'].copy()
+    grad *= np.max(np.abs(approx)) / np.max(np.abs(grad))
     plt.plot(x, approx, label="Optimized IC")
     plt.plot(x, soln, label="Real IC")
-    plt.plot(x, guess, label="Initial Guess")
+    plt.plot(x, grad, label="Gradient")
     plt.xlabel(r'$x$')
     plt.ylabel(r'$u(x, 0)$')
     plt.legend()
