@@ -1,8 +1,8 @@
+import os
 from ast import For
 from contextlib import nullcontext
 from turtle import backward
 import numpy as np
-import os
 import sys
 import h5py
 import gc
@@ -17,6 +17,7 @@ from OptimizationContext import OptimizationContext
 import ForwardKDV
 import BackwardKDV
 import matplotlib.pyplot as plt
+path = os.path.dirname(os.path.abspath(__file__))
 
 # keys are forward variables
 # items are (backward variables, adjoint initial condition function: i.e. ux(T) = func(ux_t(T)))
@@ -25,20 +26,20 @@ lagrangian_dict = {
 }
 
 class OptParams:
-    def __init__(self, T, num_cp, dt, epsilon):
+    def __init__(self, T, num_cp, dt):
         self.T = T
         self.num_cp = num_cp
         self.dt = dt
-        self.epsilon = epsilon
         self.dT = T / num_cp
         self.dt_per_cp = int(self.dT // dt)
 
 
-T = 5
+T = 3
 num_cp = 1.0
-dt = 1e-2
-epsilon = 0.0
-opt_params = OptParams(T, num_cp, dt, epsilon)
+dt = 5e-3
+epsilon_safety = 1.0
+epsilon_max = 0.25
+opt_params = OptParams(T, num_cp, dt)
 
 # Bases
 N = 256
@@ -51,12 +52,12 @@ dist = domain.dist
 
 
 x = dist.local_grid(xbasis)
-a = 1e-6
-b = 2e-1
+a = 0.01
+b = 0.0
 forward_problem = ForwardKDV.build_problem(domain, xcoord, a, b)
 backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 
-timestepper = d3.SBDF2
+timestepper = d3.RK443
 forward_solver = forward_problem.build_solver(timestepper)
 backward_solver = backward_problem.build_solver(timestepper)
 
@@ -75,11 +76,16 @@ U = dist.Field(name='U', bases=xbasis)
 U['g'] = U_data
 HT = (u - U)**2
 
+HTx = d3.Differentiate(HT, xcoord)
+ux = d3.Differentiate(u, xcoord)
+
 # Adjoint source term: derivative of Gt wrt u
 backward_source = "0"
 
+
 # Adjoint ic: -derivative of HT wrt u(T)
 backward_ic = {'u_t' : U - u}
+# backward_ic = {'u_t' : HTx / ux}
 
 HTS = []
 nannorm_count = 0
@@ -89,11 +95,11 @@ n = 20
 # ic = np.log(1 + np.cosh(n)**2/np.cosh(n*(x-0.21*Lx))**2) / (2*n)
 rand = np.random.RandomState(seed=42)
 ic = rand.rand(*x.shape)
-mu = 4.5
-sig = 3.5
+mu = 4.1
+sig = 0.5
 guess = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 # guess = ic.copy()
-opt.ic['u']['g'] = 0
+opt.ic['u']['g'] = guess.copy()
 # opt.ic['u']['c'][:N//2] = 0.0
 opt.backward_ic = backward_ic
 opt.HT = HT
@@ -105,7 +111,10 @@ indices = []
 HT_norms = []
 dirs = []
 dir = 0
-for i in range(100):
+
+from datetime import datetime
+startTime = datetime.now()
+for i in range(1001):
     opt.show = False
     if (False and i % 1 == 0):
         opt.show = True
@@ -113,21 +122,29 @@ for i in range(100):
     old_grad = backward_solver.state[0]['g'].copy()
     opt.loop()
     new_grad = backward_solver.state[0]['g'].copy()
-
-    indices.append(i)
-    HT_norms.append(opt.HT_norm)
     if (np.isnan(opt.HT_norm)):
         logger.info("nan norm")
         nannorm_count += 1
         break
+
+    indices.append(i)
+    HT_norms.append(opt.HT_norm)
+
+    if (i > 0 and HT_norms[-1] > HT_norms[-2]):
+        dir += 1
+
+    epsilon = epsilon_safety
+
     gamma = 1.0
     dirs.append(gamma)
     backward_solver.state[0].change_scales(1)
+    
     if (i > 0):
         # https://en.wikipedia.org/wiki/Gradient_descent
         grad_diff = new_grad - old_grad
         x_diff = new_x - old_x
-        gamma = np.abs(np.dot(x_diff, grad_diff)) / np.dot(grad_diff, grad_diff) / 5
+        gamma = epsilon * np.abs(np.dot(x_diff, grad_diff)) / np.dot(grad_diff, grad_diff)
+        # gamma = min(epsilon_max, epsilon_safety * opt.HT_norm)
 
     new_x = opt.ic['u']['g'].copy() + gamma * backward_solver.state[0]['g']
     old_x = opt.ic['u']['g'].copy()
@@ -137,6 +154,7 @@ if not np.isnan(opt.HT_norm):
     HTS.append(HT_norms[-1])
 logger.info('####################################################')
 logger.info('COMPLETED OPTIMIZATION RUN')
+logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))
 logger.info('Dir switches {}'.format(dir))
 logger.info('####################################################')
 
@@ -144,13 +162,13 @@ plt.plot(indices, HT_norms, linewidth=2)
 plt.yscale('log')
 plt.ylabel('Error')
 plt.xlabel('Loop Index')
-plt.show()
-plt.plot(indices, dirs)
+# plt.show()
+# plt.plot(indices, dirs)
 plt.show()
 
 mu = 5.5
-sig = 1.5
-soln = 0.1*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+sig = 0.5
+soln = 1*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 approx = opt.ic['u']['g'].flatten()
 plt.plot(x, approx, label="Optimized IC")
 plt.plot(x, soln, label="Real IC")

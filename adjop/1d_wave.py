@@ -46,7 +46,9 @@ problem.add_equation("dt(u) - c*dx(u) = 0")
 # Initial conditions
 x = dist.local_grid(xbasis)
 n = 20
-u['g'] = np.log(1 + np.cosh(n)**2/np.cosh(n*(x))**2) / (2*n)
+mu = 0.4
+sig = 0.1
+u['g'] = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 # Solver
 solver = problem.build_solver(timestepper)

@@ -15,7 +15,6 @@ CW = MPI.COMM_WORLD
 import logging
 import pathlib
 logger = logging.getLogger(__name__)
-from OptParams import OptParams
 from collections import OrderedDict
 import matplotlib.pyplot as plt
 
@@ -97,18 +96,23 @@ class OptimizationContext:
             fig.canvas.draw()
         try:
             logger.info('Starting forward solve')
-            for t_ind in range(self.opt_params.dt_per_cp + 1):
-                self.forward_solver.step(self.opt_params.dt)
+            for t_ind in range(self.opt_params.dt_per_cp):
                 for var in self.forward_solver.state:
                     if (var.name in self.hotel.keys()):
                         var.change_scales(1)
                         self.hotel[var.name][t_ind] = var['g'].copy()
+                self.forward_solver.step(self.opt_params.dt)
                 if self.show and t_ind % 25 == 0:
                     u.change_scales(1)
                     p.set_ydata(u['g'])
                     plt.pause(5e-3)
                     fig.canvas.draw()
                 # logger.info('Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
+
+            for var in self.forward_solver.state:
+                if (var.name in self.hotel.keys()):
+                    var.change_scales(1)
+                    self.hotel[var.name][self.opt_params.dt_per_cp] = var['g'].copy()
         except:
             logger.error('Exception raised in forward solve, triggering end of main loop.')
             raise
@@ -118,7 +122,7 @@ class OptimizationContext:
 
     def solve_backward(self):
         # self.backward_solver.stop_sim_time = self.opt_params.T
-        if (False and self.show):
+        if (False):
             u_t = self.backward_solver.state[0]
             u_t.change_scales(1)
             fig = plt.figure()
@@ -130,8 +134,9 @@ class OptimizationContext:
             logger.info('Starting backward solve')
             for t_ind in range(self.opt_params.dt_per_cp + 1):
                 for var in self.hotel.keys():
-                    self.backward_solver.problem.namespace[var] = self.hotel[var][-t_ind - 1]
-                if False and (self.show and t_ind % 25) == 0:
+                    self.backward_solver.problem.namespace[var].change_scales(1)
+                    self.backward_solver.problem.namespace[var]['g'] = self.hotel[var][-t_ind - 1]
+                if False and (t_ind % 50) == 0:
                     u_t.change_scales(1)
                     p.set_ydata(u_t['g'])
                     plt.pause(5e-3)
@@ -144,7 +149,7 @@ class OptimizationContext:
         finally:
             logger.info('Completed backward solve')
             for field in self.backward_solver.state:
-            field.change_scales(1)
+                field.change_scales(1)
 
         # for cp_index in range(self.opt_params.num_cp):
         #     # load checkpoint for ic

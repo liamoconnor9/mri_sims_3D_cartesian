@@ -14,16 +14,18 @@ import logging
 logger = logging.getLogger(__name__)
 import os
 
-# Parameters
+# Simulation Parameters
 Lx = 10
 Nx = 256
-a = 1e-6
-b = 2e-1
+a = 0.01
+b = 0.0
 dealias = 3/2
-stop_sim_time = 5
-timestepper = d3.SBDF2
-timestep = 1e-2
 dtype = np.float64
+stop_sim_time = 3
+
+timestepper = d3.SBDF2
+epsilon_safety = 1
+timestep = 5e-4
 
 # Bases
 xcoord = d3.Coordinate('x')
@@ -43,8 +45,8 @@ problem.add_equation("dt(u) - a*dx(dx(u)) - b*dx(dx(dx(u))) = - u*dx(u)")
 # Initial conditions
 x = dist.local_grid(xbasis)
 mu = 5.5
-sig = 1.5
-u['g'] = 0.1*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+sig = 0.5
+u['g'] = 1*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 # Solver
 solver = problem.build_solver(timestepper)
