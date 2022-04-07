@@ -37,7 +37,7 @@ class OptParams:
 T = 3
 num_cp = 1.0
 dt = 5e-3
-epsilon_safety = 1.0
+epsilon_safety = 1.8
 epsilon_max = 0.25
 opt_params = OptParams(T, num_cp, dt)
 
@@ -135,7 +135,7 @@ for i in range(1001):
 
     epsilon = epsilon_safety
 
-    gamma = 1.0
+    gamma = 0.0001
     dirs.append(gamma)
     backward_solver.state[0].change_scales(1)
     
@@ -164,7 +164,8 @@ plt.ylabel('Error')
 plt.xlabel('Loop Index')
 # plt.show()
 # plt.plot(indices, dirs)
-plt.show()
+plt.savefig(path + '/error_kdv.png')
+plt.close()
 
 mu = 5.5
 sig = 0.5
@@ -176,4 +177,4 @@ plt.plot(x, soln, label="Real IC")
 plt.xlabel(r'$x$')
 plt.ylabel(r'$u(x, 0)$')
 plt.legend()
-plt.show()
+plt.savefig(path + '/opt_ic.png')
