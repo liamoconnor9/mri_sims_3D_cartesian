@@ -87,7 +87,7 @@ for j in range(1):
     guess = np.log(1 + np.cosh(n)**2/np.cosh(n*(x - 0.3))**2) / (2*n)
     # guess = ic.copy()
     opt.ic['u']['g'] = 0.0
-    # opt.ic['u']['c'][:int(0.8*N)] = 0.0
+    # opt.ic['u']['c'][:N//2] = 0.0
     opt.backward_ic = backward_ic
     opt.HT = HT
     opt.U_data = U_data
@@ -102,7 +102,7 @@ for j in range(1):
     reduce_count = 0
     for i in range(101):
         opt.show = False
-        if (False and i % 25 == 0):
+        if (True and i % 1 == 0):
             opt.show = True
         opt.loop()
         # if (i > 0):
@@ -123,11 +123,9 @@ for j in range(1):
             reduce_count += 1
 
         # epsilon = -opt.HT_norm / 100 / 2**dir
-        # epsilon = 4 * opt.HT_norm / 1.2**dir
-        epsilon = 5e-2 / (-2)**reduce_count
-        old_ic = opt.ic['u']['g'].copy()
-        old_grad = backward_solver.state[0]['g']
-        opt.ic['u']['g'] = opt.ic['u']['g'] + epsilon * backward_solver.state[0]['g']
+        epsilon = 0.5 * opt.HT_norm / 1.2**dir
+
+        opt.ic['u']['g'] = opt.ic['u']['g'].copy() + epsilon * backward_solver.state[0]['g']
     if not np.isnan(opt.HT_norm):
         HTS.append(HT_norms[-1])
     logger.info('####################################################')

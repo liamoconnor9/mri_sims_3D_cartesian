@@ -19,9 +19,9 @@ import os
 # Parameters
 Lx = 2
 Nx = 256
-nu = 1e-2
+c = 1e-1
 dealias = 3/2
-stop_sim_time = 1
+stop_sim_time = 10.
 timestepper = d3.SBDF2
 timestep = 1e-2
 dtype = np.float64
@@ -29,24 +29,19 @@ dtype = np.float64
 # Bases
 xcoord = d3.Coordinate('x')
 dist = d3.Distributor(xcoord, dtype=dtype)
-xbasis = d3.ChebyshevT(xcoord, size=Nx, bounds=(-Lx / 2, Lx / 2), dealias=dealias)
+xbasis = d3.RealFourier(xcoord, size=Nx, bounds=(-Lx / 2, Lx / 2), dealias=dealias)
 
 # Fields
 u = dist.Field(name='u', bases=xbasis)
-tau_1 = dist.Field(name='tau_1')
-tau_2 = dist.Field(name='tau_2')
 
 # Substitutions
 dx = lambda A: d3.Differentiate(A, xcoord)
-lift_basis = xbasis.clone_with(a=1/2, b=1/2) # First derivative basis
-lift = lambda A: d3.Lift(A, lift_basis, -1)
-ux = dx(u) + lift(tau_1) # First-order reduction
 
 # Problem
-problem = d3.IVP([u, tau_1, tau_2], namespace=locals())
-problem.add_equation("dt(u) - nu*dx(ux) + lift(tau_2) = - u*dx(u)")
-problem.add_equation("u(x='left') = 0")
-problem.add_equation("u(x='right') = 0")
+problem = d3.IVP([u], namespace=locals())
+problem.add_equation("dt(u) - c*dx(u) = 0")
+# problem.add_equation("u(x='left') = 0")
+# problem.add_equation("u(x='right') = 0")
 
 # Initial conditions
 x = dist.local_grid(xbasis)
@@ -68,7 +63,7 @@ while solver.proceed:
     solver.step(timestep)
     if solver.iteration % 100 == 0:
         logger.info('Iteration=%i, Time=%e, dt=%e' %(solver.iteration, solver.sim_time, timestep))
-    if solver.iteration % 1 == 0:
+    if solver.iteration % 25 == 0:
         u.change_scales(1)
         p.set_ydata(u['g'])
         plt.pause(1e-10)
@@ -78,7 +73,7 @@ logger.info('solve complete, sim time = {}'.format(solver.sim_time))
 u.change_scales(1)
 u_T = u['g'].copy()
 path = os.path.dirname(os.path.abspath(__file__))
-np.savetxt(path + '/vb_U.txt', u_T)
+np.savetxt(path + '/wave_U.txt', u_T)
 logger.info('saved final state')
 
 # Plot
