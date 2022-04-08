@@ -20,7 +20,7 @@ def build_problem(domain, xcoord, a, b):
     u_t = dist.Field(name='u_t', bases=xbasis)
     u = dist.Field(name='u', bases=xbasis)
 
-    if (xbasis is d3.ChebyshevT):
+    if (not isinstance(xbasis, d3.RealFourier)):
         tau_1 = dist.Field(name='tau_1')
         tau_2 = dist.Field(name='tau_2')     
         tau_3 = dist.Field(name='tau_3')

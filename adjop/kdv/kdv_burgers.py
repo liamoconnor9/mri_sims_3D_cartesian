@@ -21,8 +21,9 @@ a = 0.01
 b = 0.2
 dealias = 3/2
 dtype = np.float64
-stop_sim_time = 12
+stop_sim_time = 0.3
 
+periodic = False
 timestepper = d3.SBDF2
 epsilon_safety = 1
 timestep = 5e-4
@@ -30,17 +31,40 @@ timestep = 5e-4
 # Bases
 xcoord = d3.Coordinate('x')
 dist = d3.Distributor(xcoord, dtype=dtype)
-xbasis = d3.RealFourier(xcoord, size=Nx, bounds=(0, Lx), dealias=dealias)
 
-# Fields
-u = dist.Field(name='u', bases=xbasis)
+if (periodic):
+    xbasis = d3.RealFourier(xcoord, size=Nx, bounds=(0, Lx), dealias=dealias)
+    u = dist.Field(name='u', bases=xbasis)
+    dx = lambda A: d3.Differentiate(A, xcoord)
 
-# Substitutions
-dx = lambda A: d3.Differentiate(A, xcoord)
+else:
+    xbasis = d3.ChebyshevT(xcoord, size=Nx, bounds=(0, Lx), dealias=dealias)
+    u = dist.Field(name='u', bases=xbasis)
+    dx = lambda A: d3.Differentiate(A, xcoord)
+    
+    tau_1 = dist.Field(name='tau_1')
+    tau_2 = dist.Field(name='tau_2')
+    tau_3 = dist.Field(name='tau_3')
+    lift_basis = xbasis.clone_with(a=1/2, b=1/2) # First derivative basis
+    lift = lambda A: d3.Lift(A, lift_basis, -1)
+    ux = dx(u) + lift(tau_1) # First-order reduction
+    uxx = dx(ux) + lift(tau_2) # First-order reduction
+
+vars = [u]
+if (not periodic):
+    vars.append(tau_1)
+    vars.append(tau_2)
+    vars.append(tau_3)
 
 # Problem
-problem = d3.IVP([u], namespace=locals())
-problem.add_equation("dt(u) - a*dx(dx(u)) - b*dx(dx(dx(u))) = - u*dx(u)")
+problem = d3.IVP(vars, namespace=locals())
+if periodic:
+    problem.add_equation("dt(u) - a*dx(dx(u)) - b*dx(dx(dx(u))) = - u*dx(u)")
+else:
+    problem.add_equation("dt(u) - a*uxx - b*dx(uxx) + lift(tau_3) = - u*ux")
+    problem.add_equation("u(x='left') = 0")
+    problem.add_equation("ux(x='left') = 0")
+    problem.add_equation("u(x='right') = 0")
 
 # Initial conditions
 x = dist.local_grid(xbasis)

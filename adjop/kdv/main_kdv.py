@@ -1,3 +1,4 @@
+from distutils.command.bdist import show_formats
 import os
 from ast import For
 from contextlib import nullcontext
@@ -34,18 +35,20 @@ class OptParams:
         self.dt_per_cp = int(self.dT // dt)
 
 
-T = 12.0
+T = 0.3
 num_cp = 1.0
-dt = 2e-3
+dt = 1e-2
 epsilon_safety = 1.0
 epsilon_max = 0.25
 opt_params = OptParams(T, num_cp, dt)
+show_forward = False
 
 # Bases
 N = 256
 Lx = 10.
 xcoord = d3.Coordinate('x')
 dist = d3.Distributor(xcoord, dtype=np.float64)
+# xbasis = d3.ChebyshevT(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
 xbasis = d3.RealFourier(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
 domain = domain.Domain(dist, [xbasis])
 dist = domain.dist
@@ -98,7 +101,7 @@ mu = 4.1
 sig = 0.5
 guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 # guess = ic.copy()
-opt.ic['u']['g'] = guess.copy()
+opt.ic['u']['g'] = 0.0
 # opt.ic['u']['c'][:N//2] = 0.0
 # U['g'] = opt.ic['u']['g']
 backward_ic = {'u_t' : U - u}
@@ -115,9 +118,9 @@ dir = 0
 
 from datetime import datetime
 startTime = datetime.now()
-for i in range(301):
+for i in range(101):
     opt.show = False
-    if (True and i % 20 == 0):
+    if (show_forward and i % 20 == 0):
         opt.show = True
     # U.change_scales(1)
     # U['g'] = opt.ic['u']['g']
@@ -136,7 +139,16 @@ for i in range(301):
     HT_norms.append(opt.HT_norm)
 
     if (i > 0 and HT_norms[-1] > HT_norms[-2]):
-        dir += 1
+        # dir += 1
+        opt_params = OptParams(opt_params.T, opt_params.num_cp, opt_params.dt / 2.0)
+        opt.opt_params = opt_params
+        opt.build_var_hotel()
+        logger.warning('Gradient descent failed. Decreasing timestep to dt = {}'.format(opt_params.dt))
+        opt.loop_index -= 1
+        old_grad = backward_solver.state[0]['g'].copy()
+        opt.loop()
+        new_grad = backward_solver.state[0]['g'].copy()
+        HT_norms[-1] = opt.HT_norm    
 
     epsilon = epsilon_safety / (2**dir)
 
@@ -182,4 +194,5 @@ plt.plot(x, guess, linestyle=':', label="Initial Guess")
 plt.xlabel(r'$x$')
 plt.ylabel(r'$u(x, 0)$')
 plt.legend()
+plt.show()
 plt.savefig(path + '/opt_ic.png')

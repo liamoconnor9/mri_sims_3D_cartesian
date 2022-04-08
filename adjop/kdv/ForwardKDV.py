@@ -16,7 +16,7 @@ def build_problem(domain, xcoord, a, b):
     u = dist.Field(name='u', bases=xbasis)
     dx = lambda A: d3.Differentiate(A, xcoord)
 
-    if (xbasis is d3.ChebyshevT):
+    if (not isinstance(xbasis, d3.RealFourier)):
         tau_1 = dist.Field(name='tau_1')
         tau_2 = dist.Field(name='tau_2')     
         tau_3 = dist.Field(name='tau_3')
@@ -31,7 +31,7 @@ def build_problem(domain, xcoord, a, b):
         # Problem
         problem = d3.IVP([u, tau_1, tau_2, tau_3], namespace=locals())
         problem.add_equation("dt(u) - a*dx(ux) - b*dx(uxx) + lift(tau_3) = -u*ux")
-        # problem.add_equation("dt(u) - nu*dx(ux) + lift(tau_2) = - u*dx(u)")
+
         problem.add_equation("u(x='left') = 0")
         problem.add_equation("ux(x='left') = 0")
         problem.add_equation("u(x='right') = 0")

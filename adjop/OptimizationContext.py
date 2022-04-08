@@ -59,7 +59,7 @@ class OptimizationContext:
 
     # Set starting point for loop
     def set_forward_ic(self):
-        self.forward_solver = self.forward_problem.build_solver(self.timestepper) 
+        # self.forward_solver = self.forward_problem.build_solver(self.timestepper) 
         self.forward_solver.sim_time = 0.0
         for var in self.forward_solver.state:
             if (var.name in self.ic.keys()):
@@ -69,7 +69,7 @@ class OptimizationContext:
     # Set ic for adjoint problem for loop
     def set_backward_ic(self):
 
-        self.backward_solver = self.backward_problem.build_solver(self.timestepper)
+        # self.backward_solver = self.backward_problem.build_solver(self.timestepper)
         self.backward_solver.sim_time = self.opt_params.T
 
         # flip dictionary s.t. keys are backward var names and items are forward var names
@@ -132,7 +132,7 @@ class OptimizationContext:
             fig.canvas.draw()
         try:
             logger.info('Starting backward solve')
-            for t_ind in range(self.opt_params.dt_per_cp + 1):
+            for t_ind in range(self.opt_params.dt_per_cp):
                 for var in self.hotel.keys():
                     self.backward_solver.problem.namespace[var].change_scales(1)
                     self.backward_solver.problem.namespace[var]['g'] = self.hotel[var][-t_ind - 1]
