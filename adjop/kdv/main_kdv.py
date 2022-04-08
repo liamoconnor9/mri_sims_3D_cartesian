@@ -35,7 +35,7 @@ class OptParams:
         self.dt_per_cp = int(self.dT // dt)
 
 
-T = 0.3
+T = 3.0
 num_cp = 1.0
 dt = 1e-2
 epsilon_safety = 1.0
