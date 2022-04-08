@@ -25,15 +25,14 @@ lagrangian_dict = {
 }
 
 class OptParams:
-    def __init__(self, T, num_cp, dt, epsilon):
+    def __init__(self, T, num_cp, dt):
         self.T = T
         self.num_cp = num_cp
         self.dt = dt
-        self.epsilon = epsilon
         self.dT = T / num_cp
         self.dt_per_cp = int(self.dT // dt)
 
-opt_params = OptParams(1.0, 1.0, 0.01, 1e-3)
+opt_params = OptParams(1.0, 1.0, 0.01)
 
 # Bases
 N = 256
@@ -43,7 +42,7 @@ dist = d3.Distributor(xcoord, dtype=np.float64)
 xbasis = d3.ChebyshevT(xcoord, size=N, bounds=(-Lx / 2, Lx / 2), dealias=3/2)
 domain = domain.Domain(dist, [xbasis])
 dist = domain.dist
-
+epsilon = 0.2
 
 x = dist.local_grid(xbasis)
 
@@ -66,6 +65,12 @@ path = os.path.dirname(os.path.abspath(__file__))
 U_data = np.loadtxt(path + '/vb_U.txt')
 u = next(field for field in forward_solver.state if field.name == 'u')
 U = dist.Field(name='U', bases=xbasis)
+
+new_x = dist.Field(name='new_x', bases=xbasis)
+new_grad = dist.Field(name='new_grad', bases=xbasis)
+old_x = dist.Field(name='old_x', bases=xbasis)
+old_grad = dist.Field(name='old_grad', bases=xbasis)
+
 U['g'] = U_data
 HT = np.abs(u - U)
 
@@ -100,11 +105,13 @@ for j in range(1):
     dir = 0
     old_ic = opt.ic['u']['g'].copy()
     reduce_count = 0
-    for i in range(101):
+    for i in range(601):
         opt.show = False
-        if (True and i % 1 == 0):
+        if (True and i % 100 == 0):
             opt.show = True
+        old_grad['g'] = backward_solver.state[0]['g'].copy()
         opt.loop()
+        new_grad['g'] = backward_solver.state[0]['g'].copy()
         # if (i > 0):
         #     if (opt.HT_norm >= HT_norms[-1]):
         #         reduce_count += 1
@@ -119,13 +126,35 @@ for j in range(1):
             break
         dirs.append(dir)
         backward_solver.state[0].change_scales(1)
-        if (i > 2 and i % 10 == 0 and HT_norms[-1] > min(HT_norms[-9:-2])):
+        if (i > 2 and HT_norms[-1] / HT_norms[-2] > 1.001):
             reduce_count += 1
 
-        # epsilon = -opt.HT_norm / 100 / 2**dir
-        epsilon = 0.5 * opt.HT_norm / 1.2**dir
+            opt_params = OptParams(opt_params.T, opt_params.num_cp, opt_params.dt / 2.0)
+            opt.opt_params = opt_params
+            opt.build_var_hotel()
+            logger.warning('Gradient descent failed. Decreasing timestep to dt = {}'.format(opt_params.dt))
+            opt.loop_index -= 1
+            old_grad['g'] = backward_solver.state[0]['g'].copy()
+            opt.loop()
+            new_grad['g'] = backward_solver.state[0]['g'].copy()
+            HT_norms[-1] = opt.HT_norm    
 
-        opt.ic['u']['g'] = opt.ic['u']['g'].copy() + epsilon * backward_solver.state[0]['g']
+        # epsilon = -opt.HT_norm / 100 / 2**dir
+        gamma = 0.001
+        if (i > 0):
+            # https://en.wikipedia.org/wiki/Gradient_descent
+            grad_diff = new_grad - old_grad
+            x_diff = new_x - old_x
+            gamma = epsilon * np.abs(d3.Integrate(x_diff * grad_diff).evaluate()['g'][0]) / (d3.Integrate(grad_diff * grad_diff).evaluate()['g'][0])
+            # gamma = min(epsilon_max, epsilon_safety * opt.HT_norm)
+
+        new_x.change_scales(1)
+        old_x.change_scales(1)
+        new_grad.change_scales(1)
+        old_grad.change_scales(1)
+        new_x['g'] = opt.ic['u']['g'].copy() + gamma * backward_solver.state[0]['g']
+        old_x['g'] = opt.ic['u']['g'].copy()
+        opt.ic['u']['g'] = new_x['g'].copy()
     if not np.isnan(opt.HT_norm):
         HTS.append(HT_norms[-1])
     logger.info('####################################################')
