@@ -35,9 +35,14 @@ def build_problem(domain, xcoord, a, b):
         # Problem
         problem = d3.IVP([u_t, tau_1, tau_2, tau_3], namespace=locals())
         problem.add_equation("dt(u_t) - a*u_txx - b * dx(u_txx) + lift(tau_3) = -u*dx(u_t)")
-        problem.add_equation("u_t(x='left') - u_t(x='right') = 0")
-        problem.add_equation("u_tx(x='left') - u_tx(x='right') = 0")
-        problem.add_equation("u_txx(x='left') - u_txx(x='right') = 0")
+
+        problem.add_equation("u_t(x='left') = 0")
+        problem.add_equation("u_t(x='right') = 0")
+        problem.add_equation("u_tx(x='right') = 0")
+
+        # problem.add_equation("u_t(x='left') - u_t(x='right') = 0")
+        # problem.add_equation("u_tx(x='left') - u_tx(x='right') = 0")
+        # problem.add_equation("u_txx(x='left') - u_txx(x='right') = 0")
 
         return problem
 

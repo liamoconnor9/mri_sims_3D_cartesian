@@ -37,13 +37,13 @@ class OptParams:
 
 T = 3.0
 num_cp = 1.0
-dt =2e-3
-epsilon_safety = 0.9
+dt = 5e-2
+epsilon_safety = 1.0
 epsilon_max = 0.25
 opt_params = OptParams(T, num_cp, dt)
 show_forward = False
 cadence = 1
-opt_iters = 101
+opt_iters = 1001
 # Bases
 N = 256
 Lx = 10.
