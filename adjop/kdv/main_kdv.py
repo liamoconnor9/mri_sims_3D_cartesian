@@ -37,19 +37,20 @@ class OptParams:
 
 T = 3.0
 num_cp = 1.0
-dt = 1e-2
-epsilon_safety = 1.0
+dt =2e-3
+epsilon_safety = 0.9
 epsilon_max = 0.25
 opt_params = OptParams(T, num_cp, dt)
 show_forward = False
-
+cadence = 1
+opt_iters = 101
 # Bases
 N = 256
 Lx = 10.
 xcoord = d3.Coordinate('x')
 dist = d3.Distributor(xcoord, dtype=np.float64)
-# xbasis = d3.ChebyshevT(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
-xbasis = d3.RealFourier(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
+xbasis = d3.ChebyshevT(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
+# xbasis = d3.RealFourier(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
 domain = domain.Domain(dist, [xbasis])
 dist = domain.dist
 
@@ -115,12 +116,13 @@ indices = []
 HT_norms = []
 dirs = []
 dir = 0
+dt_reduce_index = 0
 
 from datetime import datetime
 startTime = datetime.now()
-for i in range(101):
+for i in range(opt_iters):
     opt.show = False
-    if (show_forward and i % 20 == 0):
+    if (show_forward and i % cadence == 0):
         opt.show = True
     # U.change_scales(1)
     # U['g'] = opt.ic['u']['g']
@@ -138,7 +140,8 @@ for i in range(101):
     indices.append(i)
     HT_norms.append(opt.HT_norm)
 
-    if (i > 0 and HT_norms[-1] > HT_norms[-2]):
+    if (False):
+    # if (i > 1 and ((i - dt_reduce_index) > 10 and 1.01 * HT_norms[-1] > HT_norms[-2])):
         # dir += 1
         opt_params = OptParams(opt_params.T, opt_params.num_cp, opt_params.dt / 2.0)
         opt.opt_params = opt_params
@@ -148,7 +151,8 @@ for i in range(101):
         old_grad = backward_solver.state[0]['g'].copy()
         opt.loop()
         new_grad = backward_solver.state[0]['g'].copy()
-        HT_norms[-1] = opt.HT_norm    
+        HT_norms[-1] = opt.HT_norm
+        dt_reduce_index = i
 
     epsilon = epsilon_safety / (2**dir)
 

@@ -21,9 +21,9 @@ a = 0.01
 b = 0.2
 dealias = 3/2
 dtype = np.float64
-stop_sim_time = 12.0
+stop_sim_time = 3.0
 
-periodic = True
+periodic = False
 timestepper = d3.SBDF2
 epsilon_safety = 1
 timestep = 5e-4

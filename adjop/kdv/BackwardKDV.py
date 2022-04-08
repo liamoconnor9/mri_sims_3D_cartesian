@@ -33,9 +33,8 @@ def build_problem(domain, xcoord, a, b):
         u_txx = dx(u_tx) + lift(tau_2) # First-order reduction
 
         # Problem
-        problem = d3.IVP([u, tau_1, tau_2, tau_3], namespace=locals())
-        problem.add_equation("dt(u_t) + a*u_txx - b*dx(u_txx) + lift(tau_3) = -u*u_tx")
-        # problem.add_equation("dt(u) - nu*dx(ux) + lift(tau_2) = - u*dx(u)")
+        problem = d3.IVP([u_t, tau_1, tau_2, tau_3], namespace=locals())
+        problem.add_equation("dt(u_t) - a*u_txx - b * dx(u_txx) + lift(tau_3) = -u*dx(u_t)")
         problem.add_equation("u_t(x='left') - u_t(x='right') = 0")
         problem.add_equation("u_tx(x='left') - u_tx(x='right') = 0")
         problem.add_equation("u_txx(x='left') - u_txx(x='right') = 0")
