@@ -34,10 +34,10 @@ class OptParams:
         self.dt_per_cp = int(self.dT // dt)
 
 
-T = 3
+T = 12.0
 num_cp = 1.0
-dt = 5e-3
-epsilon_safety = 1.8
+dt = 2e-3
+epsilon_safety = 1.0
 epsilon_max = 0.25
 opt_params = OptParams(T, num_cp, dt)
 
@@ -53,7 +53,7 @@ dist = domain.dist
 
 x = dist.local_grid(xbasis)
 a = 0.01
-b = 0.0
+b = 0.2
 forward_problem = ForwardKDV.build_problem(domain, xcoord, a, b)
 backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 
@@ -84,7 +84,6 @@ backward_source = "0"
 
 
 # Adjoint ic: -derivative of HT wrt u(T)
-backward_ic = {'u_t' : U - u}
 # backward_ic = {'u_t' : HTx / ux}
 
 HTS = []
@@ -97,10 +96,12 @@ rand = np.random.RandomState(seed=42)
 ic = rand.rand(*x.shape)
 mu = 4.1
 sig = 0.5
-guess = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 # guess = ic.copy()
 opt.ic['u']['g'] = guess.copy()
 # opt.ic['u']['c'][:N//2] = 0.0
+# U['g'] = opt.ic['u']['g']
+backward_ic = {'u_t' : U - u}
 opt.backward_ic = backward_ic
 opt.HT = HT
 opt.U_data = U_data
@@ -114,17 +115,21 @@ dir = 0
 
 from datetime import datetime
 startTime = datetime.now()
-for i in range(1001):
+for i in range(301):
     opt.show = False
-    if (False and i % 1 == 0):
+    if (True and i % 20 == 0):
         opt.show = True
-    
+    # U.change_scales(1)
+    # U['g'] = opt.ic['u']['g']
+    # opt.U_data = U['g'].copy()
     old_grad = backward_solver.state[0]['g'].copy()
     opt.loop()
     new_grad = backward_solver.state[0]['g'].copy()
     if (np.isnan(opt.HT_norm)):
         logger.info("nan norm")
         nannorm_count += 1
+        break
+    if (opt.HT_norm <= 1e-10):
         break
 
     indices.append(i)
@@ -133,7 +138,7 @@ for i in range(1001):
     if (i > 0 and HT_norms[-1] > HT_norms[-2]):
         dir += 1
 
-    epsilon = epsilon_safety
+    epsilon = epsilon_safety / (2**dir)
 
     gamma = 0.0001
     dirs.append(gamma)
@@ -172,8 +177,8 @@ sig = 0.5
 soln = 1*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 approx = opt.ic['u']['g'].flatten()
 plt.plot(x, approx, label="Optimized IC")
-plt.plot(x, soln, label="Real IC")
-# plt.plot(x, guess, label="Initial Guess")
+plt.plot(x, soln, linestyle='--', label="Real IC")
+plt.plot(x, guess, linestyle=':', label="Initial Guess")
 plt.xlabel(r'$x$')
 plt.ylabel(r'$u(x, 0)$')
 plt.legend()

@@ -18,10 +18,10 @@ import os
 Lx = 10
 Nx = 256
 a = 0.01
-b = 0.0
+b = 0.2
 dealias = 3/2
 dtype = np.float64
-stop_sim_time = 3
+stop_sim_time = 12
 
 timestepper = d3.SBDF2
 epsilon_safety = 1
@@ -64,9 +64,10 @@ for iter in range(int(solver.stop_sim_time // timestep) + 1):
     solver.step(timestep)
     # if solver.iteration % 100 == 0:
     logger.info('Iteration=%i, Time=%e, dt=%e' %(solver.iteration, solver.sim_time, timestep))
-    if solver.iteration % 20 == 0:
+    if solver.iteration % 50 == 0:
         u.change_scales(1)
         p.set_ydata(u['g'])
+        plt.title('t=%f' %solver.sim_time)
         plt.pause(1e-10)
         fig.canvas.draw()
 
