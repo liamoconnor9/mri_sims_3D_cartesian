@@ -21,9 +21,9 @@ a = 0.01
 b = 0.2
 dealias = 3/2
 dtype = np.float64
-stop_sim_time = 0.3
+stop_sim_time = 3.0
 
-periodic = False
+periodic = True
 timestepper = d3.SBDF2
 epsilon_safety = 1
 timestep = 5e-4
@@ -63,8 +63,8 @@ if periodic:
 else:
     problem.add_equation("dt(u) - a*uxx - b*dx(uxx) + lift(tau_3) = - u*ux")
     problem.add_equation("u(x='left') = 0")
-    problem.add_equation("ux(x='left') = 0")
     problem.add_equation("u(x='right') = 0")
+    problem.add_equation("ux(x='left') = 0")
 
 # Initial conditions
 x = dist.local_grid(xbasis)

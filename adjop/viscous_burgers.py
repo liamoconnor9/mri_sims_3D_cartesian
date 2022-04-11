@@ -23,7 +23,7 @@ nu = 1e-2
 dealias = 3/2
 stop_sim_time = 1
 timestepper = d3.SBDF2
-timestep = 1e-2
+timestep = 1e-4
 dtype = np.float64
 
 # Bases
@@ -68,7 +68,7 @@ while solver.proceed:
     solver.step(timestep)
     if solver.iteration % 100 == 0:
         logger.info('Iteration=%i, Time=%e, dt=%e' %(solver.iteration, solver.sim_time, timestep))
-    if solver.iteration % 1 == 0:
+    if solver.iteration % 100 == 0:
         u.change_scales(1)
         p.set_ydata(u['g'])
         plt.pause(1e-10)

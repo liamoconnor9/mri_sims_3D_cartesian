@@ -33,8 +33,12 @@ def build_problem(domain, xcoord, a, b):
         problem.add_equation("dt(u) - a*dx(ux) - b*dx(uxx) + lift(tau_3) = -u*ux")
 
         problem.add_equation("u(x='left') = 0")
-        problem.add_equation("ux(x='left') = 0")
         problem.add_equation("u(x='right') = 0")
+        problem.add_equation("ux(x='left') = 0")
+
+        # problem.add_equation("u(x='left') - u(x='right') = 0")
+        # problem.add_equation("ux(x='left') - ux(x='right') = 0")
+        # problem.add_equation("uxx(x='left') - uxx(x='right') = 0")
         return problem
         
 
