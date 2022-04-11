@@ -1,7 +1,12 @@
 #PBS -S /bin/bash
+#PBS -S /bin/bash
+#PBS -l select=13:ncpus=40:mpiprocs=40:model=sky_ele
 #PBS -l select=13:ncpus=40:mpiprocs=40:model=sky_ele
 #PBS -l walltime=8:00:00
+#PBS -l walltime=8:00:00
 #PBS -j oe
+#PBS -j oe
+#PBS -W group_list=s2276
 #PBS -W group_list=s2276
 file=${0##*/}
 job_name="${file%.*}"
