@@ -57,6 +57,9 @@ class OptimizationContext:
         logger.info('Loop complete. Loop index = {}'.format(self.loop_index))
         self.loop_index += 1
 
+    # def solve_forward_full(self):
+        
+
     # Set starting point for loop
     def set_forward_ic(self):
         # self.forward_solver = self.forward_problem.build_solver(self.timestepper) 
@@ -174,9 +177,13 @@ class OptimizationContext:
         return
   
 
-    def descend(self):
-        return
-
+    def update_timestep(self, dt):
+        if (self.opt_params.dT / dt != int(self.opt_params.dT / dt)):
+            logger.error("number of timesteps not divisible by number of checkpoints. cannot update dt...")
+            return
+        self.opt_params.dt = dt
+        self.opt_params.dt_per_cp = int(self.opt_params.dT // dt)
+        self.build_var_hotel()
     
 
 

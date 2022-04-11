@@ -32,6 +32,9 @@ class OptParams:
         self.num_cp = num_cp
         self.dt = dt
         self.dT = T / num_cp
+        if (self.dT / dt != int(self.dT / dt)):
+            logger.error("number of timesteps not divisible by number of checkpoints. Exiting...")
+            sys.exit()
         self.dt_per_cp = int(self.dT // dt)
 
 
@@ -140,12 +143,13 @@ for i in range(opt_iters):
     indices.append(i)
     HT_norms.append(opt.HT_norm)
 
-    if (False):
-    # if (i > 1 and ((i - dt_reduce_index) > 10 and 1.01 * HT_norms[-1] > HT_norms[-2])):
+    # if (False):
+    if (i > 1 and ((i - dt_reduce_index) > 10 and 1.01 * HT_norms[-1] > HT_norms[-2])):
         # dir += 1
-        opt_params = OptParams(opt_params.T, opt_params.num_cp, opt_params.dt / 2.0)
-        opt.opt_params = opt_params
-        opt.build_var_hotel()
+        # opt_params = OptParams(opt_params.T, opt_params.num_cp, opt_params.dt / 2.0)
+        # opt.opt_params = opt_params
+        # opt.build_var_hotel()
+        opt.update_timestep(opt.opt_params.dt / 2.0)
         logger.warning('Gradient descent failed. Decreasing timestep to dt = {}'.format(opt_params.dt))
         opt.loop_index -= 1
         old_grad = backward_solver.state[0]['g'].copy()
