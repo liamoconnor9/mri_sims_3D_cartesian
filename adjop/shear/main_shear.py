@@ -24,7 +24,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 # items are (backward variables, adjoint initial condition function: i.e. ux(T) = func(ux_t(T)))
 
 T = 0.5
-num_cp = 1
+num_cp = 4
 dt = 5e-3
 opt_params = OptParams(T, num_cp, dt)
 
@@ -33,7 +33,7 @@ gain = 1e4
 use_euler_gradient_descend = True
 show_forward = False
 cadence = 1
-opt_iters = 51
+opt_iters = 501
 
 # Bases
 Lx, Lz = 1, 2
@@ -101,7 +101,6 @@ backward_ic = {'u_t' : gain*(U - u)}
 opt.backward_ic = backward_ic
 opt.HT = HT
 opt.build_var_hotel()
-# opt.show_backward = True
 
 indices = []
 HT_norms = []
@@ -119,23 +118,8 @@ for i in range(opt_iters):
 
     indices.append(i)
     HT_norms.append(opt.HT_norm[0, 0])
-
-    if (i == 200):
-        opt.update_timestep(opt.opt_params.dt / 2.0)
-        logger.warning('Gradient descent failed. Decreasing timestep to dt = {}'.format(opt_params.dt))
-        opt.loop_index -= 1
-
-        opt.loop()
-        HT_norms[-1] = opt.HT_norm[0, 0]
-        dt_reduce_index = i
-
-    # gamma = opt.compute_gamma(epsilon_safety)
-
     opt.descend(default_gamma)
-    # sys.exit()
 
-# if not np.isnan(opt.HT_norm):
-#     HTS.append(HT_norms[-1])
 logger.info('####################################################')
 logger.info('COMPLETED OPTIMIZATION RUN')
 logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))
