@@ -1,5 +1,5 @@
 #PBS -S /bin/bash
-#PBS -l select=19:ncpus=28:mpiprocs=28:model=bro
+#PBS -l select=13:ncpus=40:mpiprocs=40:model=sky_ele
 #PBS -l walltime=8:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
@@ -32,9 +32,10 @@ MPIPROC=512
 mkdir $SUFF
 cp $FILE $SUFF
 cp $CONFIG $SUFF
+cp $CONFIG ../plotting_scripts/
 cp mri_ac.py $SUFF
 
-mpiexec_mpt -np $MPIPROC python3 mri_ac.py $CONFIG $DIR $SUFF
+# mpiexec_mpt -np $MPIPROC python3 mri_ac.py $CONFIG $DIR $SUFF
 cd $SUFF
 
 mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs scalars --cleanup
