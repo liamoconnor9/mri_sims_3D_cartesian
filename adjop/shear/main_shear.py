@@ -15,43 +15,45 @@ import logging
 import pathlib
 logger = logging.getLogger(__name__)
 from OptimizationContext import OptimizationContext, OptParams
-import ForwardKDV
-import BackwardKDV
+import ForwardShear
+import BackwardShear
 import matplotlib.pyplot as plt
 path = os.path.dirname(os.path.abspath(__file__))
 
 # keys are forward variables
 # items are (backward variables, adjoint initial condition function: i.e. ux(T) = func(ux_t(T)))
 
-T = 3.0
+T = 0.5
 num_cp = 1
-dt = 1e-2
+dt = 5e-3
 opt_params = OptParams(T, num_cp, dt)
 
-epsilon_safety = default_gamma = 0.8
-gain = 1.0
+default_gamma = 1e-5
+gain = 1e4
 use_euler_gradient_descend = True
 show_forward = False
 cadence = 1
 opt_iters = 51
 
 # Bases
-N = 256
-Lx = 10.
-xcoord = d3.Coordinate('x')
-dist = d3.Distributor(xcoord, dtype=np.float64)
+Lx, Lz = 1, 2
+Nx, Nz = 128, 256
 
-xbasis = d3.ChebyshevT(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
-# xbasis = d3.RealFourier(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
+dealias = 3/2
+coords = d3.CartesianCoordinates('x', 'z')
+dist = d3.Distributor(coords, dtype=np.float64)
 
-domain = domain.Domain(dist, [xbasis])
+xbasis = d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx), dealias=dealias)
+zbasis = d3.RealFourier(coords['z'], size=Nz, bounds=(-Lz/2, Lz/2), dealias=dealias)
+bases = [xbasis, zbasis]
+x, z = dist.local_grids(bases[0], bases[1])
+
+domain = domain.Domain(dist, bases)
 dist = domain.dist
 
-x = dist.local_grid(xbasis)
-a = 0.01
-b = 0.2
-forward_problem = ForwardKDV.build_problem(domain, xcoord, a, b)
-backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
+Reynolds = 1e5
+forward_problem = ForwardShear.build_problem(domain, coords, Reynolds)
+backward_problem = BackwardShear.build_problem(domain, coords, Reynolds)
 
 # Names of the forward, and corresponding adjoint variables
 lagrangian_dict = {'u' : 'u_t'}
@@ -64,17 +66,20 @@ write_suffix = 'kdv0'
 
 # HT is maximized at t = T
 path = os.path.dirname(os.path.abspath(__file__))
-U_data = np.loadtxt(path + '/kdv_U.txt')
+U_data0 = np.loadtxt(path + '/shear_U0.txt')
+U_data1 = np.loadtxt(path + '/shear_U1.txt')
 u = next(field for field in forward_solver.state if field.name == 'u')
-U = dist.Field(name='U', bases=xbasis)
-U['g'] = U_data
+U = dist.VectorField(coords, name='U', bases=bases)
+
+U['g'][0] = U_data0
+U['g'][1] = U_data1
 
 # Late time objective
 HT = (u - U)**2
 
 HTS = []
 nannorm_count = 0
-opt = OptimizationContext(domain, xcoord, forward_solver, backward_solver, timestepper, lagrangian_dict, opt_params, None, write_suffix)
+opt = OptimizationContext(domain, coords, forward_solver, backward_solver, timestepper, lagrangian_dict, opt_params, None, write_suffix)
 # opt.x = x
 opt.use_euler = use_euler_gradient_descend
 
@@ -84,13 +89,17 @@ sig = 0.5
 guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 # guess = ic.copy()
-opt.ic['u']['g'] = 0.0
+# opt.ic['u']['g'][1] = 0.0
+
+z_center = 0.49
+# opt.ic['u']['g'][0] = 1/2 + 1/2 * (np.tanh((z-z_center)/0.1) - np.tanh((z+z_center)/0.1))
+# opt.ic['u']['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-z_center)**2/0.01)
+# opt.ic['u']['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+z_center)**2/0.01)
 
 # Adjoint ic: -derivative of HT wrt u(T)
-backward_ic = {'u_t' : gain * (U - u)}
+backward_ic = {'u_t' : gain*(U - u)}
 opt.backward_ic = backward_ic
 opt.HT = HT
-opt.U_data = U_data
 opt.build_var_hotel()
 # opt.show_backward = True
 
@@ -105,10 +114,11 @@ for i in range(opt_iters):
     opt.loop()
 
     if (opt.HT_norm <= 1e-10):
+        logger.info('Breaking optimization loop: error within tolerance. HT_norm = {}'.format(opt.HT_norm[0, 0]))
         break
 
     indices.append(i)
-    HT_norms.append(opt.HT_norm)
+    HT_norms.append(opt.HT_norm[0, 0])
 
     if (i == 200):
         opt.update_timestep(opt.opt_params.dt / 2.0)
@@ -116,7 +126,7 @@ for i in range(opt_iters):
         opt.loop_index -= 1
 
         opt.loop()
-        HT_norms[-1] = opt.HT_norm
+        HT_norms[-1] = opt.HT_norm[0, 0]
         dt_reduce_index = i
 
     # gamma = opt.compute_gamma(epsilon_safety)
@@ -124,8 +134,8 @@ for i in range(opt_iters):
     opt.descend(default_gamma)
     # sys.exit()
 
-if not np.isnan(opt.HT_norm):
-    HTS.append(HT_norms[-1])
+# if not np.isnan(opt.HT_norm):
+#     HTS.append(HT_norms[-1])
 logger.info('####################################################')
 logger.info('COMPLETED OPTIMIZATION RUN')
 logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))
@@ -135,18 +145,5 @@ plt.plot(indices, HT_norms, linewidth=2)
 plt.yscale('log')
 plt.ylabel('Error')
 plt.xlabel('Loop Index')
-plt.savefig(path + '/error_kdv.png')
+plt.savefig(path + '/error_shear.png')
 plt.close()
-
-mu = 5.5
-sig = 0.5
-soln = 1*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-approx = opt.ic['u']['g'].flatten()
-plt.plot(x, approx, label="Optimized IC")
-plt.plot(x, soln, linestyle='--', label="Real IC")
-plt.plot(x, guess, linestyle=':', label="Initial Guess")
-plt.xlabel(r'$x$')
-plt.ylabel(r'$u(x, 0)$')
-plt.legend()
-plt.savefig(path + '/opt_ic.png')
-plt.show()
