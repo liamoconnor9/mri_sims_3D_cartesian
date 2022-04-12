@@ -64,7 +64,7 @@ def vp_bvp_func(domain, by, bz, bx):
     return Ay['g'], Az['g'], Ax['g']
 
 Npm = 1000
-Pm_vec = np.linspace(35, 15, 1000)
+Pm_vec = np.linspace(35, 25, 1000)
 
 args = docopt(__doc__)
 filename = Path(args['<config_file>'])

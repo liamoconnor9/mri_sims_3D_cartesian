@@ -21,7 +21,7 @@ export MPI_UNBUFFERED_STDIO=true
 source ~/png2mp4.sh
 cd ~/scratch/dedalus/mri/mri_nonlin
 
-SUFF="AC_Pm35_15"
+SUFF="AC_Pm35_25"
 
 FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"
@@ -32,6 +32,7 @@ MPIPROC=512
 mkdir $SUFF
 cp $FILE $SUFF
 cp $CONFIG $SUFF
+cp $CONFIG ../plotting_scripts/
 cp mri_ac.py $SUFF
 
 mpiexec_mpt -np $MPIPROC python3 mri_ac.py $CONFIG $DIR $SUFF
