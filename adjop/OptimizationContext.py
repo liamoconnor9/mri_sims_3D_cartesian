@@ -14,6 +14,7 @@ from mpi4py import MPI
 CW = MPI.COMM_WORLD
 import logging
 import pathlib
+logging.getLogger('solvers').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 from collections import OrderedDict
 import matplotlib.pyplot as plt
@@ -27,7 +28,11 @@ class OptParams:
         if (self.dT / dt != int(self.dT / dt)):
             logger.error("number of timesteps not divisible by number of checkpoints. Exiting...")
             sys.exit()
-        self.dt_per_cp = int(self.dT // dt)
+        if (self.T / dt != int(self.T / dt)):
+            logger.error("Run period not divisible by timestep (we're using uniform timesteps). Exiting...")
+            sys.exit()
+        self.dt_per_cp = int(self.dT / dt)
+        self.dt_per_loop = int(T / dt)
 
 class OptimizationContext:
     def __init__(self, domain, coords, forward_solver, backward_solver, timestepper, lagrangian_dict, opt_params, sim_params, write_suffix):
@@ -42,6 +47,7 @@ class OptimizationContext:
         self.opt_params = opt_params
         self.sim_params = sim_params
         self.write_suffix = write_suffix
+        self.path = os.path.dirname(os.path.abspath(__file__))
         self.ic = OrderedDict()
         for var_name in lagrangian_dict.keys():
             self.ic[var_name] = self.domain.dist.VectorField(coords, bases=domain.bases)
@@ -71,25 +77,81 @@ class OptimizationContext:
         self.old_grad['g'] = self.backward_solver.state[0]['g'].copy()
 
         self.set_forward_ic()
+        
+        # if (self.opt_params.num_cp > 1.0):
+
+        self.solve_forward_full()
+        self.forward_solver.evaluator.handlers.clear()
+        
         self.solve_forward()
         self.evaluate_state_T()
         self.set_backward_ic()
         self.solve_backward()
 
+        for i in range(1, self.opt_params.num_cp):
+            self.forward_solver.load_state(self.path + '/checkpoints_' + self.write_suffix + '/checkpoints_kdv0_s1.h5', -i)
+            self.solve_forward()
+            self.solve_backward()
+
+
         # Evaluate after fields are evolved (new state)
         self.new_grad['g'] = self.backward_solver.state[0]['g'].copy()
-
-    # def solve_forward_full(self):
-        
 
     # Set starting point for loop
     def set_forward_ic(self):
         # self.forward_solver = self.forward_problem.build_solver(self.timestepper) 
+
         self.forward_solver.sim_time = 0.0
+        self.forward_solver.iteration = 0
         for var in self.forward_solver.state:
             if (var.name in self.ic.keys()):
                 var.change_scales(1)
                 var['g'] = self.ic[var.name]['g']
+
+    def solve_forward_full(self):
+        self.forward_solver.stop_sim_time = self.opt_params.T
+        self.forward_solver.iteration = 0
+        if (self.opt_params.num_cp == 1):
+            return
+
+        checkpoints = self.forward_solver.evaluator.add_file_handler(self.path + '/checkpoints_{}'.format(self.write_suffix), max_writes=self.opt_params.num_cp - 1, iter=self.opt_params.dt_per_cp, mode='overwrite')
+        checkpoints.add_tasks(self.forward_solver.state, layout='g')
+
+        # Main loop
+        if (self.show):
+            u = self.forward_solver.state[0]
+            u.change_scales(1)
+            fig = plt.figure()
+            p, = plt.plot(self.x, u['g'])
+            plt.plot(self.x, self.U_data)
+            plt.title('Loop Index = {}'.format(self.loop_index))
+            fig.canvas.draw()
+        try:
+            logger.debug('Starting forward solve')
+            for t_ind in range(self.opt_params.dt_per_loop - self.opt_params.dt_per_cp):
+
+                self.forward_solver.step(self.opt_params.dt)
+
+                # if (t_ind > 0 and (t_ind + 1) % self.opt_params.dt_per_cp == 0):
+                #     self.forward_solver.evaluator.evaluate_handlers(self.forward_solver.evaluator.handlers, wall_time=self.forward_solver.stop_sim_time, sim_time=self.forward_solver.sim_time, iteration=self.forward_solver.iteration)
+
+                if self.show and t_ind % 25 == 0:
+                    u.change_scales(1)
+                    p.set_ydata(u['g'])
+                    plt.pause(5e-3)
+                    fig.canvas.draw()
+                # logger.info('Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
+
+            # for var in self.forward_solver.state:
+            #     if (var.name in self.hotel.keys()):
+            #         var.change_scales(1)
+            #         self.hotel[var.name][self.opt_params.dt_per_cp] = var['g'].copy()
+        except:
+            logger.error('Exception raised in forward solve, triggering end of main loop.')
+            raise
+        finally:
+            plt.close()
+            logger.debug('Completed forward solve')
 
     def solve_forward(self):
         self.forward_solver.stop_sim_time = self.opt_params.T
@@ -238,7 +300,7 @@ class OptimizationContext:
         self.ic['u']['g'] = self.ic['u']['g'].copy() + deltaIC
         self.new_x['g'] = self.ic['u']['g'].copy()
         
-        logger.info('loop index = {}; HT norm = {}; gamma = {}; '.format(self.loop_index, self.HT_norm, gamma))
+        logger.info('loop index = %i; gamma = %e; HT norm = %e; ' %(self.loop_index, gamma, self.HT_norm))
         self.loop_index += 1
 
         self.old_gamma = gamma

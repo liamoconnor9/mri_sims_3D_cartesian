@@ -24,7 +24,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 # items are (backward variables, adjoint initial condition function: i.e. ux(T) = func(ux_t(T)))
 
 T = 3.0
-num_cp = 1.0
+num_cp = 5
 dt = 1e-2
 opt_params = OptParams(T, num_cp, dt)
 
@@ -91,7 +91,7 @@ opt.backward_ic = backward_ic
 opt.HT = HT
 opt.U_data = U_data
 opt.build_var_hotel()
-# opt.show = True
+# opt.show_backward = True
 
 indices = []
 HT_norms = []
@@ -101,16 +101,6 @@ from datetime import datetime
 startTime = datetime.now()
 for i in range(opt_iters):
 
-    # opt.show = True
-    # opt.show_backward = True
-    
-    # if (show_forward and i % cadence == 0):
-    #     opt.show = True
-    #     opt.show_backward = True
-
-    # U.change_scales(1)
-    # U['g'] = opt.ic['u']['g']
-    # opt.U_data = U['g'].copy()
     opt.loop()
 
     if (opt.HT_norm <= 1e-10):
@@ -131,6 +121,7 @@ for i in range(opt_iters):
     gamma = opt.compute_gamma(epsilon_safety)
 
     opt.descend(gamma)
+    # sys.exit()
 
 if not np.isnan(opt.HT_norm):
     HTS.append(HT_norms[-1])
