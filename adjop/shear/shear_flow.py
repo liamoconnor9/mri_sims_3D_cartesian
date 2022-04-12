@@ -81,6 +81,8 @@ snapshots = solver.evaluator.add_file_handler(path + '/snapshots', sim_dt=0.1, m
 # snapshots.add_task(s, name='tracer')
 snapshots.add_task(p, name='pressure')
 snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
+checkpoints = solver.evaluator.add_file_handler(path + '/checkpoint_U', max_writes=2, sim_dt=stop_sim_time, mode='overwrite')
+checkpoints.add_tasks(solver.state, layout='g')
 
 # CFL
 CFL = d3.CFL(solver, initial_dt=max_timestep, cadence=10, safety=0.2, threshold=0.1,
@@ -100,6 +102,7 @@ try:
         if (solver.iteration-1) % 10 == 0:
             max_w = np.sqrt(flow.max('w2'))
             logger.info('Iteration=%i, Time=%e, dt=%e, max(w)=%f' %(solver.iteration, solver.sim_time, timestep, max_w))
+    solver.step(timestep)
 except:
     logger.error('Exception raised, triggering end of main loop.')
     raise

@@ -65,14 +65,19 @@ backward_solver = backward_problem.build_solver(timestepper)
 write_suffix = 'kdv0'
 
 # HT is maximized at t = T
-path = os.path.dirname(os.path.abspath(__file__))
-U_data0 = np.loadtxt(path + '/shear_U0.txt')
-U_data1 = np.loadtxt(path + '/shear_U1.txt')
 u = next(field for field in forward_solver.state if field.name == 'u')
 U = dist.VectorField(coords, name='U', bases=bases)
+slices = dist.grid_layout.slices(domain, scales=1)
+# print(slices)
+# sys.exit()
+with h5py.File(path + '/checkpoint_U/checkpoint_U_s1.h5') as f:
+    U['g'] = f['tasks/u'][-1, :, :][slices]
 
-U['g'][0] = U_data0
-U['g'][1] = U_data1
+# U_data0 = np.loadtxt(path + '/shear_U0.txt')
+# U_data1 = np.loadtxt(path + '/shear_U1.txt')
+
+# U['g'][0] = U_data0
+# U['g'][1] = U_data1
 
 # Late time objective
 HT = (u - U)**2
