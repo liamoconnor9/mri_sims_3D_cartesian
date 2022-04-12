@@ -23,12 +23,12 @@ path = os.path.dirname(os.path.abspath(__file__))
 # keys are forward variables
 # items are (backward variables, adjoint initial condition function: i.e. ux(T) = func(ux_t(T)))
 
-T = 0.5
-num_cp = 4
+T = 0.3
+num_cp = 1
 dt = 5e-3
 opt_params = OptParams(T, num_cp, dt)
 
-default_gamma = 1e-5
+default_gamma = 3e-5
 gain = 1e4
 use_euler_gradient_descend = True
 show_forward = False
