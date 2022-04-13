@@ -33,7 +33,7 @@ gain = 1e4
 use_euler_gradient_descend = True
 show_forward = False
 cadence = 1
-opt_iters = 501
+opt_iters = 5
 
 # Bases
 Lx, Lz = 1, 2
@@ -71,7 +71,7 @@ slices = dist.grid_layout.slices(domain, scales=1)
 # print(slices)
 # sys.exit()
 with h5py.File(path + '/checkpoint_U/checkpoint_U_s1.h5') as f:
-    U['g'] = f['tasks/u'][-1, :, :][slices]
+    U['g'] = f['tasks/u'][-1, :, :][:, slices[0], slices[1]]
 
 # U_data0 = np.loadtxt(path + '/shear_U0.txt')
 # U_data1 = np.loadtxt(path + '/shear_U1.txt')
@@ -118,11 +118,11 @@ for i in range(opt_iters):
     opt.loop()
 
     if (opt.HT_norm <= 1e-10):
-        logger.info('Breaking optimization loop: error within tolerance. HT_norm = {}'.format(opt.HT_norm[0, 0]))
+        logger.info('Breaking optimization loop: error within tolerance. HT_norm = {}'.format(opt.HT_norm))
         break
 
     indices.append(i)
-    HT_norms.append(opt.HT_norm[0, 0])
+    HT_norms.append(opt.HT_norm)
     opt.descend(default_gamma)
 
 logger.info('####################################################')

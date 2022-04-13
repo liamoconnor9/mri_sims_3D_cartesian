@@ -256,7 +256,17 @@ class OptimizationContext:
 
 
     def evaluate_state_T(self):
-        self.HT_norm = d3.Integrate(self.HT).evaluate()['g'][0]
+        # if (CW.rank == 0):
+        HT_norm = d3.Integrate(self.HT).evaluate()
+        if (CW.rank == 0):
+            self.HT_norm = HT_norm['g'].flat[0]
+        else:
+            self.HT_norm = 0.0
+
+        self.HT_norm = CW.bcast(self.HT_norm, root=0)
+            # print('rank = {}; HT = {}'.format(CW.rank, self.HT_norm))
+        # CW.Barrier()
+        # sys.exit()
         if (np.isnan(self.HT_norm)):
             logger.error("NaN HT norm: exiting...")
             sys.exit()
