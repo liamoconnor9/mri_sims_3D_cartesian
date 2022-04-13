@@ -6,92 +6,84 @@ import logging
 logger = logging.getLogger(__name__)
 import sys
 
-def get_param_from_suffix(suffix, param_prefix, default_param):
-    required = np.isnan(default_param)
-    prefix_index = suffix.find(param_prefix)
-    if (prefix_index == -1):
-        if (required):
-            logger.warning("Required parameter " + param_prefix + ": value not provided in write suffix " + suffix)
-            raise 
-        else:
-            logger.info("Using default parameter: " + param_prefix + " = " + str(default_param))
-            return default_param
-    else:
-        try:
-            val_start_index = prefix_index + len(param_prefix)
-            end_ind = suffix[val_start_index:].find("_")
-            if (end_ind != -1):
-                val_end_index = val_start_index + suffix[val_start_index:].find("_")
-            else:
-                val_end_index = val_start_index + len(suffix[val_start_index:])
-            val_str = suffix[val_start_index:val_end_index]
-            en_ind = val_str.find('en')
-            if (en_ind != -1):
-                magnitude = -int(val_str[en_ind + 2:])
-                val_str = val_str[:en_ind]
-            else:
-                e_ind = val_str.find('e')
-                if (e_ind != -1):
-                    magnitude = int(val_str[e_ind + 1:])
-                    val_str = val_str[:e_ind]
-                else:
-                    magnitude = 0.0
+def vp_bvp_func(domain, by, bz, bx):
+    problem = de.LBVP(domain, variables=['Ax','Ay', 'Az', 'phi'])
 
-            p_ind = val_str.find('p')
-            if (p_ind != -1):
-                whole_val = val_str[:p_ind]
-                decimal_val = val_str[p_ind + 1:]
-                param = float(whole_val + '.' + decimal_val) * 10**(magnitude)
-            else:
-                param = float(val_str) * 10**(magnitude)  
-            logger.info("Parameter " + param_prefix + " = " + str(param) + " : provided in write suffix")
-            return param
-        except Exception as e: 
-            if (required):
-                logger.warning("Required parameter " + param_prefix + ": failed to parse from write suffix")
-                logger.info(e)
-                raise 
-            else:
-                logger.info("Suffix parsing failed! Using default parameter: " + param_prefix + " = " + str(default_param))
-                logger.info(e)
-                return default_param
+    problem.parameters['by'] = by
+    problem.parameters['bz'] = bz
+    problem.parameters['bx'] = bx
+
+    problem.add_equation("dx(Ax) + dy(Ay) + dz(Az) = 0")
+    problem.add_equation("dy(Az) - dz(Ay) + dx(phi) = bx")
+    problem.add_equation("dz(Ax) - dx(Az) + dy(phi) = by")
+    problem.add_equation("dx(Ay) - dy(Ax) + dz(phi) = bz")
+
+    problem.add_bc("left(Ay) = 0", condition="(ny!=0) or (nz!=0)")
+    problem.add_bc("left(Az) = 0", condition="(ny!=0) or (nz!=0)")
+    problem.add_bc("right(Ay) = 0", condition="(ny!=0) or (nz!=0)")
+    problem.add_bc("right(Az) = 0", condition="(ny!=0) or (nz!=0)")
+
+    problem.add_bc("left(Ax) = 0", condition="(ny==0) and (nz==0)")
+    problem.add_bc("left(Ay) = 0", condition="(ny==0) and (nz==0)")
+    problem.add_bc("left(Az) = 0", condition="(ny==0) and (nz==0)")
+    problem.add_bc("left(phi) = 0", condition="(ny==0) and (nz==0)")
+
+    # Build solver
+    solver = problem.build_solver()
+    solver.solve()
+
+    # Plot solution
+    Ay = solver.state['Ay']
+    Az = solver.state['Az']
+    Ax = solver.state['Ax']
+    phi = solver.state['phi']
+
+    return Ay['g'], Az['g'], Ax['g']
     
-# Run suffix (see mvp.sh for example)
-if len(sys.argv) > 1:
-    run_suffix = sys.argv[1]
-    logger.info("suffix provided for write data: " + run_suffix)
-else:
-    logger.error("run suffix not provided")
-    raise
+args = docopt(__doc__)
+filename = Path(args['<config_file>'])
+script_dir = args['<dir>']
+run_suffix = args['<run_suffix>']
 
-# Parameters (Varied and Mandatory)
-N = int(get_param_from_suffix(run_suffix, "N", np.NaN))
-R = get_param_from_suffix(run_suffix, "R", np.NaN)
-Nx = N // 4
-Ny = Nx
-Nz = N
-diffusivities = get_param_from_suffix(run_suffix, "viff", np.NaN)
+config = ConfigParser()
+config.read(str(filename))
 
-# Parameters (Varied and Optional)
-Lx = get_param_from_suffix(run_suffix, "Lx", np.pi)
-ar = get_param_from_suffix(run_suffix, "AR", 8)
-ary = get_param_from_suffix(run_suffix, "ARy", ar)
-arz = get_param_from_suffix(run_suffix, "ARz", ar)
-Ly = ary * Lx
-Lz = arz * Lx
+logger.info('Running mri_vp.py with the following parameters:')
+logger.info(config.items('parameters'))
 
-q = get_param_from_suffix(run_suffix, "q", 0.75)
-nu = get_param_from_suffix(run_suffix, 'nu', diffusivities)
-eta = get_param_from_suffix(run_suffix, 'eta', diffusivities)
-isNoSlip = get_param_from_suffix(run_suffix, 'noslip', 0)
+restart = config.getboolean('parameters','restart')
+
+Ny = config.getint('parameters','Ny')
+Ly = eval(config.get('parameters','Ly'))
+
+Nz = config.getint('parameters','Nz')
+Lz = eval(config.get('parameters','Lz'))
+
+Nx = config.getint('parameters','Nx')
+Lx = eval(config.get('parameters','Lx'))
+
+B = config.getfloat('parameters','B')
+
+R      =  config.getfloat('parameters','R')
+q      =  config.getfloat('parameters','q')
+
+nu = config.getfloat('parameters','nu')
+Pm = config.getfloat('parameters','Pm')
+eta = nu / Pm
 
 S      = -R*np.sqrt(q)
 f      =  R/np.sqrt(q)
 
-dealias = 3/2
-stop_sim_time = 1000
-stop_sim_time = get_param_from_suffix(run_suffix, "T", stop_sim_time)
-max_timestep = 0.002
+tau = config.getfloat('parameters','tau')
+isNoSlip = config.getboolean('parameters','isNoSlip')
+
+ary = Ly / Lx
+arz = Lz / Lx
+
+# Evolution params
+dt = config.getfloat('parameters', 'dt')
+stop_sim_time = config.getfloat('parameters', 'stop_sim_time')
+wall_time = 60. * 60. * config.getfloat('parameters', 'wall_time_hr')
 dtype = np.float64
 
 ncpu = MPI.COMM_WORLD.size

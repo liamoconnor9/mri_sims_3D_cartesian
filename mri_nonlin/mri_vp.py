@@ -28,8 +28,6 @@ import logging
 import pathlib
 logger = logging.getLogger(__name__)
 
-##### Initial condition functions from Evan H. Anders
-
 def vp_bvp_func(domain, by, bz, bx):
     problem = de.LBVP(domain, variables=['Ax','Ay', 'Az', 'phi'])
 
