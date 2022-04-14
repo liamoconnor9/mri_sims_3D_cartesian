@@ -26,7 +26,7 @@ def build_problem(domain, coords, Reynolds):
 
     # Problem
     problem = d3.IVP([u, p, tau_p], namespace=locals())
-    problem.add_equation("dt(u) + grad(p) - nu*lap(u) = - u@grad(u)")
+    problem.add_equation("dt(u) + grad(p) - nu*lap(u) = - dot(u, grad(u))")
     # problem.add_equation("dt(s) - D*lap(s) = - u@grad(s)")
     problem.add_equation("div(u) + tau_p = 0")
     problem.add_equation("integ(p) = 0") # Pressure gauge

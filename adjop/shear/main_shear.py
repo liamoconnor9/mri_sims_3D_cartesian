@@ -33,7 +33,7 @@ gain = 1e4
 use_euler_gradient_descend = True
 show_forward = False
 cadence = 1
-opt_iters = 5
+opt_iters = 200
 
 # Bases
 Lx, Lz = 1, 2
@@ -42,6 +42,7 @@ Nx, Nz = 128, 256
 dealias = 3/2
 coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=np.float64)
+coords.name = coords.names
 
 xbasis = d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx), dealias=dealias)
 zbasis = d3.RealFourier(coords['z'], size=Nz, bounds=(-Lz/2, Lz/2), dealias=dealias)
@@ -70,6 +71,7 @@ U = dist.VectorField(coords, name='U', bases=bases)
 slices = dist.grid_layout.slices(domain, scales=1)
 # print(slices)
 # sys.exit()
+
 with h5py.File(path + '/checkpoint_U/checkpoint_U_s1.h5') as f:
     U['g'] = f['tasks/u'][-1, :, :][:, slices[0], slices[1]]
 

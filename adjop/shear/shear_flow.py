@@ -25,7 +25,10 @@ import logging
 logger = logging.getLogger(__name__)
 import os
 path = os.path.dirname(os.path.abspath(__file__))
+from mpi4py import MPI
+CW = MPI.COMM_WORLD
 
+# print(CW.rank)
 
 # Parameters
 Lx, Lz = 1, 2
@@ -58,7 +61,7 @@ ex, ez = coords.unit_vector_fields(dist)
 
 # Problem
 problem = d3.IVP([u, p, tau_p], namespace=locals())
-problem.add_equation("dt(u) + grad(p) - nu*lap(u) = - u@grad(u)")
+problem.add_equation("dt(u) + grad(p) - nu*lap(u) = - dot(u, grad(u))")
 # problem.add_equation("dt(s) - D*lap(s) = - u@grad(s)")
 problem.add_equation("div(u) + tau_p = 0")
 problem.add_equation("integ(p) = 0") # Pressure gauge
@@ -91,7 +94,7 @@ CFL.add_velocity(u)
 
 # Flow properties
 flow = d3.GlobalFlowProperty(solver, cadence=10)
-flow.add_property((u@ez)**2, name='w2')
+flow.add_property((np.dot(u, ez))**2, name='w2')
 
 # Main loop
 try:
