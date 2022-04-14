@@ -1,10 +1,26 @@
+"""
+3D cartesian MRI initial value problem using vector potential formulation
+Usage:
+    mri_vp.py <config_file> <dir> <run_suffix>
+"""
+from unicodedata import decimal
+from docopt import docopt
+import time
+from configparser import ConfigParser
+from pathlib import Path
 import numpy as np
+import os
+import sys
+import h5py
+import gc
+import pickle
 import dedalus.public as d3
 from mpi4py import MPI
+
 CW = MPI.COMM_WORLD
 import logging
+import pathlib
 logger = logging.getLogger(__name__)
-import sys
 
 def vp_bvp_func(domain, by, bz, bx):
     problem = de.LBVP(domain, variables=['Ax','Ay', 'Az', 'phi'])
@@ -98,6 +114,7 @@ logger.info("running on processor mesh={}".format(mesh))
 # Bases
 coords = d3.CartesianCoordinates('y', 'z', 'x')
 dist = d3.Distributor(coords, dtype=dtype, mesh=mesh)
+dealias = 3/2
 
 xbasis = d3.ChebyshevT(coords['x'], size=Nx, bounds=(-Lx / 2.0, Lx / 2.0), dealias=dealias)
 ybasis = d3.RealFourier(coords['y'], size=Ny, bounds=(0, Ly), dealias=dealias)

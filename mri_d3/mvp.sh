@@ -16,7 +16,7 @@ deactivate
 unset PYTHONPATH
 source ~/miniconda3/etc/profile.d/conda.sh
 export PYTHONNOUSERSITE=1
-conda activate dedalus3
+conda activate dedalus-d3
 # support lots of text output to stdio for analysis
 export MPI_UNBUFFERED_STDIO=true
 
@@ -37,8 +37,8 @@ cp $CONFIG $SUFF
 cp mri.py $SUFF
 cd $SUFF
 
-mpiexec_mpt -np $MPIPROC python3 mri.py $SUFF
-
+mpiexec_mpt -np $MPIPROC python3 mri.py $CONFIG $DIR $SUFF
+exit 1
 
 mpiexec_mpt -np $MPIPROC python3 -m dedalus merge_procs scalars_${SUFF} --cleanup
 mpiexec_mpt -np 1 python3 ../../plotting_scripts/plot_kebe.py scalars_${SUFF}/*.h5 --dir=$DIR --config=$CONFIG --suffix=$SUFF

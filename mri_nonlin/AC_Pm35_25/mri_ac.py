@@ -1,5 +1,6 @@
 """
 3D cartesian MRI initial value problem using vector potential formulation
+Modified from: The magnetorotational instability prefers three dimensions.
 Usage:
     mri_vp.py <config_file> <dir> <run_suffix>
 """
@@ -17,6 +18,7 @@ import gc
 import pickle
 import dedalus.public as de
 from dedalus.core.field import Scalar
+from dedalus.core import pencil
 from dedalus.extras import flow_tools
 from dedalus.extras.plot_tools import plot_bot_2d
 from mpi4py import MPI
@@ -60,7 +62,10 @@ def vp_bvp_func(domain, by, bz, bx):
     phi = solver.state['phi']
 
     return Ay['g'], Az['g'], Ax['g']
-    
+
+Npm = 1000
+Pm_vec = np.linspace(35, 25, 1000)
+
 args = docopt(__doc__)
 filename = Path(args['<config_file>'])
 script_dir = args['<dir>']
@@ -249,7 +254,7 @@ if not restart:
     lshape = domain.dist.grid_layout.local_shape(scales=1)
     slices = domain.dist.grid_layout.slices(scales=1)
 
-    file = h5py.File('/home3/loconno2/mri/mri_nonlin/AC_Pm35_30/checkpoints/checkpoints_s3.h5', 'r')
+    file = h5py.File('/home3/loconno2/mri/mri_nonlin/AC_Pm35/checkpoints/checkpoints_s14.h5', 'r')
     cp_index = -1
    
     Ay['g'] = file['tasks/Ay'][cp_index, :, :, :][slices]
@@ -356,12 +361,21 @@ flow.add_property("sqrt(bx*bx + by*by + bz*bz)", name='BE')
 
 nan_count = 0
 max_nan_count = 1
+stop = solver.stop_sim_time
+num_iter = int(stop // dt)
+update_cadence = int(num_iter // Npm)
 try:
     logger.info('Starting loop')
     start_run_time = time.time()
     
-    while solver.ok:
-        dt = CFL.compute_dt()
+    for iter in range(num_iter):
+        if (iter % update_cadence == 0):
+            # solver.problem.namespace['eta'].value = nu / Pm_vec[iter // update_cadence]
+            solver.problem.namespace['nu'].value = eta * Pm_vec[iter // update_cadence]
+            logger.info('Updating Pm to: {}'.format(Pm_vec[iter // update_cadence]))
+            pencil.build_matrices(solver.pencils, problem, ['M', 'L'])
+            
+            # solver = problem.build_solver(de.timesteppers.SBDF2)
         solver.step(dt)
         if (solver.iteration-1) % 10 == 0:
             string = 'Iteration: %i, Time: %e, dt: %e' %(solver.iteration, solver.sim_time, dt)
