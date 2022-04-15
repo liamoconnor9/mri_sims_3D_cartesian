@@ -257,7 +257,7 @@ class OptimizationContext:
 
     def evaluate_state_T(self):
         # if (CW.rank == 0):
-        HT_norm = d3.Integrate(self.HT).evaluate()
+        HT_norm = d3.Integrate(self.HT, self.coords).evaluate()
         if (CW.rank == 0):
             self.HT_norm = HT_norm['g'].flat[0]
         else:
