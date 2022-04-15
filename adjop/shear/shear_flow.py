@@ -33,12 +33,12 @@ CW = MPI.COMM_WORLD
 # Parameters
 Lx, Lz = 1, 2
 Nx, Nz = 128, 256
-Reynolds = 1e5
+Reynolds = 5e4
 Schmidt = 1
 dealias = 3/2
 stop_sim_time = 10.0
 timestepper = d3.RK222
-max_timestep = 1e-4
+max_timestep = 1e-2
 dtype = np.float64
 
 # Bases
@@ -80,7 +80,7 @@ u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01)
 u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01)
 
 # Analysis
-snapshots = solver.evaluator.add_file_handler(path + '/snapshots', sim_dt=0.1, max_writes=10)
+snapshots = solver.evaluator.add_file_handler(path + '/snapshots', sim_dt=0.1, max_writes=1)
 # snapshots.add_task(s, name='tracer')
 snapshots.add_task(p, name='pressure')
 snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')

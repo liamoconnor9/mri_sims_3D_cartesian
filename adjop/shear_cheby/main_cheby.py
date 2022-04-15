@@ -123,6 +123,11 @@ while opt.loop_index <= opt_iters:
         elif performance < 0.8:
             gamma *= 1 / 2.0
 
+    if (gamma <= 1e-10):
+        logger.info('Breaking optimization loop: gamma is negligible - increase resolution? gamma = {}'.format(gamma))
+        break
+    
+
 
 
 logger.info('####################################################')
