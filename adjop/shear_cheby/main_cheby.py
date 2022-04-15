@@ -129,7 +129,7 @@ addendum_str = ''
 while opt.loop_index <= opt_iters:
 
     if (opt.loop_index % 10 == 1):
-        linearity = richardson_gamma(gamma / 1e3)
+        linearity = richardson_gamma(gamma)
         addendum_str = "linearity = {}; ".format(linearity)
     else:
         opt.loop()

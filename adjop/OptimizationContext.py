@@ -78,14 +78,13 @@ class OptimizationContext:
 
     def loop(self): # move to main
         
-        # Evaluate before fields are evolved (old state)
+        # Grab before fields are evolved (old state)
         self.old_grad['g'] = self.backward_solver.state[0]['g'].copy()
 
         self.set_forward_ic()
         
-        # if (self.opt_params.num_cp > 1.0):
-
-        self.solve_forward_full()
+        # Nothing happens here if self.num_cp = 1
+        self.solve_forward_bulk()
         self.forward_solver.evaluator.handlers.clear()
         
         self.solve_forward()
@@ -115,11 +114,14 @@ class OptimizationContext:
                 var.change_scales(1)
                 var['g'] = self.ic[var.name]['g']
 
-    def solve_forward_full(self):
-        self.forward_solver.stop_sim_time = self.opt_params.T
+    def solve_forward_bulk(self):
+        
         self.forward_solver.iteration = 0
+        self.forward_solver.stop_sim_time = self.opt_params.T
+
         if (self.opt_params.num_cp == 1):
             return
+
 
         checkpoints = self.forward_solver.evaluator.add_file_handler(self.path + '/checkpoints_{}'.format(self.write_suffix), max_writes=self.opt_params.num_cp - 1, iter=self.opt_params.dt_per_cp, mode='overwrite')
         checkpoints.add_tasks(self.forward_solver.state, layout='g')
@@ -139,15 +141,12 @@ class OptimizationContext:
 
                 self.forward_solver.step(self.opt_params.dt)
 
-                # if (t_ind > 0 and (t_ind + 1) % self.opt_params.dt_per_cp == 0):
-                #     self.forward_solver.evaluator.evaluate_handlers(self.forward_solver.evaluator.handlers, wall_time=self.forward_solver.stop_sim_time, sim_time=self.forward_solver.sim_time, iteration=self.forward_solver.iteration)
-
                 if self.show and t_ind % 25 == 0:
                     u.change_scales(1)
                     p.set_ydata(u['g'])
                     plt.pause(5e-3)
                     fig.canvas.draw()
-                # logger.info('Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
+                # logger.info('Bulk Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
 
             # for var in self.forward_solver.state:
             #     if (var.name in self.hotel.keys()):
@@ -161,17 +160,8 @@ class OptimizationContext:
             logger.debug('Completed forward solve')
 
     def solve_forward(self):
-        self.forward_solver.stop_sim_time = self.opt_params.T
 
         # Main loop
-        if (self.show):
-            u = self.forward_solver.state[0]
-            u.change_scales(1)
-            fig = plt.figure()
-            p, = plt.plot(self.x, u['g'])
-            plt.plot(self.x, self.U_data)
-            plt.title('Loop Index = {}'.format(self.loop_index))
-            fig.canvas.draw()
         try:
             logger.debug('Starting forward solve')
             for t_ind in range(self.opt_params.dt_per_cp):
@@ -180,11 +170,6 @@ class OptimizationContext:
                     if (var.name in self.hotel.keys()):
                         var.change_scales(1)
                         self.hotel[var.name][t_ind] = var['g'].copy()
-                if self.show and t_ind % 25 == 0:
-                    u.change_scales(1)
-                    p.set_ydata(u['g'])
-                    plt.pause(5e-3)
-                    fig.canvas.draw()
                 # logger.info('Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
 
         except:
@@ -212,26 +197,12 @@ class OptimizationContext:
 
     def solve_backward(self):
         # self.backward_solver.stop_sim_time = self.opt_params.T
-        if (self.show_backward):
-            u_t = self.backward_solver.state[0]
-            u_t.change_scales(1)
-            fig = plt.figure()
-            p, = plt.plot(self.x, u_t['g'])
-            # plt.plot(self.x, self.U_data)
-            plt.title('Loop Index = {}'.format(self.loop_index))
-            fig.canvas.draw()
         try:
             logger.debug('Starting backward solve')
             for t_ind in range(self.opt_params.dt_per_cp):
                 for var in self.hotel.keys():
                     self.backward_solver.problem.namespace[var].change_scales(1)
                     self.backward_solver.problem.namespace[var]['g'] = self.hotel[var][-t_ind - 1]
-                if self.show_backward and (t_ind % 50) == 0:
-                    u_t.change_scales(1)
-                    p.set_ydata(u_t['g'])
-                    plt.pause(5e-3)
-                    fig.canvas.draw()
-                    # logger.info('Backward solver: sim_time = {}; u_t = {}'.format(self.backward_solver.sim_time, np.max(self.backward_solver.state[0]['g'])))
                 self.backward_solver.step(-self.opt_params.dt)
         except:
             logger.error('Exception raised in backward solve, triggering end of main loop.')
