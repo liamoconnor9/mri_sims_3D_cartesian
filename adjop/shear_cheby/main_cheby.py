@@ -15,7 +15,7 @@ CW = MPI.COMM_WORLD
 import logging
 import pathlib
 logger = logging.getLogger(__name__)
-from OptimizationContext import OptimizationContext, OptParams
+from OptimizationContext import OptimizationContext
 import ForwardShear
 import BackwardShear
 import matplotlib.pyplot as plt
@@ -27,7 +27,6 @@ path = os.path.dirname(os.path.abspath(__file__))
 T = 1.0
 num_cp = 1
 dt = 2.5e-3
-opt_params = OptParams(T, num_cp, dt)
 
 Reynolds = 1e3
 gamma = 5e-1
@@ -81,8 +80,8 @@ HT = 0.5*(u - U)**2
 
 HTS = []
 nannorm_count = 0
-opt = OptimizationContext(domain, coords, forward_solver, backward_solver, timestepper, lagrangian_dict, opt_params, None, write_suffix)
-opt.use_euler = use_euler_gradient_descend
+opt = OptimizationContext(domain, coords, forward_solver, backward_solver, timestepper, lagrangian_dict, None, write_suffix)
+opt.set_time_domain(T, num_cp, dt)
 
 # This is our initial quess for the optimized initial condition
 opt.ic['u']['g'] = 0
@@ -93,32 +92,8 @@ opt.backward_ic = backward_ic
 opt.HT = HT
 opt.build_var_hotel()
 
-indices = []
-HT_norms = []
-
-def richardson_gamma(gamma):
-
-    # logger.info("Performing Richardson extrapolation to measure gradient magnitude linearity...")
-    opt.loop()
-    HT_norm_og = opt.HT_norm
-
-    # Richardson loop 1: descend IC by a small amount and repeat.
-    indices.append(opt.loop_index)
-    HT_norms.append(opt.HT_norm)
-    opt.descend(gamma)
-    opt.loop()
-    delta_HT1 = HT_norm_og - opt.HT_norm
-
-    # Richardson loop 2: repeating...
-    indices.append(opt.loop_index)
-    HT_norms.append(opt.HT_norm)
-    opt.descend(gamma)
-    opt.loop()
-    delta_HT2 = HT_norm_og - opt.HT_norm
-
-    # We expect, for sufficiently small gamma, the objective (HT_norm) to change by an equal amount both times
-    linearity = delta_HT2 / delta_HT1 / 2.0
-    return linearity
+opt.indices = []
+opt.HT_norms = []
 
 from datetime import datetime
 startTime = datetime.now()
@@ -128,8 +103,8 @@ addendum_str = ''
 # opt.loop_index incremented in descend function
 while opt.loop_index <= opt_iters:
 
-    if (opt.loop_index % 10 == 1):
-        linearity = richardson_gamma(gamma)
+    if (opt.loop_index % 10 == 8):
+        linearity = opt.richardson_gamma(gamma)
         addendum_str = "linearity = {}; ".format(linearity)
     else:
         opt.loop()
@@ -139,15 +114,13 @@ while opt.loop_index <= opt_iters:
         logger.info('Breaking optimization loop: error within tolerance. HT_norm = {}'.format(opt.HT_norm))
         break
     
-    indices.append(opt.loop_index)
-    HT_norms.append(opt.HT_norm)
     opt.descend(gamma, addendum_str=addendum_str)
 
     if (opt.loop_index > 1):
         performance = opt.step_performance
-        if performance > 0.8:
+        if performance > 0.95:
             gamma *= gamma_factor
-        elif performance < 0.5:
+        elif performance < 0.8:
             gamma *= 1 / 2.0
 
 
@@ -157,7 +130,7 @@ logger.info('COMPLETED OPTIMIZATION RUN')
 logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))
 logger.info('####################################################')
 
-plt.plot(indices, HT_norms, linewidth=2)
+plt.plot(opt.indices, opt.HT_norms, linewidth=2)
 plt.yscale('log')
 plt.ylabel('Error')
 plt.xlabel('Loop Index')

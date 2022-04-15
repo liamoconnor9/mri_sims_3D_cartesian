@@ -13,23 +13,9 @@ logging.getLogger('solvers').setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
 from collections import OrderedDict
 
-class OptParams:
-    def __init__(self, T, num_cp, dt):
-        self.T = T
-        self.num_cp = num_cp
-        self.dt = dt
-        self.dT = T / num_cp
-        if (self.dT / dt != int(self.dT / dt)):
-            logger.error("number of timesteps not divisible by number of checkpoints. Exiting...")
-            sys.exit()
-        if (self.T / dt != int(self.T / dt)):
-            logger.error("Run period not divisible by timestep (we're using uniform timesteps). Exiting...")
-            sys.exit()
-        self.dt_per_cp = int(self.dT / dt)
-        self.dt_per_loop = int(T / dt)
-
 class OptimizationContext:
-    def __init__(self, domain, coords, forward_solver, backward_solver, timestepper, lagrangian_dict, opt_params, sim_params, write_suffix):
+    def __init__(self, domain, coords, forward_solver, backward_solver, timestepper, lagrangian_dict, sim_params, write_suffix):
+        
         self.forward_solver = forward_solver
         self.backward_solver = backward_solver
         self.forward_problem = forward_solver.problem
@@ -38,16 +24,21 @@ class OptimizationContext:
         self.lagrangian_dict = lagrangian_dict
         self.domain = domain
         self.coords = coords
-        self.opt_params = opt_params
         self.sim_params = sim_params
         self.write_suffix = write_suffix
+        
         self.path = os.path.dirname(os.path.abspath(__file__))
         self.ic = OrderedDict()
         for var_name in lagrangian_dict.keys():
             self.ic[var_name] = self.domain.dist.VectorField(coords, bases=domain.bases)
         self.backward_ic = OrderedDict()
+
         self.loop_index = 0
         self.step_performance = np.nan
+        self.HT_norms = []
+        self.indices = []
+
+        self.use_euler = True
         self.show = False
         self.show_backward = False
 
@@ -66,12 +57,26 @@ class OptimizationContext:
         self.old_x['g'] = 0.0
         self.old_grad['g'] = 0.0
 
+    def set_time_domain(self, T, num_cp, dt):
+        self.T = T
+        self.num_cp = num_cp
+        self.dt = dt
+        self.dT = T / num_cp
+        if (self.dT / dt != int(self.dT / dt)):
+            logger.error("number of timesteps not divisible by number of checkpoints. Exiting...")
+            sys.exit()
+        if (self.T / dt != int(self.T / dt)):
+            logger.error("Run period not divisible by timestep (we're using uniform timesteps). Exiting...")
+            sys.exit()
+        self.dt_per_cp = int(self.dT / dt)
+        self.dt_per_loop = int(T / dt)
+
     # Hotel stores the forward variables, at each timestep, in memory to inform adjoint solve
     def build_var_hotel(self):
         self.hotel = OrderedDict()
-        # shape = [self.opt_params.dt_per_cp]
+        # shape = [self.dt_per_cp]
         grid_shape = self.ic['u']['g'].shape
-        grid_time_shape = (self.opt_params.dt_per_cp,) + grid_shape
+        grid_time_shape = (self.dt_per_cp,) + grid_shape
         for var in self.forward_problem.variables:
             if (var.name in self.lagrangian_dict.keys()):
                 self.hotel[var.name] = np.zeros(grid_time_shape)
@@ -92,7 +97,7 @@ class OptimizationContext:
         self.set_backward_ic()
         self.solve_backward()
 
-        for i in range(1, self.opt_params.num_cp):
+        for i in range(1, self.num_cp):
             self.forward_solver.load_state(self.path + '/checkpoints_' + self.write_suffix + '/checkpoints_kdv0_s1.h5', -i)
             self.solve_forward()
             self.solve_backward()
@@ -117,13 +122,13 @@ class OptimizationContext:
     def solve_forward_bulk(self):
         
         self.forward_solver.iteration = 0
-        self.forward_solver.stop_sim_time = self.opt_params.T
+        self.forward_solver.stop_sim_time = self.T
 
-        if (self.opt_params.num_cp == 1):
+        if (self.num_cp == 1):
             return
 
 
-        checkpoints = self.forward_solver.evaluator.add_file_handler(self.path + '/checkpoints_{}'.format(self.write_suffix), max_writes=self.opt_params.num_cp - 1, iter=self.opt_params.dt_per_cp, mode='overwrite')
+        checkpoints = self.forward_solver.evaluator.add_file_handler(self.path + '/checkpoints_{}'.format(self.write_suffix), max_writes=self.num_cp - 1, iter=self.dt_per_cp, mode='overwrite')
         checkpoints.add_tasks(self.forward_solver.state, layout='g')
 
         # Main loop
@@ -137,9 +142,9 @@ class OptimizationContext:
             fig.canvas.draw()
         try:
             logger.debug('Starting forward solve')
-            for t_ind in range(self.opt_params.dt_per_loop - self.opt_params.dt_per_cp):
+            for t_ind in range(self.dt_per_loop - self.dt_per_cp):
 
-                self.forward_solver.step(self.opt_params.dt)
+                self.forward_solver.step(self.dt)
 
                 if self.show and t_ind % 25 == 0:
                     u.change_scales(1)
@@ -151,7 +156,7 @@ class OptimizationContext:
             # for var in self.forward_solver.state:
             #     if (var.name in self.hotel.keys()):
             #         var.change_scales(1)
-            #         self.hotel[var.name][self.opt_params.dt_per_cp] = var['g'].copy()
+            #         self.hotel[var.name][self.dt_per_cp] = var['g'].copy()
         except:
             logger.error('Exception raised in forward solve, triggering end of main loop.')
             raise
@@ -164,8 +169,8 @@ class OptimizationContext:
         # Main loop
         try:
             logger.debug('Starting forward solve')
-            for t_ind in range(self.opt_params.dt_per_cp):
-                self.forward_solver.step(self.opt_params.dt)
+            for t_ind in range(self.dt_per_cp):
+                self.forward_solver.step(self.dt)
                 for var in self.forward_solver.state:
                     if (var.name in self.hotel.keys()):
                         var.change_scales(1)
@@ -183,7 +188,7 @@ class OptimizationContext:
     def set_backward_ic(self):
 
         # self.backward_solver = self.backward_problem.build_solver(self.timestepper)
-        self.backward_solver.sim_time = self.opt_params.T
+        self.backward_solver.sim_time = self.T
 
         # flip dictionary s.t. keys are backward var names and items are forward var names
         flipped_ld = dict((backward_var, forward_var) for forward_var, backward_var in self.lagrangian_dict.items())
@@ -196,14 +201,14 @@ class OptimizationContext:
         return
 
     def solve_backward(self):
-        # self.backward_solver.stop_sim_time = self.opt_params.T
+        # self.backward_solver.stop_sim_time = self.T
         try:
             logger.debug('Starting backward solve')
-            for t_ind in range(self.opt_params.dt_per_cp):
+            for t_ind in range(self.dt_per_cp):
                 for var in self.hotel.keys():
                     self.backward_solver.problem.namespace[var].change_scales(1)
                     self.backward_solver.problem.namespace[var]['g'] = self.hotel[var][-t_ind - 1]
-                self.backward_solver.step(-self.opt_params.dt)
+                self.backward_solver.step(-self.dt)
         except:
             logger.error('Exception raised in backward solve, triggering end of main loop.')
             raise
@@ -292,12 +297,36 @@ class OptimizationContext:
         logger.info(statement)
         self.loop_index += 1
 
+        self.indices.append(self.loop_index)
+        self.HT_norms.append(self.HT_norm)
+
         self.old_gamma = gamma
 
+    def richardson_gamma(self, gamma):
+
+        # logger.info("Performing Richardson extrapolation to measure gradient magnitude linearity...")
+        self.loop()
+        HT_norm_og = self.HT_norm
+
+        # Richardson loop 1: descend IC by a small amount and repeat.
+        self.descend(gamma)
+        self.loop()
+        delta_HT1 = HT_norm_og - self.HT_norm
+
+        # Richardson loop 2: repeating...
+        self.descend(gamma)
+        self.loop()
+        delta_HT2 = HT_norm_og - self.HT_norm
+
+        # We expect, for sufficiently small gamma, the objective (HT_norm) to change by an equal amount both times
+        linearity = delta_HT2 / delta_HT1 / 2.0
+        return linearity
+
+
     def update_timestep(self, dt):
-        if (self.opt_params.dT / dt != int(self.opt_params.dT / dt)):
+        if (self.dT / dt != int(self.dT / dt)):
             logger.error("number of timesteps not divisible by number of checkpoints. cannot update dt...")
             return
-        self.opt_params.dt = dt
-        self.opt_params.dt_per_cp = int(self.opt_params.dT // dt)
+        self.dt = dt
+        self.dt_per_cp = int(self.dT // dt)
         self.build_var_hotel()
