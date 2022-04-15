@@ -5,6 +5,7 @@ from contextlib import nullcontext
 from turtle import backward
 import numpy as np
 import sys
+sys.path.append("..")
 import h5py
 import gc
 import dedalus.public as d3

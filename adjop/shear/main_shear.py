@@ -5,6 +5,7 @@ from contextlib import nullcontext
 from turtle import backward
 import numpy as np
 import sys
+sys.path.append("..")
 import h5py
 import gc
 import dedalus.public as d3
@@ -23,9 +24,9 @@ path = os.path.dirname(os.path.abspath(__file__))
 # keys are forward variables
 # items are (backward variables, adjoint initial condition function: i.e. ux(T) = func(ux_t(T)))
 
-T = 0.3
+T = 10
 num_cp = 1
-dt = 5e-3
+dt = 2.5e-3
 opt_params = OptParams(T, num_cp, dt)
 
 default_gamma = 3e-5

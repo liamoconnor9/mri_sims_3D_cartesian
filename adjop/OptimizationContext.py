@@ -9,7 +9,7 @@ CW = MPI.COMM_WORLD
 import matplotlib.pyplot as plt
 
 import logging
-logging.getLogger('solvers').setLevel(logging.WARNING)
+logging.getLogger('solvers').setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
 from collections import OrderedDict
 
@@ -47,6 +47,7 @@ class OptimizationContext:
             self.ic[var_name] = self.domain.dist.VectorField(coords, bases=domain.bases)
         self.backward_ic = OrderedDict()
         self.loop_index = 0
+        self.step_performance = np.nan
         self.show = False
         self.show_backward = False
 
@@ -78,7 +79,7 @@ class OptimizationContext:
     def loop(self): # move to main
         
         # Evaluate before fields are evolved (old state)
-        self.old_grad['g'] = self.backward_solver.state[0]['g'][1].copy()
+        self.old_grad['g'] = self.backward_solver.state[0]['g'].copy()
 
         self.set_forward_ic()
         
@@ -99,7 +100,9 @@ class OptimizationContext:
 
 
         # Evaluate after fields are evolved (new state)
-        self.new_grad['g'] = self.backward_solver.state[0]['g'][1].copy()
+        self.backward_solver.state[0].change_scales(1)
+        self.new_grad.change_scales(1)
+        self.new_grad['g'] = self.backward_solver.state[0]['g'].copy()
 
     # Set starting point for loop
     def set_forward_ic(self):
@@ -231,47 +234,43 @@ class OptimizationContext:
                     # logger.info('Backward solver: sim_time = {}; u_t = {}'.format(self.backward_solver.sim_time, np.max(self.backward_solver.state[0]['g'])))
                 self.backward_solver.step(-self.opt_params.dt)
         except:
-            logger.error('Exception raised in forward solve, triggering end of main loop.')
+            logger.error('Exception raised in backward solve, triggering end of main loop.')
             raise
         finally:
             logger.debug('Completed backward solve')
             for field in self.backward_solver.state:
                 field.change_scales(1)
 
-        # for cp_index in range(self.opt_params.num_cp):
-        #     # load checkpoint for ic
-        #     self.forward_solver.load_state(self.write_suffix + '_loop_cps.h5', -cp_index - 1)
-
-        #     for t_ind in range(self.opt_params.dt_per_cp):
-        #         self.forward_solver().step(self.opt_params.dt)
-        #         for var in self.hotel.keys():
-        #             self.hotel[var][t_ind] = self.forward_solver.state[var]['g']
-
-        #     for t_ind in range(self.opt_params.dt_per_cp):
-        #         for var in self.hotel.keys():
-        #             self.backward_problem.parameters[var]['g'] = self.hotel[var][-t_ind - 1]
-                
-        #         self.backward_solver().step(self.opt_params.dt)
-        #         # self.integrand_array[cp_index * self.opt_params.dt_per_cp + t_ind] = self.backward_problem.state['integrand']['g']
-
-
     def evaluate_state_T(self):
-        # if (CW.rank == 0):
+
+        grad_mag = (d3.Integrate((self.new_grad**2))**(0.5)).evaluate()
         HT_norm = d3.Integrate(self.HT).evaluate()
+
+        if (self.loop_index > 0):
+            old_HT_norm = self.HT_norm
+            gamma = self.gamma
+
         if (CW.rank == 0):
             self.HT_norm = HT_norm['g'].flat[0]
+            self.grad_norm = grad_mag['g'].flat[0]
         else:
             self.HT_norm = 0.0
+            self.grad_norm = 0.0
 
         self.HT_norm = CW.bcast(self.HT_norm, root=0)
-            # print('rank = {}; HT = {}'.format(CW.rank, self.HT_norm))
-        # CW.Barrier()
-        # sys.exit()
+        self.grad_norm = CW.bcast(self.grad_norm, root=0)
+
         if (np.isnan(self.HT_norm)):
             logger.error("NaN HT norm: exiting...")
             sys.exit()
+
+        if (self.loop_index > 0):
+            self.step_performance = (old_HT_norm - self.HT_norm) / (self.grad_norm**2 * gamma)
+            # logger.info('new performance = {}'.format(self.step_performance))
+        
         return
-  
+   
+   # I don't really use this anymore
     def compute_gamma(self, epsilon_safety):
         if (self.loop_index == 0):
             return 1e-3
@@ -282,16 +281,17 @@ class OptimizationContext:
             return epsilon_safety * np.abs(d3.Integrate(x_diff * grad_diff).evaluate()['g'].flat[0]) / (d3.Integrate(grad_diff * grad_diff).evaluate()['g'].flat[0])
 
 
-    def descend(self, gamma):
+    def descend(self, gamma, **kwargs):
 
-        # This can probably go elsewhere (where it's getting dealiased)
+        addendum_str = kwargs.get('addendum_str', '')
+
+        # This can probably go elsewhere (whereever it's getting dealiased)
         self.new_x.change_scales(1)
         self.old_x.change_scales(1)
         self.new_grad.change_scales(1)
         self.old_grad.change_scales(1)
 
-        # self.backward_solver.state[0].change_scales(1)
-
+        self.gamma = gamma
         self.old_x['g'] = self.ic['u']['g'].copy()
 
         if (self.loop_index == 0 or self.use_euler):
@@ -310,8 +310,15 @@ class OptimizationContext:
 
         self.ic['u']['g'] = self.ic['u']['g'].copy() + deltaIC
         self.new_x['g'] = self.ic['u']['g'].copy()
-        
-        logger.info('loop index = %i; gamma = %e; HT norm = %e; ' %(self.loop_index, gamma, self.HT_norm))
+
+        statement = 'loop index = %i; ' %self.loop_index
+        statement += 'gamma = %e; ' %self.gamma
+        statement += 'grad norm = %e; ' %self.grad_norm
+        statement += 'step performance = %f; ' %self.step_performance
+        statement += 'HT norm = %e; ' %self.HT_norm
+        statement += addendum_str
+
+        logger.info(statement)
         self.loop_index += 1
 
         self.old_gamma = gamma

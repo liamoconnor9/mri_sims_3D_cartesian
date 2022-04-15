@@ -5,6 +5,7 @@ from contextlib import nullcontext
 from turtle import backward
 import numpy as np
 import sys
+sys.path.append("..")
 import h5py
 import gc
 import dedalus.public as d3
@@ -29,7 +30,7 @@ dt = 2.5e-3
 opt_params = OptParams(T, num_cp, dt)
 
 Reynolds = 1e3
-default_gamma = 5e-1
+gamma = 5e-1
 gamma_factor = 1.1
 gain = 1
 use_euler_gradient_descend = True
@@ -43,6 +44,7 @@ Nx, Nz = 256, 128
 
 dealias = 3/2
 coords = d3.CartesianCoordinates('x', 'z')
+coords.name = coords.names
 dist = d3.Distributor(coords, dtype=np.float64)
 
 xbasis = d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx), dealias=dealias)
@@ -82,10 +84,8 @@ nannorm_count = 0
 opt = OptimizationContext(domain, coords, forward_solver, backward_solver, timestepper, lagrangian_dict, opt_params, None, write_suffix)
 opt.use_euler = use_euler_gradient_descend
 
-z_center = 0.49
-# opt.ic['u']['g'][0] = 1/2 + 1/2 * (np.tanh((z-z_center)/0.1) - np.tanh((z+z_center)/0.1))
-# opt.ic['u']['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-z_center)**2/0.01)
-# opt.ic['u']['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+z_center)**2/0.01)
+# This is our initial quess for the optimized initial condition
+opt.ic['u']['g'] = 0
 
 # Adjoint ic: -derivative of HT wrt u(T)
 backward_ic = {'u_t' : gain*(U - u)}
@@ -95,32 +95,62 @@ opt.build_var_hotel()
 
 indices = []
 HT_norms = []
-dt_reduce_index = 0
+
+def richardson_gamma(gamma):
+
+    # logger.info("Performing Richardson extrapolation to measure gradient magnitude linearity...")
+    opt.loop()
+    HT_norm_og = opt.HT_norm
+
+    # Richardson loop 1: descend IC by a small amount and repeat.
+    indices.append(opt.loop_index)
+    HT_norms.append(opt.HT_norm)
+    opt.descend(gamma)
+    opt.loop()
+    delta_HT1 = HT_norm_og - opt.HT_norm
+
+    # Richardson loop 2: repeating...
+    indices.append(opt.loop_index)
+    HT_norms.append(opt.HT_norm)
+    opt.descend(gamma)
+    opt.loop()
+    delta_HT2 = HT_norm_og - opt.HT_norm
+
+    # We expect, for sufficiently small gamma, the objective (HT_norm) to change by an equal amount both times
+    linearity = delta_HT2 / delta_HT1 / 2.0
+    return linearity
 
 from datetime import datetime
 startTime = datetime.now()
-for i in range(opt_iters):
+i = 0
+addendum_str = ''
 
-    opt.loop()
+# opt.loop_index incremented in descend function
+while opt.loop_index <= opt_iters:
+
+    if (opt.loop_index % 10 == 1):
+        linearity = richardson_gamma(gamma / 1e3)
+        addendum_str = "linearity = {}; ".format(linearity)
+    else:
+        opt.loop()
+        addendum_str = ''
 
     if (opt.HT_norm <= 1e-10):
         logger.info('Breaking optimization loop: error within tolerance. HT_norm = {}'.format(opt.HT_norm))
         break
     
-    indices.append(i)
+    indices.append(opt.loop_index)
     HT_norms.append(opt.HT_norm)
-    opt.descend(default_gamma)
+    opt.descend(gamma, addendum_str=addendum_str)
 
-    if (i > 0):
-        # logger.info("delta_HT_norm / (grad_norm * gamma) = {}".format((HT_norms[-2] - HT_norms[-1]) / (opt.grad_norm * default_gamma)))
-        performance = (HT_norms[-2] - HT_norms[-1]) / (opt.grad_norm**2 * default_gamma)
-        logger.info("step performance factor = {}".format(performance))
-        if performance > 1.0:
-            default_gamma *= gamma_factor
-            logger.info('good performance! increasing gamma to {}'.format(default_gamma))
+    if (opt.loop_index > 1):
+        performance = opt.step_performance
+        if performance > 0.8:
+            gamma *= gamma_factor
         elif performance < 0.5:
-            default_gamma *= 1 / 4.0
-            logger.info('bad performance! decreasing gamma to {}'.format(default_gamma))
+            gamma *= 1 / 2.0
+
+
 
 logger.info('####################################################')
 logger.info('COMPLETED OPTIMIZATION RUN')
