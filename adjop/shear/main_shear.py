@@ -1,11 +1,12 @@
 from distutils.command.bdist import show_formats
 import os
+path = os.path.dirname(os.path.abspath(__file__))
 from ast import For
 from contextlib import nullcontext
 from turtle import backward
 import numpy as np
 import sys
-sys.path.append("..")
+sys.path.append(path + "/..")
 import h5py
 import gc
 import dedalus.public as d3
@@ -19,7 +20,6 @@ from OptimizationContext import OptimizationContext
 import ForwardShear
 import BackwardShear
 import matplotlib.pyplot as plt
-path = os.path.dirname(os.path.abspath(__file__))
 
 # keys are forward variables
 # items are (backward variables, adjoint initial condition function: i.e. ux(T) = func(ux_t(T)))
@@ -28,7 +28,7 @@ T = 20
 num_cp = 1
 dt = 1.25e-3
 
-gamma = gamma_init = 5e-3
+gamma = gamma_init = 5e-2
 gamma_factor = 1.0
 show_forward = False
 cadence = 1
@@ -59,7 +59,7 @@ backward_problem = BackwardShear.build_problem(domain, coords, Reynolds)
 lagrangian_dict = {'u' : 'u_t'}
 
 forward_solver = forward_problem.build_solver(d3.RK222)
-backward_solver = backward_problem.build_solver(d3.SBDF2)
+backward_solver = backward_problem.build_solver(d3.RK222)
 
 write_suffix = 'kdv0'
 
