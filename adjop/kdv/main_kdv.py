@@ -21,9 +21,6 @@ import ForwardKDV
 import BackwardKDV
 import matplotlib.pyplot as plt
 
-# keys are forward variables
-# items are (backward variables, adjoint initial condition function: i.e. ux(T) = func(ux_t(T)))
-
 T = 3.0
 num_cp = 1
 dt = 5e-3
@@ -32,7 +29,7 @@ epsilon_safety = default_gamma = 0.9
 gain = 1.0
 show_forward = True
 cadence = 1
-opt_iters = 601
+opt_iters = 5
 
 # Bases
 N = 256
@@ -53,22 +50,21 @@ forward_problem = ForwardKDV.build_problem(domain, xcoord, a, b)
 backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 
 # Names of the forward, and corresponding adjoint variables
-lagrangian_dict = {'u' : 'u_t'}
+lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 
 forward_solver = forward_problem.build_solver(d3.RK222)
 backward_solver = backward_problem.build_solver(d3.RK222)
 
 write_suffix = 'kdv0'
 
-# HT is maximized at t = T
 path = os.path.dirname(os.path.abspath(__file__))
 U_data = np.loadtxt(path + '/kdv_U.txt')
 u = next(field for field in forward_solver.state if field.name == 'u')
 U = dist.Field(name='U', bases=xbasis)
 U['g'] = U_data
 
-# Late time objective
-HT = (u - U)**2
+# HT is maximized at t = T (Late time objective)
+HT = 0.5*(U - u)**2
 
 HTS = []
 nannorm_count = 0
@@ -81,11 +77,10 @@ mu = 4.1
 sig = 0.5
 guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
-# guess = ic.copy()
 opt.ic['u']['g'] = guess
 
 # Adjoint ic: -derivative of HT wrt u(T)
-backward_ic = {'u_t' : (U - u)}
+backward_ic = {'u_t' : -HT.sym_diff(u)}
 opt.backward_ic = backward_ic
 opt.HT = HT
 opt.U_data = U_data
