@@ -31,7 +31,6 @@ dt = 2.5e-3
 Reynolds = 1e3
 gamma = 5e-1
 gamma_factor = 1.1
-gain = 1
 use_euler_gradient_descend = True
 show_forward = False
 cadence = 1
@@ -87,7 +86,7 @@ opt.set_time_domain(T, num_cp, dt)
 opt.ic['u']['g'] = 0
 
 # Adjoint ic: -derivative of HT wrt u(T)
-backward_ic = {'u_t' : gain*(U - u)}
+backward_ic = {'u_t' : (U - u)}
 opt.backward_ic = backward_ic
 opt.HT = HT
 opt.build_var_hotel()

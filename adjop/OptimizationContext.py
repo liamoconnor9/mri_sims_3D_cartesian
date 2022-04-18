@@ -14,13 +14,12 @@ logger = logging.getLogger(__name__)
 from collections import OrderedDict
 
 class OptimizationContext:
-    def __init__(self, domain, coords, forward_solver, backward_solver, timestepper, lagrangian_dict, sim_params, write_suffix):
+    def __init__(self, domain, coords, forward_solver, backward_solver, lagrangian_dict, sim_params, write_suffix):
         
         self.forward_solver = forward_solver
         self.backward_solver = backward_solver
         self.forward_problem = forward_solver.problem
         self.backward_problem = backward_solver.problem
-        self.timestepper = timestepper
         self.lagrangian_dict = lagrangian_dict
         self.domain = domain
         self.coords = coords

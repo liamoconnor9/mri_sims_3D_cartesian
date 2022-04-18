@@ -32,11 +32,11 @@ CW = MPI.COMM_WORLD
 
 # Parameters
 Lx, Lz = 1, 2
-Nx, Nz = 128, 256
+Nx, Nz = 256, 512
 Reynolds = 5e4
 Schmidt = 1
 dealias = 3/2
-stop_sim_time = 10.0
+stop_sim_time = 20.0
 timestepper = d3.RK222
 max_timestep = 1e-2
 dtype = np.float64
@@ -60,9 +60,9 @@ x, z = dist.local_grids(xbasis, zbasis)
 ex, ez = coords.unit_vector_fields(dist)
 
 # Problem
-problem = d3.IVP([u, p, tau_p], namespace=locals())
+problem = d3.IVP([u, s, p, tau_p], namespace=locals())
 problem.add_equation("dt(u) + grad(p) - nu*lap(u) = - dot(u, grad(u))")
-# problem.add_equation("dt(s) - D*lap(s) = - u@grad(s)")
+problem.add_equation("dt(s) - D*lap(s) = - u@grad(s)")
 problem.add_equation("div(u) + tau_p = 0")
 problem.add_equation("integ(p) = 0") # Pressure gauge
 
@@ -74,14 +74,14 @@ solver.stop_sim_time = stop_sim_time
 # Background shear
 u['g'][0] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 # Match tracer to shear
-# s['g'] = u['g'][0]
+s['g'] = u['g'][0]
 # Add small vertical velocity perturbations localized to the shear layers
 u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01)
 u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01)
 
 # Analysis
 snapshots = solver.evaluator.add_file_handler(path + '/snapshots', sim_dt=0.1, max_writes=1)
-# snapshots.add_task(s, name='tracer')
+snapshots.add_task(s, name='tracer')
 snapshots.add_task(p, name='pressure')
 snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
 checkpoints = solver.evaluator.add_file_handler(path + '/checkpoint_U', max_writes=2, sim_dt=stop_sim_time, mode='overwrite')
