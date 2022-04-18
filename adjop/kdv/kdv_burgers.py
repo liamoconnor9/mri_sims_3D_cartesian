@@ -23,7 +23,7 @@ dealias = 3/2
 dtype = np.float64
 stop_sim_time = 3.0
 
-periodic = False
+periodic = True
 timestepper = d3.SBDF2
 epsilon_safety = 1
 timestep = 5e-4

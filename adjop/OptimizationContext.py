@@ -9,7 +9,7 @@ CW = MPI.COMM_WORLD
 import matplotlib.pyplot as plt
 
 import logging
-logging.getLogger('solvers').setLevel(logging.ERROR)
+logging.getLogger('solvers').setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 from collections import OrderedDict
 
@@ -40,6 +40,7 @@ class OptimizationContext:
         self.use_euler = True
         self.show = False
         self.show_backward = False
+        self.show_cadence = 1
 
         self.new_x = forward_solver.state[0].copy()
         self.new_grad = forward_solver.state[0].copy()
@@ -88,10 +89,10 @@ class OptimizationContext:
         self.set_forward_ic()
         
         # Nothing happens here if self.num_cp = 1
-        self.solve_forward_bulk()
+        self.solve_forward_full()
         self.forward_solver.evaluator.handlers.clear()
         
-        self.solve_forward()
+        # self.solve_forward()
         self.evaluate_state_T()
         self.set_backward_ic()
         self.solve_backward()
@@ -118,14 +119,10 @@ class OptimizationContext:
                 var.change_scales(1)
                 var['g'] = self.ic[var.name]['g']
 
-    def solve_forward_bulk(self):
+    def solve_forward_full(self):
         
         self.forward_solver.iteration = 0
         self.forward_solver.stop_sim_time = self.T
-
-        if (self.num_cp == 1):
-            return
-
 
         checkpoints = self.forward_solver.evaluator.add_file_handler(self.path + '/checkpoints_{}'.format(self.write_suffix), max_writes=self.num_cp - 1, iter=self.dt_per_cp, mode='overwrite')
         checkpoints.add_tasks(self.forward_solver.state, layout='g')
@@ -141,16 +138,21 @@ class OptimizationContext:
             fig.canvas.draw()
         try:
             logger.debug('Starting forward solve')
-            for t_ind in range(self.dt_per_loop - self.dt_per_cp):
+            for t_ind in range(self.dt_per_loop):
 
                 self.forward_solver.step(self.dt)
+                if (t_ind >= self.dt_per_loop - self.dt_per_cp):
+                    for var in self.forward_solver.state:
+                        if (var.name in self.hotel.keys()):
+                            var.change_scales(1)
+                            self.hotel[var.name][t_ind - (self.dt_per_loop - self.dt_per_cp)] = var['g'].copy()
 
-                if self.show and t_ind % 25 == 0:
+                if self.show and t_ind % self.show_cadence == 0:
                     u.change_scales(1)
                     p.set_ydata(u['g'])
                     plt.pause(5e-3)
                     fig.canvas.draw()
-                # logger.info('Bulk Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
+                    # logger.info('Bulk Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
 
             # for var in self.forward_solver.state:
             #     if (var.name in self.hotel.keys()):
@@ -180,7 +182,6 @@ class OptimizationContext:
             logger.error('Exception raised in forward solve, triggering end of main loop.')
             raise
         finally:
-            plt.close()
             logger.debug('Completed forward solve')
 
     # Set ic for adjoint problem for loop
@@ -208,6 +209,7 @@ class OptimizationContext:
                     self.backward_solver.problem.namespace[var].change_scales(1)
                     self.backward_solver.problem.namespace[var]['g'] = self.hotel[var][-t_ind - 1]
                 self.backward_solver.step(-self.dt)
+                logger.debug('backward solver time = {}'.format(self.backward_solver.sim_time))
         except:
             logger.error('Exception raised in backward solve, triggering end of main loop.')
             raise

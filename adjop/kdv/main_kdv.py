@@ -4,8 +4,10 @@ from ast import For
 from contextlib import nullcontext
 from turtle import backward
 import numpy as np
+path = os.path.dirname(os.path.abspath(__file__))
 import sys
-sys.path.append("..")
+sys.path.append(path + "/..")
+from OptimizationContext import OptimizationContext
 import h5py
 import gc
 import dedalus.public as d3
@@ -15,26 +17,22 @@ CW = MPI.COMM_WORLD
 import logging
 import pathlib
 logger = logging.getLogger(__name__)
-from OptimizationContext import OptimizationContext, OptParams
 import ForwardKDV
 import BackwardKDV
 import matplotlib.pyplot as plt
-path = os.path.dirname(os.path.abspath(__file__))
 
 # keys are forward variables
 # items are (backward variables, adjoint initial condition function: i.e. ux(T) = func(ux_t(T)))
 
 T = 3.0
 num_cp = 1
-dt = 1e-2
-opt_params = OptParams(T, num_cp, dt)
+dt = 5e-3
 
-epsilon_safety = default_gamma = 0.8
+epsilon_safety = default_gamma = 0.9
 gain = 1.0
-use_euler_gradient_descend = True
-show_forward = False
+show_forward = True
 cadence = 1
-opt_iters = 51
+opt_iters = 601
 
 # Bases
 N = 256
@@ -42,8 +40,8 @@ Lx = 10.
 xcoord = d3.Coordinate('x')
 dist = d3.Distributor(xcoord, dtype=np.float64)
 
-xbasis = d3.ChebyshevT(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
-# xbasis = d3.RealFourier(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
+# xbasis = d3.ChebyshevT(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
+xbasis = d3.RealFourier(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
 
 domain = domain.Domain(dist, [xbasis])
 dist = domain.dist
@@ -57,9 +55,8 @@ backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 # Names of the forward, and corresponding adjoint variables
 lagrangian_dict = {'u' : 'u_t'}
 
-timestepper = d3.RK443
-forward_solver = forward_problem.build_solver(timestepper)
-backward_solver = backward_problem.build_solver(timestepper)
+forward_solver = forward_problem.build_solver(d3.RK222)
+backward_solver = backward_problem.build_solver(d3.RK222)
 
 write_suffix = 'kdv0'
 
@@ -75,25 +72,24 @@ HT = (u - U)**2
 
 HTS = []
 nannorm_count = 0
-opt = OptimizationContext(domain, xcoord, forward_solver, backward_solver, timestepper, lagrangian_dict, opt_params, None, write_suffix)
-# opt.x = x
-opt.use_euler = use_euler_gradient_descend
-
+opt = OptimizationContext(domain, xcoord, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
+opt.set_time_domain(T, num_cp, dt)
+opt.x = x
+# opt.use_euler = False
 n = 20
 mu = 4.1
 sig = 0.5
 guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 # guess = ic.copy()
-opt.ic['u']['g'] = 0.0
+opt.ic['u']['g'] = guess
 
 # Adjoint ic: -derivative of HT wrt u(T)
-backward_ic = {'u_t' : gain * (U - u)}
+backward_ic = {'u_t' : (U - u)}
 opt.backward_ic = backward_ic
 opt.HT = HT
 opt.U_data = U_data
 opt.build_var_hotel()
-# opt.show_backward = True
 
 indices = []
 HT_norms = []
@@ -101,7 +97,12 @@ dt_reduce_index = 0
 
 from datetime import datetime
 startTime = datetime.now()
+opt.show_cadence = 20
 for i in range(opt_iters):
+    if (i % 1 == 0):
+        opt.show = show_forward
+    else:
+        opt.show = False
 
     opt.loop()
 
@@ -110,20 +111,9 @@ for i in range(opt_iters):
 
     indices.append(i)
     HT_norms.append(opt.HT_norm)
+    gamma = opt.compute_gamma(epsilon_safety)
 
-    if (i == 200):
-        opt.update_timestep(opt.opt_params.dt / 2.0)
-        logger.warning('Gradient descent failed. Decreasing timestep to dt = {}'.format(opt_params.dt))
-        opt.loop_index -= 1
-
-        opt.loop()
-        HT_norms[-1] = opt.HT_norm
-        dt_reduce_index = i
-
-    # gamma = opt.compute_gamma(epsilon_safety)
-
-    opt.descend(default_gamma)
-    # sys.exit()
+    opt.descend(gamma)
 
 if not np.isnan(opt.HT_norm):
     HTS.append(HT_norms[-1])
