@@ -152,12 +152,8 @@ class OptimizationContext:
                     p.set_ydata(u['g'])
                     plt.pause(5e-3)
                     fig.canvas.draw()
-                    # logger.info('Bulk Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
+                    logger.debug('Full Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
 
-            # for var in self.forward_solver.state:
-            #     if (var.name in self.hotel.keys()):
-            #         var.change_scales(1)
-            #         self.hotel[var.name][self.dt_per_cp] = var['g'].copy()
         except:
             logger.error('Exception raised in forward solve, triggering end of main loop.')
             raise
@@ -176,7 +172,7 @@ class OptimizationContext:
                     if (var.name in self.hotel.keys()):
                         var.change_scales(1)
                         self.hotel[var.name][t_ind] = var['g'].copy()
-                # logger.info('Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
+                logger.debug('Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
 
         except:
             logger.error('Exception raised in forward solve, triggering end of main loop.')
@@ -187,7 +183,6 @@ class OptimizationContext:
     # Set ic for adjoint problem for loop
     def set_backward_ic(self):
 
-        # self.backward_solver = self.backward_problem.build_solver(self.timestepper)
         self.backward_solver.sim_time = self.T
 
         # flip dictionary s.t. keys are backward var names and items are forward var names
@@ -201,7 +196,6 @@ class OptimizationContext:
         return
 
     def solve_backward(self):
-        # self.backward_solver.stop_sim_time = self.T
         try:
             logger.debug('Starting backward solve')
             for t_ind in range(self.dt_per_cp):
@@ -243,11 +237,9 @@ class OptimizationContext:
 
         if (self.loop_index > 0):
             self.step_performance = (old_HT_norm - self.HT_norm) / (self.grad_norm**2 * gamma)
-            # logger.info('new performance = {}'.format(self.step_performance))
-        
         return
    
-   # I don't really use this anymore
+   # This is work really well for periodic kdv
     def compute_gamma(self, epsilon_safety):
         if (self.loop_index == 0):
             return 1e-3
@@ -275,14 +267,14 @@ class OptimizationContext:
             deltaIC = gamma * self.backward_solver.state[0]['g'].copy()
         
         else:
+            #Todo: implement conjugate gradient schemes: https://en.wikipedia.org/wiki/Nonlinear_conjugate_gradient_method
 
-            # # 2nd-order Adams Bashforth (nonuniform step)
+            # 2nd-order Adams Bashforth (nonuniform step)
+            # this doesn't work so well
             h0 = self.old_gamma
             h1 = gamma
             y0prime = self.old_grad['g'].copy()
             y1prime = self.new_grad['g'].copy()
-            # deltaIC = gamma * y1prime
-
             deltaIC = (h1 + h1**2 / 2 / h0) * y1prime - h1**2 / 2 / h0 * y0prime
 
         self.ic['u']['g'] = self.ic['u']['g'].copy() + deltaIC
