@@ -114,11 +114,11 @@ class OptimizationContext:
             self.solve_backward()
 
 
-        self.evaluate_state_0()
         # Evaluate after fields are evolved (new state)
         self.backward_solver.state[0].change_scales(1)
         self.new_grad.change_scales(1)
         self.new_grad['g'] = self.backward_solver.state[0]['g'].copy()
+        self.evaluate_state_0()
 
     def pause_forward_handlers(self):
         solver = self.forward_solver
