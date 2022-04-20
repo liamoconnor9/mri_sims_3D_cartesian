@@ -28,6 +28,9 @@ class OptimizationContext:
         
         self.path = os.path.dirname(os.path.abspath(__file__))
         self.run_dir = os.path.dirname(os.path.abspath(inspect.getmodule(inspect.stack()[1][0]).__file__))
+        if not os.path.isdir(self.run_dir + '/' + self.write_suffix):
+            logger.info('Creating run directory {}'.format(self.run_dir + '/' + self.write_suffix))
+            os.makedirs(self.run_dir + '/' + self.write_suffix)
 
         self.ic = OrderedDict()
         for var in lagrangian_dict.keys():
@@ -92,12 +95,7 @@ class OptimizationContext:
         self.backward_solver.state[0].change_scales(1)
         self.old_grad['g'] = self.backward_solver.state[0]['g'].copy()
 
-        self.set_forward_ic()
-
-        if (self.loop_index == 0):
-            solver = self.forward_solver
-            self.handler_storage = solver.evaluator.handlers
-            solver.evaluator.handlers = []            
+        self.set_forward_ic()       
 
         # self.resume_forward_handlers()
         self.solve_forward_full()
@@ -140,23 +138,15 @@ class OptimizationContext:
         for var in self.forward_solver.state:
             if (var.name in self.ic.keys()):
                 var.change_scales(1)
-                var['g'] = self.ic[var.name]['g']
+                ic = self.ic[var.name].evaluate()
+                ic.change_scales(1)
+                var['g'] = ic['g'].copy()
 
     def solve_forward_full(self):
 
         solver = self.forward_solver
         solver.iteration = 0
         solver.stop_sim_time = self.T
-
-        u = solver.state[0]
-
-        snapshots = self.forward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/snapshots_loop' + str(self.loop_index), sim_dt=0.01, max_writes=10, mode='overwrite')
-        u = self.forward_solver.state[0]
-        s = self.forward_solver.state[1]
-        p = self.forward_solver.state[2]
-        snapshots.add_task(s, name='tracer')
-        snapshots.add_task(p, name='pressure')
-        snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
 
         checkpoints = solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/checkpoints'.format(self.write_suffix), max_writes=self.num_cp - 1, iter=self.dt_per_cp, mode='overwrite')
         checkpoints.add_tasks(solver.state, layout='g')
@@ -316,7 +306,8 @@ class OptimizationContext:
         self.old_grad.change_scales(1)
 
         self.gamma = gamma
-        self.old_x['g'] = self.ic['u']['g'].copy()
+        list(self.ic.items())[0][1].change_scales(1)
+        self.old_x['g'] = list(self.ic.items())[0][1]['g'].copy()
 
         if (self.loop_index == 0 or self.use_euler):
             self.deltaIC = self.backward_solver.state[0]

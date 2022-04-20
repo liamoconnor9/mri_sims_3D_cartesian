@@ -30,15 +30,16 @@ else:
     write_suffix = 'temp'
 T = 1.5
 num_cp = 1
-dt = 2.5e-4
+# dt = 2.5e-4
+dt = 0.001
 
-gamma = gamma_init = 2e-1
+gamma = gamma_init = 1e-1
 default_gamma = 0.025
 epsilon_safety = 0.4
 gamma_factor = 1.0
 show_forward = False
 cadence = 1
-opt_iters = 100
+opt_iters = 2
 
 # Bases
 Lx, Lz = 1, 2
@@ -91,7 +92,10 @@ n = 20
 mu = 4.1
 sig = 0.5
 guess = U['g'].copy()
-opt.ic['u']['g'] = 0.0
+opt.ic['u'].fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
+
+ex, ez = opt.coords.unit_vector_fields(opt.domain.dist)
+opt.ic['s'] = d3.dot(ex, opt.ic['u'])
 
 # Adjoint ic: -derivative of HT wrt u(T)
 backward_ic = {'u_t' : -HT.sym_diff(u)}
@@ -118,6 +122,14 @@ for i in range(opt_iters):
     opt.flow.add_property((np.dot(u, ez))**2, name='w2')
     opt.flow.add_property(np.dot(u, u), name='ke')
 
+    snapshots = opt.forward_solver.evaluator.add_file_handler(opt.run_dir + '/' + opt.write_suffix + '/snapshots/snapshots_loop' + str(opt.loop_index), sim_dt=0.01, max_writes=10, mode='overwrite')
+    u = opt.forward_solver.state[0]
+    s = opt.forward_solver.state[1]
+    p = opt.forward_solver.state[2]
+    snapshots.add_task(s, name='tracer')
+    snapshots.add_task(p, name='pressure')
+    snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
+
     opt.loop()
 
     if (opt.HT_norm <= 1e-10):
@@ -126,15 +138,10 @@ for i in range(opt_iters):
     
     if (opt.loop_index == 0):
         opt.grad_norm = 1.0
-        
-    gamma = opt.compute_gamma(epsilon_safety)
+        gamma = 1.0
+    else:
+        gamma = opt.HT_norm
 
-    # if (opt.loop_index > 1):
-    #     performance = opt.step_performance
-    #     if opt.loop_index == 5:
-    #         opt.set_time_domain(T, num_cp, opt.dt / 2.0)
-
-    # gamma = 0.1 * opt.grad_norm / opt.HT_norm
     opt.descend(gamma_init)
 
     if (gamma <= 1e-10):

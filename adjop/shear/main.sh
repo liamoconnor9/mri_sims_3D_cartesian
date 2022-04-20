@@ -21,7 +21,7 @@ cd ~/scratch/dedalus/mri/adjop/shear
 
 FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"
-SUFFIX="T1p5"
+SUFFIX="T1p5_rand"
 # SUFFIX="T3_N512_LOOP30_INTER"
 MPIPROC=64
 mkdir $SUFFIX

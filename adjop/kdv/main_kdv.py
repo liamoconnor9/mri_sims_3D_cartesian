@@ -22,7 +22,7 @@ import BackwardKDV
 import matplotlib.pyplot as plt
 
 errors = []
-methods = ['PR', 'euler']
+methods = ['euler']
 for method in methods:
     T = 5.0
     num_cp = 1
@@ -133,15 +133,6 @@ for method in methods:
     # soln = 1*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     # approx = opt.ic['u']['g'].flatten()
     errors.append(HT_norms)
-
-for run in range(len(methods)):
-    plt.plot(indices, errors[run], linewidth=2, label=methods[run])
-plt.legend()
-plt.yscale('log')
-plt.ylabel('Error')
-plt.xlabel('Loop Index')
-plt.savefig(path + '/errors_kdv.png')
-    # plt.close()
 sys.exit()
 
 plt.plot(x, approx, label="Optimized IC")
