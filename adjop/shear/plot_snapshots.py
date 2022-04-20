@@ -11,12 +11,19 @@ from dedalus.extras import plot_tools
 
 def main(filename, start, count, output):
     """Save plot of specified tasks for given range of analysis writes."""
+    loop_substr_index = filename.find('loop')
+    # print(loop_substr_index)
+    for i in range(4, 0, -1):
+        # print(filename[loop_substr_index + 4:loop_substr_index + 4 + i])
+        if filename[loop_substr_index + 4:loop_substr_index + 4 + i].isdigit():
+            loop_ind = int(filename[loop_substr_index + 4:loop_substr_index + 4 + i])
+            break
 
     # Plot settings
     tasks = ['tracer', 'pressure', 'vorticity']
     scale = 3
     dpi = 200
-    title_func = lambda sim_time: 't = {:.3f}'.format(sim_time)
+    title_func = lambda loop_index, sim_time: 'loop index = {}; t = {:.3f}'.format(loop_index, sim_time)
     savename_func = lambda write: 'write_{:06}.png'.format(write)
     # Layout
     nrows, ncols = 1, 3
@@ -38,7 +45,7 @@ def main(filename, start, count, output):
                 dset = file['tasks'][task]
                 plot_tools.plot_bot_3d(dset, 0, index, axes=axes, title=task, even_scale=True, visible_axes=False)
             # Add time title
-            title = title_func(file['scales/sim_time'][index])
+            title = title_func(loop_ind, file['scales/sim_time'][index])
             title_height = 1 - 0.5 * mfig.margin.top / mfig.fig.y
             fig.suptitle(title, x=0.45, y=title_height, ha='left')
             # Save figure
@@ -58,14 +65,24 @@ if __name__ == "__main__":
     from dedalus.tools.parallel import Sync
     import glob, os
 
-    files_lst = []
-    for file in glob.glob("snapshots/*.h5"):
-        files_lst.append(path + '/' + str(file))
+    if len(sys.argv) > 1:
+        write_suffix = sys.argv[1]
+    else:
+        write_suffix = 'temp'
 
-    output_path = pathlib.Path(path + '/frames').absolute()
-    # Create output directory if needed
-    with Sync() as sync:
-        if sync.comm.rank == 0:
-            if not output_path.exists():
-                output_path.mkdir()
-    post.visit_writes(files_lst, main, output=output_path)
+    for dir in os.listdir(path + '/' + write_suffix + '/snapshots'):
+    # for dir in glob.glob(write_suffix + "/snapshots/"):
+        full_dir = path + '/' + write_suffix + '/snapshots/' + dir
+        files_lst = []
+        
+        for file in glob.glob(full_dir + "/*.h5"):
+            files_lst.append(str(file))
+        output_dir = full_dir.replace('snapshots', 'frames')
+        
+        output_path = pathlib.Path(output_dir).absolute()
+        # Create output directory if needed
+        with Sync() as sync:
+            if sync.comm.rank == 0:
+                if not output_path.exists():
+                    output_path.mkdir()
+        post.visit_writes(files_lst, main, output=output_path)

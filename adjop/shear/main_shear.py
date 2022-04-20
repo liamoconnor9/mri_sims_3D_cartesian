@@ -24,15 +24,21 @@ import matplotlib.pyplot as plt
 # keys are forward variables
 # items are (backward variables, adjoint initial condition function: i.e. ux(T) = func(ux_t(T)))
 
-T = 20
+if len(sys.argv) > 1:
+    write_suffix = sys.argv[1]
+else:
+    write_suffix = 'temp'
+T = 1.5
 num_cp = 1
-dt = 1.25e-3
+dt = 2.5e-4
 
-gamma = gamma_init = 5e-2
+gamma = gamma_init = 2e-1
+default_gamma = 0.025
+epsilon_safety = 0.4
 gamma_factor = 1.0
 show_forward = False
 cadence = 1
-opt_iters = 200
+opt_iters = 100
 
 # Bases
 Lx, Lz = 1, 2
@@ -51,17 +57,17 @@ x, z = dist.local_grids(bases[0], bases[1])
 domain = domain.Domain(dist, bases)
 dist = domain.dist
 
-Reynolds = 5e4
+Reynolds = 1e4
 forward_problem = ForwardShear.build_problem(domain, coords, Reynolds)
 backward_problem = BackwardShear.build_problem(domain, coords, Reynolds)
 
 # Names of the forward, and corresponding adjoint variables
-lagrangian_dict = {'u' : 'u_t'}
+u = forward_problem.variables[0]
+u_t = backward_problem.variables[0]
+lagrangian_dict = {u : u_t}
 
-forward_solver = forward_problem.build_solver(d3.RK222)
-backward_solver = backward_problem.build_solver(d3.RK222)
-
-write_suffix = 'kdv0'
+forward_solver = forward_problem.build_solver(d3.RK443)
+backward_solver = backward_problem.build_solver(d3.SBDF4)
 
 u = next(field for field in forward_solver.state if field.name == 'u')
 U = dist.VectorField(coords, name='U', bases=bases)
@@ -73,46 +79,46 @@ with h5py.File(end_state_path) as f:
     logger.info('looding end state {}: t = {}'.format(end_state_path, f['scales/sim_time'][-1]))
 
 # Late time objective: HT is maximized at t = T
-HT = (u - U)**2
+HT = 0.5*(u - U)**2
 
 HTS = []
 nannorm_count = 0
 opt = OptimizationContext(domain, coords, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
 opt.set_time_domain(T, num_cp, dt)
+opt.use_euler = True
 
 n = 20
 mu = 4.1
 sig = 0.5
-guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-
-# guess = ic.copy()
-# opt.ic['u']['g'][1] = 0.0
-
-z_center = 0.49
-# opt.ic['u']['g'][0] = 1/2 + 1/2 * (np.tanh((z-z_center)/0.1) - np.tanh((z+z_center)/0.1))
-# opt.ic['u']['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-z_center)**2/0.01)
-# opt.ic['u']['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+z_center)**2/0.01)
+guess = U['g'].copy()
+opt.ic['u']['g'] = 0.0
 
 # Adjoint ic: -derivative of HT wrt u(T)
-backward_ic = {'u_t' : (U - u)}
+backward_ic = {'u_t' : -HT.sym_diff(u)}
 opt.backward_ic = backward_ic
 opt.HT = HT
-opt.build_var_hotel()
 
 indices = []
 HT_norms = []
 dt_reduce_index = 0
+# opt.add_handler(snapshots)
 
 from datetime import datetime
 startTime = datetime.now()
+u = opt.forward_solver.state[0]
+
 for i in range(opt_iters):
 
-    if (opt.loop_index % 10 == 8):
-        linearity = opt.richardson_gamma(gamma)
-        addendum_str = "linearity = {}; ".format(linearity)
-    else:
-        opt.loop()
-        addendum_str = ''
+    # if (opt.loop_index % 10 == 8):
+    #     linearity = opt.richardson_gamma(gamma)
+    #     addendum_str = "linearity = {}; ".format(linearity)
+    # else:
+    opt.flow = d3.GlobalFlowProperty(opt.forward_solver, cadence=10)
+    ex, ez = opt.coords.unit_vector_fields(opt.domain.dist)
+    opt.flow.add_property((np.dot(u, ez))**2, name='w2')
+    opt.flow.add_property(np.dot(u, u), name='ke')
+
+    opt.loop()
 
     if (opt.HT_norm <= 1e-10):
         logger.info('Breaking optimization loop: error within tolerance. HT_norm = {}'.format(opt.HT_norm))
@@ -121,16 +127,15 @@ for i in range(opt_iters):
     if (opt.loop_index == 0):
         opt.grad_norm = 1.0
         
-    gamma = gamma_init / opt.grad_norm
+    gamma = opt.compute_gamma(epsilon_safety)
 
     # if (opt.loop_index > 1):
     #     performance = opt.step_performance
-    #     if performance > 0.95:
-    #         gamma *= gamma_factor
-    #     elif performance < 0.8:
-    #         # gamma *= 1 / 10.0
+    #     if opt.loop_index == 5:
+    #         opt.set_time_domain(T, num_cp, opt.dt / 2.0)
 
-    opt.descend(gamma, addendum_str=addendum_str)
+    # gamma = 0.1 * opt.grad_norm / opt.HT_norm
+    opt.descend(gamma_init)
 
     if (gamma <= 1e-10):
         logger.info('Breaking optimization loop: gamma is negligible - increase resolution? gamma = {}'.format(gamma))

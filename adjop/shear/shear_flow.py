@@ -33,12 +33,12 @@ CW = MPI.COMM_WORLD
 # Parameters
 Lx, Lz = 1, 2
 Nx, Nz = 256, 512
-Reynolds = 5e4
+Reynolds = 1e4
 Schmidt = 1
 dealias = 3/2
-stop_sim_time = 20.0
+stop_sim_time = 1.5
 timestepper = d3.RK222
-max_timestep = 1e-2
+max_timestep = 1e-4
 dtype = np.float64
 
 # Bases

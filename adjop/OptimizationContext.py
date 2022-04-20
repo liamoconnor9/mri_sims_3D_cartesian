@@ -7,7 +7,7 @@ import dedalus.public as d3
 from mpi4py import MPI
 CW = MPI.COMM_WORLD
 import matplotlib.pyplot as plt
-
+import inspect
 import logging
 logging.getLogger('solvers').setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,9 +27,11 @@ class OptimizationContext:
         self.write_suffix = write_suffix
         
         self.path = os.path.dirname(os.path.abspath(__file__))
+        self.run_dir = os.path.dirname(os.path.abspath(inspect.getmodule(inspect.stack()[1][0]).__file__))
+
         self.ic = OrderedDict()
-        for var_name in lagrangian_dict.keys():
-            self.ic[var_name] = self.domain.dist.VectorField(coords, bases=domain.bases)
+        for var in lagrangian_dict.keys():
+            self.ic[var.name] = self.domain.dist.VectorField(coords, bases=domain.bases)
         self.backward_ic = OrderedDict()
 
         self.loop_index = 0
@@ -70,6 +72,7 @@ class OptimizationContext:
             sys.exit()
         self.dt_per_cp = int(self.dT / dt)
         self.dt_per_loop = int(T / dt)
+        self.build_var_hotel()
 
     # Hotel stores the forward variables, at each timestep, in memory to inform adjoint solve
     def build_var_hotel(self):
@@ -78,18 +81,28 @@ class OptimizationContext:
         grid_shape = self.ic['u']['g'].shape
         grid_time_shape = (self.dt_per_cp,) + grid_shape
         for var in self.forward_problem.variables:
-            if (var.name in self.lagrangian_dict.keys()):
+            if (var in self.lagrangian_dict.keys()):
                 self.hotel[var.name] = np.zeros(grid_time_shape)
+
 
     def loop(self): # move to main
         
         # Grab before fields are evolved (old state)
+        self.old_grad.change_scales(1)
+        self.backward_solver.state[0].change_scales(1)
         self.old_grad['g'] = self.backward_solver.state[0]['g'].copy()
 
         self.set_forward_ic()
-        
-        # Nothing happens here if self.num_cp = 1
+
+        if (self.loop_index == 0):
+            solver = self.forward_solver
+            self.handler_storage = solver.evaluator.handlers
+            solver.evaluator.handlers = []            
+
+        # self.resume_forward_handlers()
         self.solve_forward_full()
+        # self.pause_forward_handlers()
+
         self.forward_solver.evaluator.handlers.clear()
         
         # self.solve_forward()
@@ -103,10 +116,20 @@ class OptimizationContext:
             self.solve_backward()
 
 
+        self.evaluate_state_0()
         # Evaluate after fields are evolved (new state)
         self.backward_solver.state[0].change_scales(1)
         self.new_grad.change_scales(1)
         self.new_grad['g'] = self.backward_solver.state[0]['g'].copy()
+
+    def pause_forward_handlers(self):
+        solver = self.forward_solver
+        self.handler_storage = solver.evaluator.handlers
+        solver.evaluator.handlers = []
+
+    def resume_forward_handlers(self):
+        solver = self.forward_solver
+        solver.evaluator.handlers = self.handler_storage
 
     # Set starting point for loop
     def set_forward_ic(self):
@@ -120,16 +143,27 @@ class OptimizationContext:
                 var['g'] = self.ic[var.name]['g']
 
     def solve_forward_full(self):
-        
-        self.forward_solver.iteration = 0
-        self.forward_solver.stop_sim_time = self.T
 
-        checkpoints = self.forward_solver.evaluator.add_file_handler(self.path + '/checkpoints_{}'.format(self.write_suffix), max_writes=self.num_cp - 1, iter=self.dt_per_cp, mode='overwrite')
-        checkpoints.add_tasks(self.forward_solver.state, layout='g')
+        solver = self.forward_solver
+        solver.iteration = 0
+        solver.stop_sim_time = self.T
+
+        u = solver.state[0]
+
+        snapshots = self.forward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/snapshots_loop' + str(self.loop_index), sim_dt=0.01, max_writes=10, mode='overwrite')
+        u = self.forward_solver.state[0]
+        s = self.forward_solver.state[1]
+        p = self.forward_solver.state[2]
+        snapshots.add_task(s, name='tracer')
+        snapshots.add_task(p, name='pressure')
+        snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
+
+        checkpoints = solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/checkpoints'.format(self.write_suffix), max_writes=self.num_cp - 1, iter=self.dt_per_cp, mode='overwrite')
+        checkpoints.add_tasks(solver.state, layout='g')
 
         # Main loop
         if (self.show):
-            u = self.forward_solver.state[0]
+            u = solver.state[0]
             u.change_scales(1)
             fig = plt.figure()
             p, = plt.plot(self.x, u['g'])
@@ -140,9 +174,9 @@ class OptimizationContext:
             logger.debug('Starting forward solve')
             for t_ind in range(self.dt_per_loop):
 
-                self.forward_solver.step(self.dt)
+                solver.step(self.dt)
                 if (t_ind >= self.dt_per_loop - self.dt_per_cp):
-                    for var in self.forward_solver.state:
+                    for var in solver.state:
                         if (var.name in self.hotel.keys()):
                             var.change_scales(1)
                             self.hotel[var.name][t_ind - (self.dt_per_loop - self.dt_per_cp)] = var['g'].copy()
@@ -152,7 +186,12 @@ class OptimizationContext:
                     p.set_ydata(u['g'])
                     plt.pause(5e-3)
                     fig.canvas.draw()
-                    logger.debug('Full Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
+                # max_w = np.sqrt(self.flow.max('w2'))
+                # if (np.isnan(max_w)):
+                #     logger.info('Full Forward solver: sim_time = {}; max vort = {}'.format(solver.sim_time, max_w))
+                #     sys.exit()
+                # elif(t_ind % self.show_cadence == 0):
+                #     logger.info('Full Forward solver: sim_time = {}; max vort = {}'.format(solver.sim_time, max_w))
 
         except:
             logger.error('Exception raised in forward solve, triggering end of main loop.')
@@ -188,7 +227,7 @@ class OptimizationContext:
         # flip dictionary s.t. keys are backward var names and items are forward var names
         flipped_ld = dict((backward_var, forward_var) for forward_var, backward_var in self.lagrangian_dict.items())
         for backward_field in self.backward_solver.state:
-            if (backward_field.name in flipped_ld.keys()):
+            if (backward_field in flipped_ld.keys()):
                 field = self.backward_ic[backward_field.name].evaluate()
                 field.change_scales(1)
                 backward_field.change_scales(1)
@@ -214,7 +253,6 @@ class OptimizationContext:
 
     def evaluate_state_T(self):
 
-        grad_mag = (d3.Integrate((self.new_grad**2))**(0.5)).evaluate()
         HT_norm = d3.Integrate(self.HT).evaluate()
 
         if (self.loop_index > 0):
@@ -223,13 +261,10 @@ class OptimizationContext:
 
         if (CW.rank == 0):
             self.HT_norm = HT_norm['g'].flat[0]
-            self.grad_norm = grad_mag['g'].flat[0]
         else:
             self.HT_norm = 0.0
-            self.grad_norm = 0.0
 
         self.HT_norm = CW.bcast(self.HT_norm, root=0)
-        self.grad_norm = CW.bcast(self.grad_norm, root=0)
 
         if (np.isnan(self.HT_norm)):
             logger.error("NaN HT norm: exiting...")
@@ -237,6 +272,19 @@ class OptimizationContext:
 
         if (self.loop_index > 0):
             self.step_performance = (old_HT_norm - self.HT_norm) / (self.grad_norm**2 * gamma)
+        return
+
+    def evaluate_state_0(self):
+
+        grad_mag = (d3.Integrate((self.new_grad**2))**(0.5)).evaluate()
+
+        if (CW.rank == 0):
+            self.grad_norm = grad_mag['g'].flat[0]
+        else:
+            self.grad_norm = 0.0
+
+        self.grad_norm = CW.bcast(self.grad_norm, root=0)
+
         return
    
    # This is work really well for periodic kdv
@@ -247,7 +295,14 @@ class OptimizationContext:
             # https://en.wikipedia.org/wiki/Gradient_descent
             grad_diff = self.new_grad - self.old_grad
             x_diff = self.new_x - self.old_x
-            return epsilon_safety * np.abs(d3.Integrate(x_diff * grad_diff).evaluate()['g'].flat[0]) / (d3.Integrate(grad_diff * grad_diff).evaluate()['g'].flat[0])
+            integ1 = d3.Integrate(x_diff * grad_diff).evaluate()
+            integ2 = d3.Integrate(grad_diff * grad_diff).evaluate()
+            if (CW.rank == 0):
+                gamma = epsilon_safety * np.abs(integ1['g'].flat[0]) / (integ2['g'].flat[0])
+            else:
+                gamma = 0.0
+            gamma = CW.bcast(gamma, root=0)
+            return gamma
 
 
     def descend(self, gamma, **kwargs):
@@ -264,20 +319,53 @@ class OptimizationContext:
         self.old_x['g'] = self.ic['u']['g'].copy()
 
         if (self.loop_index == 0 or self.use_euler):
-            deltaIC = gamma * self.backward_solver.state[0]['g'].copy()
+            self.deltaIC = self.backward_solver.state[0]
         
         else:
-            #Todo: implement conjugate gradient schemes: https://en.wikipedia.org/wiki/Nonlinear_conjugate_gradient_method
 
             # 2nd-order Adams Bashforth (nonuniform step)
             # this doesn't work so well
             h0 = self.old_gamma
             h1 = gamma
-            y0prime = self.old_grad['g'].copy()
-            y1prime = self.new_grad['g'].copy()
-            deltaIC = (h1 + h1**2 / 2 / h0) * y1prime - h1**2 / 2 / h0 * y0prime
+            y0prime = self.old_grad
+            y1prime = self.new_grad
+            # deltaIC = (h1 + h1**2 / 2 / h0) * y1prime - h1**2 / 2 / h0 * y0prime
 
-        self.ic['u']['g'] = self.ic['u']['g'].copy() + deltaIC
+            #conjugate gradient schemes: https://en.wikipedia.org/wiki/Nonlinear_conjugate_gradient_method
+            if (self.beta_calc == 'FR'): # Fletcher-Reeves
+                num = d3.Integrate(y1prime * y1prime).evaluate()
+                den = d3.Integrate(y0prime * y0prime).evaluate()
+
+            elif(self.beta_calc == 'PR'): # Polak-Ribiere
+                num = d3.Integrate(y1prime * (y1prime - y0prime)).evaluate()
+                den = d3.Integrate(y0prime * y0prime).evaluate()
+
+            elif (self.beta_calc == 'HS'): # Hestenes-Stiefel
+                num = d3.Integrate(y1prime * (y1prime - y0prime)).evaluate()
+                den = d3.Integrate(-self.deltaIC * (y1prime - y0prime)).evaluate()
+
+            elif (self.beta_calc == 'DY'): # Dai-Yuan
+                num = d3.Integrate(y1prime * (y1prime - y0prime)).evaluate()
+                den = d3.Integrate(-self.deltaIC * (y1prime - y0prime)).evaluate()
+
+            else: # Default Euler
+                num = d3.Integrate(y1prime * (y1prime - y0prime)).evaluate()
+                den = d3.Integrate(y0prime * y0prime).evaluate()
+
+            if (CW.rank == 0):
+                beta = num['g'].flat[0] / den['g'].flat[0]
+            else:
+                beta = 0.0
+            beta = CW.bcast(beta, root=0)
+            if (self.beta_calc == 'euler'):
+                beta = 0.0
+            self.deltaIC.change_scales(1)
+            y1prime.change_scales(1)
+            self.deltaIC['g'] = (y1prime + beta * self.deltaIC).evaluate()['g']
+            self.ic['u'].change_scales(1)
+            self.deltaIC.change_scales(1)
+
+        self.ic['u']['g'] = self.ic['u']['g'].copy() + gamma * self.deltaIC['g']
         self.new_x['g'] = self.ic['u']['g'].copy()
 
         statement = 'loop index = %i; ' %self.loop_index
@@ -317,9 +405,13 @@ class OptimizationContext:
 
 
     def update_timestep(self, dt):
-        if (self.dT / dt != int(self.dT / dt)):
-            logger.error("number of timesteps not divisible by number of checkpoints. cannot update dt...")
-            return
         self.dt = dt
+        if (self.dT / dt != int(self.dT / dt)):
+            logger.error("number of timesteps not divisible by number of checkpoints. Exiting...")
+            sys.exit()
+        if (self.T / dt != int(self.T / dt)):
+            logger.error("Run period not divisible by timestep (we're using uniform timesteps). Exiting...")
+            sys.exit()
         self.dt_per_cp = int(self.dT // dt)
+        self.dt_per_loop = int(self.T / dt)
         self.build_var_hotel()

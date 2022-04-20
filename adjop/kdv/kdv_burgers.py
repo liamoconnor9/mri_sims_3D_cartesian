@@ -21,7 +21,7 @@ a = 0.01
 b = 0.2
 dealias = 3/2
 dtype = np.float64
-stop_sim_time = 3.0
+stop_sim_time = 10.0
 
 periodic = True
 timestepper = d3.SBDF2
