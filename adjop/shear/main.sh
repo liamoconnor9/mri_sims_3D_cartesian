@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
 #PBS -l select=2:ncpus=40:mpiprocs=40:model=sky_ele
-#PBS -l walltime=2:00:00
+#PBS -l walltime=4:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -21,8 +21,8 @@ cd ~/scratch/dedalus/mri/adjop/shear
 
 FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"
-SUFFIX="temp"
-MPIPROC=64
+SUFFIX="closeIC_T10"
+MPIPROC=32
 
 mkdir $SUFFIX
 mkdir $SUFFIX/snapshots
@@ -32,8 +32,8 @@ mkdir $SUFFIX/frames_backward
 mkdir $SUFFIX/movies
 
 # mpiexec_mpt -np $MPIPROC python3 shear_flow.py
-mpiexec_mpt -np $MPIPROC python3 main_shear.py $SUFFIX
-exit 1
+# mpiexec_mpt -np $MPIPROC python3 shear_cg.py $SUFFIX
+# exit 1
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots frames
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_backward frames_backward
 

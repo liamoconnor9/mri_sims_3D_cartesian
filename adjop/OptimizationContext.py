@@ -87,8 +87,11 @@ class OptimizationContext:
             if (var in self.lagrangian_dict.keys()):
                 self.hotel[var.name] = np.zeros(grid_time_shape)
 
-
     def loop(self): # move to main
+        self.loop_forward()
+        self.loop_backward()
+
+    def loop_forward(self):
         
         # Grab before fields are evolved (old state)
         self.old_grad.change_scales(1)
@@ -105,6 +108,9 @@ class OptimizationContext:
         
         # self.solve_forward()
         self.evaluate_state_T()
+
+    def loop_backward(self):
+
         self.set_backward_ic()
         self.solve_backward()
 
@@ -120,6 +126,7 @@ class OptimizationContext:
         self.new_grad.change_scales(1)
         self.new_grad['g'] = self.backward_solver.state[0]['g'].copy()
         self.evaluate_state_0()
+        
 
     def pause_forward_handlers(self):
         solver = self.forward_solver
@@ -249,7 +256,7 @@ class OptimizationContext:
 
         if (self.loop_index > 0):
             old_HT_norm = self.HT_norm
-            gamma = self.gamma
+            gamma = self.gamma = 1
 
         if (CW.rank == 0):
             self.HT_norm = HT_norm['g'].flat[0]
@@ -311,53 +318,7 @@ class OptimizationContext:
         list(self.ic.items())[0][1].change_scales(1)
         self.old_x['g'] = list(self.ic.items())[0][1]['g'].copy()
 
-        if (self.loop_index == 0 or self.use_euler):
-            self.deltaIC = self.backward_solver.state[0]
-        
-        else:
-
-            # 2nd-order Adams Bashforth (nonuniform step)
-            # this doesn't work so well
-            h0 = self.old_gamma
-            h1 = gamma
-            y0prime = self.old_grad
-            y1prime = self.new_grad
-            # deltaIC = (h1 + h1**2 / 2 / h0) * y1prime - h1**2 / 2 / h0 * y0prime
-
-            #conjugate gradient schemes: https://en.wikipedia.org/wiki/Nonlinear_conjugate_gradient_method
-            if (self.beta_calc == 'FR'): # Fletcher-Reeves
-                num = d3.Integrate(y1prime * y1prime).evaluate()
-                den = d3.Integrate(y0prime * y0prime).evaluate()
-
-            elif(self.beta_calc == 'PR'): # Polak-Ribiere
-                num = d3.Integrate(y1prime * (y1prime - y0prime)).evaluate()
-                den = d3.Integrate(y0prime * y0prime).evaluate()
-
-            elif (self.beta_calc == 'HS'): # Hestenes-Stiefel
-                num = d3.Integrate(y1prime * (y1prime - y0prime)).evaluate()
-                den = d3.Integrate(-self.deltaIC * (y1prime - y0prime)).evaluate()
-
-            elif (self.beta_calc == 'DY'): # Dai-Yuan
-                num = d3.Integrate(y1prime * (y1prime - y0prime)).evaluate()
-                den = d3.Integrate(-self.deltaIC * (y1prime - y0prime)).evaluate()
-
-            else: # Default Euler
-                num = d3.Integrate(y1prime * (y1prime - y0prime)).evaluate()
-                den = d3.Integrate(y0prime * y0prime).evaluate()
-
-            if (CW.rank == 0):
-                beta = num['g'].flat[0] / den['g'].flat[0]
-            else:
-                beta = 0.0
-            beta = CW.bcast(beta, root=0)
-            if (self.beta_calc == 'euler'):
-                beta = 1.0
-            beta = 5.0
-            self.deltaIC.change_scales(1)
-            y1prime.change_scales(1)
-            self.deltaIC['g'] = (y1prime + beta * self.deltaIC).evaluate()['g']
-            self.ic['u'].change_scales(1)
-            self.deltaIC.change_scales(1)
+        self.deltaIC = self.backward_solver.state[0]
 
         self.ic['u']['g'] = self.ic['u']['g'].copy() + gamma * self.deltaIC['g']
         self.new_x['g'] = self.ic['u']['g'].copy()
@@ -374,29 +335,6 @@ class OptimizationContext:
 
         self.indices.append(self.loop_index)
         self.HT_norms.append(self.HT_norm)
-
-        self.old_gamma = gamma
-
-    def richardson_gamma(self, gamma):
-
-        # logger.info("Performing Richardson extrapolation to measure gradient magnitude linearity...")
-        self.loop()
-        HT_norm_og = self.HT_norm
-
-        # Richardson loop 1: descend IC by a small amount and repeat.
-        self.descend(gamma)
-        self.loop()
-        delta_HT1 = HT_norm_og - self.HT_norm
-
-        # Richardson loop 2: repeating...
-        self.descend(gamma)
-        self.loop()
-        delta_HT2 = HT_norm_og - self.HT_norm
-
-        # We expect, for sufficiently small gamma, the objective (HT_norm) to change by an equal amount both times
-        linearity = delta_HT2 / delta_HT1 / 2.0
-        return linearity
-
 
     def update_timestep(self, dt):
         self.dt = dt

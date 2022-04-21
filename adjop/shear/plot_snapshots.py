@@ -20,13 +20,13 @@ def main(filename, start, count, output):
             break
 
     # Plot settings
-    tasks = ['tracer', 'pressure', 'vorticity']
+    tasks = ['tracer', 'pressure', 'vorticity', 'ux', 'uz']
     scale = 3
     dpi = 200
     title_func = lambda loop_index, sim_time: 'loop index = {}; t = {:.3f}'.format(loop_index, sim_time)
     savename_func = lambda write: 'write_{:06}.png'.format(write)
     # Layout
-    nrows, ncols = 1, 3
+    nrows, ncols = 1, len(tasks)
     image = plot_tools.Box(1, 2)
     pad = plot_tools.Frame(0.2, 0, 0, 0)
     margin = plot_tools.Frame(0.2, 0.1, 0, 0)
