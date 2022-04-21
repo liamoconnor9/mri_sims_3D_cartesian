@@ -70,14 +70,18 @@ if __name__ == "__main__":
     else:
         write_suffix = 'temp'
 
-    for dir in os.listdir(path + '/' + write_suffix + '/snapshots'):
-    # for dir in glob.glob(write_suffix + "/snapshots/"):
-        full_dir = path + '/' + write_suffix + '/snapshots/' + dir
+    if len(sys.argv) > 3:
+        sh_dir, fr_dir = sys.argv[2], sys.argv[3]
+    else:
+        sh_dir, fr_dir = 'snapshots', 'frames'
+
+    for dir in os.listdir(path + '/' + write_suffix + '/' + sh_dir):
+        full_dir = path + '/' + write_suffix + '/' + sh_dir + '/' + dir
         files_lst = []
         
         for file in glob.glob(full_dir + "/*.h5"):
             files_lst.append(str(file))
-        output_dir = full_dir.replace('snapshots', 'frames')
+        output_dir = full_dir.replace(sh_dir, fr_dir)
         
         output_path = pathlib.Path(output_dir).absolute()
         # Create output directory if needed

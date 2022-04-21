@@ -21,19 +21,27 @@ cd ~/scratch/dedalus/mri/adjop/shear
 
 FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"
-SUFFIX="T1p5_rand"
-# SUFFIX="T3_N512_LOOP30_INTER"
+SUFFIX="temp"
 MPIPROC=64
+
 mkdir $SUFFIX
 mkdir $SUFFIX/snapshots
+mkdir $SUFFIX/snapshots_backward
 mkdir $SUFFIX/frames
+mkdir $SUFFIX/frames_backward
 mkdir $SUFFIX/movies
 
 # mpiexec_mpt -np $MPIPROC python3 shear_flow.py
 mpiexec_mpt -np $MPIPROC python3 main_shear.py $SUFFIX
-mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX
+exit 1
+mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots frames
+mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_backward frames_backward
 
 for d in $SUFFIX/frames/*/ ; do
+    MOVIE_NAME="$(basename $d)"
+    png2mp4 $d $SUFFIX/movies/$MOVIE_NAME.mp4 60
+done
+for d in $SUFFIX/frames_backward/*/ ; do
     MOVIE_NAME="$(basename $d)"
     png2mp4 $d $SUFFIX/movies/$MOVIE_NAME.mp4 60
 done

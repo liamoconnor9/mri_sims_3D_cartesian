@@ -113,6 +113,7 @@ class OptimizationContext:
             self.solve_forward()
             self.solve_backward()
 
+        self.backward_solver.evaluator.handlers.clear()
 
         # Evaluate after fields are evolved (new state)
         self.backward_solver.state[0].change_scales(1)
@@ -217,11 +218,12 @@ class OptimizationContext:
         # flip dictionary s.t. keys are backward var names and items are forward var names
         flipped_ld = dict((backward_var, forward_var) for forward_var, backward_var in self.lagrangian_dict.items())
         for backward_field in self.backward_solver.state:
-            if (backward_field in flipped_ld.keys()):
+            if (backward_field in flipped_ld.keys() or backward_field.name in self.backward_ic):
                 field = self.backward_ic[backward_field.name].evaluate()
                 field.change_scales(1)
                 backward_field.change_scales(1)
                 backward_field['g'] = field['g'].copy()
+
         return
 
     def solve_backward(self):
@@ -277,7 +279,7 @@ class OptimizationContext:
 
         return
    
-   # This is work really well for periodic kdv
+   # This works really well for periodic kdv
     def compute_gamma(self, epsilon_safety):
         if (self.loop_index == 0):
             return 1e-3
@@ -349,7 +351,8 @@ class OptimizationContext:
                 beta = 0.0
             beta = CW.bcast(beta, root=0)
             if (self.beta_calc == 'euler'):
-                beta = 0.0
+                beta = 1.0
+            beta = 5.0
             self.deltaIC.change_scales(1)
             y1prime.change_scales(1)
             self.deltaIC['g'] = (y1prime + beta * self.deltaIC).evaluate()['g']

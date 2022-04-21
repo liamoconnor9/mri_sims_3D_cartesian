@@ -28,18 +28,18 @@ if len(sys.argv) > 1:
     write_suffix = sys.argv[1]
 else:
     write_suffix = 'temp'
-T = 1.5
+T = 1.0
 num_cp = 1
 # dt = 2.5e-4
 dt = 0.001
 
 gamma = gamma_init = 1e-1
 default_gamma = 0.025
-epsilon_safety = 0.4
+gamma_safety = 0.1
 gamma_factor = 1.0
 show_forward = False
 cadence = 1
-opt_iters = 2
+opt_iters = 300
 
 # Bases
 Lx, Lz = 1, 2
@@ -79,8 +79,10 @@ with h5py.File(end_state_path) as f:
     U['g'] = f['tasks/u'][-1, :, :][:, slices[0], slices[1]]
     logger.info('looding end state {}: t = {}'.format(end_state_path, f['scales/sim_time'][-1]))
 
-# Late time objective: HT is maximized at t = T
-HT = 0.5*(u - U)**2
+# Late time objective: HT is minimized at t = T
+HT = 0.5*(d3.dot(u - U, u - U))
+# print(HT.evaluate()['g'].shape)
+# sys.exit()
 
 HTS = []
 nannorm_count = 0
@@ -92,14 +94,16 @@ n = 20
 mu = 4.1
 sig = 0.5
 guess = U['g'].copy()
-opt.ic['u'].fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
-
+# opt.ic['u'].fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
+opt.ic['u']['g'] = 0.0
 ex, ez = opt.coords.unit_vector_fields(opt.domain.dist)
 opt.ic['s'] = d3.dot(ex, opt.ic['u'])
 
 # Adjoint ic: -derivative of HT wrt u(T)
-backward_ic = {'u_t' : -HT.sym_diff(u)}
+# backward_ic = {'u_t' : -HT.sym_diff(u)}
+backward_ic = {'u_t' : -(u - U)}
 opt.backward_ic = backward_ic
+backward_ic['s_t'] = d3.dot(ex, opt.backward_ic['u_t'])
 opt.HT = HT
 
 indices = []
@@ -130,6 +134,14 @@ for i in range(opt_iters):
     snapshots.add_task(p, name='pressure')
     snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
 
+    snapshots_backward = opt.backward_solver.evaluator.add_file_handler(opt.run_dir + '/' + opt.write_suffix + '/snapshots_backward/snapshots_backward_loop' + str(opt.loop_index), sim_dt=-0.01, max_writes=10, mode='overwrite')
+    u_t = opt.backward_solver.state[0]
+    s_t = opt.backward_solver.state[1]
+    p_t = opt.backward_solver.state[2]
+    snapshots_backward.add_task(s_t, name='tracer')
+    snapshots_backward.add_task(p_t, name='pressure')
+    snapshots_backward.add_task(-d3.div(d3.skew(u_t)), name='vorticity')
+
     opt.loop()
 
     if (opt.HT_norm <= 1e-10):
@@ -138,9 +150,10 @@ for i in range(opt_iters):
     
     if (opt.loop_index == 0):
         opt.grad_norm = 1.0
-        gamma = 1.0
-    else:
-        gamma = opt.HT_norm
+        # gamma = 1.0
+    # else:
+        # gamma = opt.compute_gamma(gamma_safety)
+
 
     opt.descend(gamma_init)
 
