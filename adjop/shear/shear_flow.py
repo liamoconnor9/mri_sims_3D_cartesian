@@ -14,9 +14,8 @@ Schmidt numbers as:
     nu = 1 / Reynolds
     D = nu / Schmidt
 
-To run and plot using e.g. 4 processes:
-    $ mpiexec -n 4 python3 shear_flow.py
-    $ mpiexec -n 4 python3 plot_snapshots.py snapshots/*.h5
+Usage:
+    shear_flow.py <config_file> <run_suffix>
 """
 
 import numpy as np
@@ -27,18 +26,39 @@ import os
 path = os.path.dirname(os.path.abspath(__file__))
 from mpi4py import MPI
 CW = MPI.COMM_WORLD
+import sys
+from docopt import docopt
+from pathlib import Path
+from configparser import ConfigParser
 
-# print(CW.rank)
+# if len(sys.argv) > 1:
+#     suffix = sys.argv[1]
+# else:
+#     suffix = ''
+
+args = docopt(__doc__)
+filename = Path(args['<config_file>'])
+suffix = args['<run_suffix>']
+
+config = ConfigParser()
+config.read(str(filename))
+
+logger.info('Running shear_flow.py with the following parameters:')
+logger.info(config.items('parameters'))
 
 # Parameters
-Lx, Lz = 1, 2
-Nx, Nz = 256, 512
-Reynolds = 1e4
+Lx = config.getfloat('parameters', 'Lx')
+Lz = config.getfloat('parameters', 'Lz')
+Nx = config.getint('parameters', 'Nx')
+Nz = config.getint('parameters', 'Nz')
+
+Reynolds = config.getfloat('parameters', 'Re')
+stop_sim_time = config.getfloat('parameters', 'T')
+max_timestep = config.getfloat('parameters', 'dt')
+
 Schmidt = 1
 dealias = 3/2
-stop_sim_time = 10.0
 timestepper = d3.RK222
-max_timestep = 1e-4
 dtype = np.float64
 
 # Bases
@@ -80,11 +100,14 @@ u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01)
 u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01)
 
 # Analysis
-snapshots = solver.evaluator.add_file_handler(path + '/snapshots', sim_dt=0.1, max_writes=1)
+snapshots = solver.evaluator.add_file_handler(path + '/' + suffix + '/snapshots_target', sim_dt=0.1, max_writes=1)
 snapshots.add_task(s, name='tracer')
 snapshots.add_task(p, name='pressure')
 snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
-checkpoints = solver.evaluator.add_file_handler(path + '/checkpoint_U', max_writes=2, sim_dt=stop_sim_time, mode='overwrite')
+snapshots.add_task(d3.dot(ex, u), name='ux')
+snapshots.add_task(d3.dot(ez, u), name='uz')
+
+checkpoints = solver.evaluator.add_file_handler(path + '/' + suffix + '/checkpoint_target', max_writes=2, sim_dt=stop_sim_time, mode='overwrite')
 checkpoints.add_tasks(solver.state, layout='g')
 
 # CFL

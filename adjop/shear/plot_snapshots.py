@@ -21,7 +21,7 @@ def main(filename, start, count, output):
 
     # Plot settings
     tasks = ['tracer', 'pressure', 'vorticity', 'ux', 'uz']
-    scale = 3
+    scale = 5
     dpi = 200
     title_func = lambda loop_index, sim_time: 'loop index = {}; t = {:.3f}'.format(loop_index, sim_time)
     savename_func = lambda write: 'write_{:06}.png'.format(write)

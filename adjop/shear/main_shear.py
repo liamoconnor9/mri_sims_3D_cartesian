@@ -74,7 +74,7 @@ u = next(field for field in forward_solver.state if field.name == 'u')
 U = dist.VectorField(coords, name='U', bases=bases)
 slices = dist.grid_layout.slices(domain, scales=1)
 
-end_state_path = path + '/checkpoint_U/checkpoint_U_s1.h5'
+end_state_path = path + '/' + write_suffix + '/checkpoint_target/checkpoint_target_s1.h5'
 with h5py.File(end_state_path) as f:
     U['g'] = f['tasks/u'][-1, :, :][:, slices[0], slices[1]]
     logger.info('looding end state {}: t = {}'.format(end_state_path, f['scales/sim_time'][-1]))
@@ -126,7 +126,7 @@ for i in range(opt_iters):
     opt.flow.add_property((np.dot(u, ez))**2, name='w2')
     opt.flow.add_property(np.dot(u, u), name='ke')
 
-    snapshots = opt.forward_solver.evaluator.add_file_handler(opt.run_dir + '/' + opt.write_suffix + '/snapshots/snapshots_loop' + str(opt.loop_index), sim_dt=0.01, max_writes=10, mode='overwrite')
+    snapshots = opt.forward_solver.evaluator.add_file_handler(opt.run_dir + '/' + opt.write_suffix + '/snapshots_forward/snapshots_loop' + str(opt.loop_index), sim_dt=0.01, max_writes=10, mode='overwrite')
     u = opt.forward_solver.state[0]
     s = opt.forward_solver.state[1]
     p = opt.forward_solver.state[2]

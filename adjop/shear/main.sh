@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
-#PBS -l select=2:ncpus=40:mpiprocs=40:model=sky_ele
-#PBS -l walltime=4:00:00
+#PBS -l select=1:ncpus=40:mpiprocs=40:model=sky_ele
+#PBS -l walltime=2:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -21,27 +21,34 @@ cd ~/scratch/dedalus/mri/adjop/shear
 
 FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"
-SUFFIX="closeIC_T10"
+CONFIG="shear_options.cfg"
+# SUFFIX="T1_coeff0ic_negbic_re1e4_N256"
+SUFFIX="temp"
 MPIPROC=32
 
 mkdir $SUFFIX
-mkdir $SUFFIX/snapshots
+mkdir $SUFFIX/snapshots_forward
 mkdir $SUFFIX/snapshots_backward
-mkdir $SUFFIX/frames
+mkdir $SUFFIX/frames_forward
 mkdir $SUFFIX/frames_backward
-mkdir $SUFFIX/movies
+mkdir $SUFFIX/frames_target
+mkdir $SUFFIX/movies_forward
+mkdir $SUFFIX/movies_backward
 
-# mpiexec_mpt -np $MPIPROC python3 shear_flow.py
-# mpiexec_mpt -np $MPIPROC python3 shear_cg.py $SUFFIX
-# exit 1
-mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots frames
+mpiexec_mpt -np $MPIPROC python3 shear_flow.py $CONFIG $SUFFIX
+mpiexec_mpt -np $MPIPROC python3 plot_snapshots_og.py $SUFFIX snapshots_target frames_target
+png2mp4 $SUFFIX/frames_target/ $SUFFIX/movie_target.mp4 60
+
+mpiexec_mpt -np $MPIPROC python3 shear_cg.py $CONFIG $SUFFIX
+mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_forward frames_forward
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_backward frames_backward
 
-for d in $SUFFIX/frames/*/ ; do
+for d in $SUFFIX/frames_forward/*/ ; do
     MOVIE_NAME="$(basename $d)"
-    png2mp4 $d $SUFFIX/movies/$MOVIE_NAME.mp4 60
+    png2mp4 $d $SUFFIX/movies_forward/$MOVIE_NAME.mp4 60
 done
 for d in $SUFFIX/frames_backward/*/ ; do
     MOVIE_NAME="$(basename $d)"
-    png2mp4 $d $SUFFIX/movies/$MOVIE_NAME.mp4 60
+    png2mp4 $d $SUFFIX/movies_backward/$MOVIE_NAME.mp4 60
 done
+exit 1

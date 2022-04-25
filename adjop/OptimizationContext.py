@@ -114,10 +114,10 @@ class OptimizationContext:
         self.set_backward_ic()
         self.solve_backward()
 
-        for i in range(1, self.num_cp):
-            self.forward_solver.load_state(self.path + '/checkpoints_' + self.write_suffix + '/checkpoints_kdv0_s1.h5', -i)
-            self.solve_forward()
-            self.solve_backward()
+        # for i in range(1, self.num_cp):
+        #     self.forward_solver.load_state(self.path + '/checkpoints_' + self.write_suffix + '/checkpoints_kdv0_s1.h5', -i)
+        #     self.solve_forward()
+        #     self.solve_backward()
 
         self.backward_solver.evaluator.handlers.clear()
 
@@ -139,8 +139,6 @@ class OptimizationContext:
 
     # Set starting point for loop
     def set_forward_ic(self):
-        # self.forward_solver = self.forward_problem.build_solver(self.timestepper) 
-
         self.forward_solver.sim_time = 0.0
         self.forward_solver.iteration = 0
         for var in self.forward_solver.state:
@@ -184,12 +182,6 @@ class OptimizationContext:
                     p.set_ydata(u['g'])
                     plt.pause(5e-3)
                     fig.canvas.draw()
-                # max_w = np.sqrt(self.flow.max('w2'))
-                # if (np.isnan(max_w)):
-                #     logger.info('Full Forward solver: sim_time = {}; max vort = {}'.format(solver.sim_time, max_w))
-                #     sys.exit()
-                # elif(t_ind % self.show_cadence == 0):
-                #     logger.info('Full Forward solver: sim_time = {}; max vort = {}'.format(solver.sim_time, max_w))
 
         except:
             logger.error('Exception raised in forward solve, triggering end of main loop.')
@@ -225,13 +217,24 @@ class OptimizationContext:
         # flip dictionary s.t. keys are backward var names and items are forward var names
         flipped_ld = dict((backward_var, forward_var) for forward_var, backward_var in self.lagrangian_dict.items())
         for backward_field in self.backward_solver.state:
-            if (backward_field in flipped_ld.keys() or backward_field.name in self.backward_ic):
+            if (backward_field.name in self.backward_ic.keys()):
                 field = self.backward_ic[backward_field.name].evaluate()
                 field.change_scales(1)
                 backward_field.change_scales(1)
-                backward_field['g'] = field['g'].copy()
+                # backward_field['g'] = field['g'].copy()
 
+                backic = ((self.forward_solver.state[0] - self.U)).evaluate()
+                backic.change_scales(1)
+                self.backward_solver.state[0].change_scales(1)
+                self.backward_solver.state[0]['g'] = backic['g'].copy()
+                # print('True!, rank = {}'.format(CW.rank))
+                # sys.exit()
+        z = self.z
+        self.backward_solver.state[1]['g'] = self.forward_solver.state[1]['g'].copy()
         return
+        # u_t = self.backward_solver.state[0]
+        # u = self.forward_solver.state[0]
+        # self.backward_solver.state[0] = (-(u - self.U)).evaluate()
 
     def solve_backward(self):
         try:
@@ -276,16 +279,20 @@ class OptimizationContext:
     def evaluate_state_0(self):
 
         grad_mag = (d3.Integrate((self.new_grad**2))**(0.5)).evaluate()
+        graddiff_mag = (d3.Integrate((self.old_grad*self.new_grad))**(0.5)).evaluate()
 
         if (CW.rank == 0):
             self.grad_norm = grad_mag['g'].flat[0]
+            self.graddiff_norm = graddiff_mag['g'].flat[0]
         else:
             self.grad_norm = 0.0
+            self.graddiff_norm = 0.0
 
         self.grad_norm = CW.bcast(self.grad_norm, root=0)
+        self.graddiff_norm = CW.bcast(self.graddiff_norm, root=0)
 
         return
-   
+
    # This works really well for periodic kdv
     def compute_gamma(self, epsilon_safety):
         if (self.loop_index == 0):
@@ -302,7 +309,6 @@ class OptimizationContext:
                 gamma = 0.0
             gamma = CW.bcast(gamma, root=0)
             return gamma
-
 
     def descend(self, gamma, **kwargs):
 
@@ -347,3 +353,6 @@ class OptimizationContext:
         self.dt_per_cp = int(self.dT // dt)
         self.dt_per_loop = int(self.T / dt)
         self.build_var_hotel()
+
+    class MyException(Exception):
+        pass
