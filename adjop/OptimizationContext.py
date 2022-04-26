@@ -22,6 +22,7 @@ class OptimizationContext:
         self.backward_problem = backward_solver.problem
         self.lagrangian_dict = lagrangian_dict
         self.domain = domain
+        self.slices = self.domain.dist.grid_layout.slices(self.domain, scales=1)
         self.coords = coords
         self.sim_params = sim_params
         self.write_suffix = write_suffix
@@ -38,8 +39,9 @@ class OptimizationContext:
         self.backward_ic = OrderedDict()
 
         self.loop_index = 0
+        self.opt_iters = np.inf
         self.step_performance = np.nan
-        self.HT_norms = []
+        self.ObjectiveT_norms = []
         self.indices = []
 
         self.use_euler = True
@@ -87,11 +89,43 @@ class OptimizationContext:
             if (var in self.lagrangian_dict.keys()):
                 self.hotel[var.name] = np.zeros(grid_time_shape)
 
+    def set_ObjectiveT(self, ObjectiveT):
+        self.ObjectiveT = ObjectiveT
+        self.backward_ic = OrderedDict()
+        for forward_field in self.lagrangian_dict.keys():
+            backward_field = self.lagrangian_dict[forward_field]
+            self.backward_ic[backward_field.name] = ObjectiveT.sym_diff(forward_field)
+
+
+    def before_fullforward_solve(self):
+        pass
+
+    def after_fullforward_solve(self):
+        pass
+
+    def before_backward_solve(self):
+        pass
+
+    def during_backward_solve(self):
+        pass
+
+    def after_backward_solve(self):
+        pass
+
     def loop(self): # move to main
         self.loop_forward()
         self.loop_backward()
 
-    def loop_forward(self):
+    def loop_forward(self, x):
+
+        if (self.loop_index >= self.opt_iters):
+            raise self.LoopIndexException({"message": "Achieved the proper number of loop index"})
+
+        self.x = x
+        self.ic['u'].change_scales(1)
+        self.ic['u']['g'] = x.reshape((2,) + self.domain.grid_shape(scales=1))[:, self.slices[0], self.slices[1]]
+
+        self.before_fullforward_solve()
         
         # Grab before fields are evolved (old state)
         self.old_grad.change_scales(1)
@@ -107,36 +141,44 @@ class OptimizationContext:
         self.forward_solver.evaluator.handlers.clear()
         
         # self.solve_forward()
-        self.evaluate_state_T()
+        self.evaluate_objectiveT()
+        self.ObjectiveT_norms.append(self.ObjectiveT_norm)
+        self.indices.append(self.loop_index)
+        self.after_fullforward_solve()
 
-    def loop_backward(self):
+        if (self.ObjectiveT_norm <= min(self.ObjectiveT_norms)):
+            self.x_opt = x
+            self.best_index = self.loop_index
+            self.best_objectiveT = self.ObjectiveT_norm
+
+        return self.ObjectiveT_norm
+
+    def loop_backward(self, x):
+
+        if not np.allclose(x, self.x):
+            logger.warning('Repeating forward solver without computing gradient. This is probably inefficient!!')
+            self.loop_forward(x)
 
         self.set_backward_ic()
+        self.before_backward_solve()
         self.solve_backward()
 
-        # for i in range(1, self.num_cp):
-        #     self.forward_solver.load_state(self.path + '/checkpoints_' + self.write_suffix + '/checkpoints_kdv0_s1.h5', -i)
-        #     self.solve_forward()
-        #     self.solve_backward()
+        for i in range(1, self.num_cp):
+            self.forward_solver.load_state(self.path + '/checkpoints_' + self.write_suffix + '/checkpoints_kdv0_s1.h5', -i)
+            self.solve_forward()
+            self.solve_backward()
 
         self.backward_solver.evaluator.handlers.clear()
 
         # Evaluate after fields are evolved (new state)
         self.backward_solver.state[0].change_scales(1)
-        self.new_grad.change_scales(1)
-        self.new_grad['g'] = self.backward_solver.state[0]['g'].copy()
-        self.evaluate_state_0()
+        self.backward_solver.state[0]['g']
+
+        self.after_backward_solve()
+        self.loop_index += 1
+
+        return self.backward_solver.state[0].allgather_data().flatten().copy()
         
-
-    def pause_forward_handlers(self):
-        solver = self.forward_solver
-        self.handler_storage = solver.evaluator.handlers
-        solver.evaluator.handlers = []
-
-    def resume_forward_handlers(self):
-        solver = self.forward_solver
-        solver.evaluator.handlers = self.handler_storage
-
     # Set starting point for loop
     def set_forward_ic(self):
         self.forward_solver.sim_time = 0.0
@@ -201,6 +243,7 @@ class OptimizationContext:
                     if (var.name in self.hotel.keys()):
                         var.change_scales(1)
                         self.hotel[var.name][t_ind] = var['g'].copy()
+                self.during_fullforward_solve()
                 logger.debug('Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
 
         except:
@@ -218,141 +261,111 @@ class OptimizationContext:
         flipped_ld = dict((backward_var, forward_var) for forward_var, backward_var in self.lagrangian_dict.items())
         for backward_field in self.backward_solver.state:
             if (backward_field.name in self.backward_ic.keys()):
-                field = self.backward_ic[backward_field.name].evaluate()
-                field.change_scales(1)
+                backward_ic_field = self.backward_ic[backward_field.name].evaluate()
                 backward_field.change_scales(1)
-                # backward_field['g'] = field['g'].copy()
-
-                backic = ((self.forward_solver.state[0] - self.U)).evaluate()
-                backic.change_scales(1)
-                self.backward_solver.state[0].change_scales(1)
-                self.backward_solver.state[0]['g'] = backic['g'].copy()
-                # print('True!, rank = {}'.format(CW.rank))
-                # sys.exit()
-        z = self.z
-        self.backward_solver.state[1]['g'] = self.forward_solver.state[1]['g'].copy()
+                backward_ic_field.change_scales(1)
+                backward_field['g'] = backward_ic_field['g'].copy()
         return
-        # u_t = self.backward_solver.state[0]
-        # u = self.forward_solver.state[0]
-        # self.backward_solver.state[0] = (-(u - self.U)).evaluate()
 
     def solve_backward(self):
         try:
-            logger.debug('Starting backward solve')
             for t_ind in range(self.dt_per_cp):
                 for var in self.hotel.keys():
                     self.backward_solver.problem.namespace[var].change_scales(1)
                     self.backward_solver.problem.namespace[var]['g'] = self.hotel[var][-t_ind - 1]
                 self.backward_solver.step(-self.dt)
-                logger.debug('backward solver time = {}'.format(self.backward_solver.sim_time))
+                self.during_backward_solve()
         except:
             logger.error('Exception raised in backward solve, triggering end of main loop.')
             raise
         finally:
-            logger.debug('Completed backward solve')
             for field in self.backward_solver.state:
                 field.change_scales(1)
 
-    def evaluate_state_T(self):
+    def evaluate_objectiveT(self):
 
-        HT_norm = d3.Integrate(self.HT).evaluate()
-
-        if (self.loop_index > 0):
-            old_HT_norm = self.HT_norm
-            gamma = self.gamma = 1
+        ObjectiveT_norm = d3.Integrate(self.ObjectiveT).evaluate()
 
         if (CW.rank == 0):
-            self.HT_norm = HT_norm['g'].flat[0]
+            self.ObjectiveT_norm = ObjectiveT_norm['g'].flat[0]
         else:
-            self.HT_norm = 0.0
+            self.ObjectiveT_norm = 0.0
 
-        self.HT_norm = CW.bcast(self.HT_norm, root=0)
+        self.ObjectiveT_norm = CW.bcast(self.ObjectiveT_norm, root=0)
 
-        if (np.isnan(self.HT_norm)):
-            logger.error("NaN HT norm: exiting...")
-            sys.exit()
-
-        if (self.loop_index > 0):
-            self.step_performance = (old_HT_norm - self.HT_norm) / (self.grad_norm**2 * gamma)
-        return
-
-    def evaluate_state_0(self):
-
-        grad_mag = (d3.Integrate((self.new_grad**2))**(0.5)).evaluate()
-        graddiff_mag = (d3.Integrate((self.old_grad*self.new_grad))**(0.5)).evaluate()
-
-        if (CW.rank == 0):
-            self.grad_norm = grad_mag['g'].flat[0]
-            self.graddiff_norm = graddiff_mag['g'].flat[0]
-        else:
-            self.grad_norm = 0.0
-            self.graddiff_norm = 0.0
-
-        self.grad_norm = CW.bcast(self.grad_norm, root=0)
-        self.graddiff_norm = CW.bcast(self.graddiff_norm, root=0)
+        if (np.isnan(self.ObjectiveT_norm)):
+            raise self.NanNormException({"message": "NaN ObjectiveT_norm computed. Ending optimization loop..."})
 
         return
 
-   # This works really well for periodic kdv
-    def compute_gamma(self, epsilon_safety):
-        if (self.loop_index == 0):
-            return 1e-3
-        else:
-            # https://en.wikipedia.org/wiki/Gradient_descent
-            grad_diff = self.new_grad - self.old_grad
-            x_diff = self.new_x - self.old_x
-            integ1 = d3.Integrate(x_diff * grad_diff).evaluate()
-            integ2 = d3.Integrate(grad_diff * grad_diff).evaluate()
-            if (CW.rank == 0):
-                gamma = epsilon_safety * np.abs(integ1['g'].flat[0]) / (integ2['g'].flat[0])
-            else:
-                gamma = 0.0
-            gamma = CW.bcast(gamma, root=0)
-            return gamma
+#     def evaluate_initial_state(self):
 
-    def descend(self, gamma, **kwargs):
+#         grad_mag = (d3.Integrate((self.new_grad**2))**(0.5)).evaluate()
+#         graddiff_mag = (d3.Integrate((self.old_grad*self.new_grad))**(0.5)).evaluate()
 
-        addendum_str = kwargs.get('addendum_str', '')
+#         if (CW.rank == 0):
+#             self.grad_norm = grad_mag['g'].flat[0]
+#             self.graddiff_norm = graddiff_mag['g'].flat[0]
+#         else:
+#             self.grad_norm = 0.0
+#             self.graddiff_norm = 0.0
 
-        # This can probably go elsewhere (whereever it's getting dealiased)
-        self.new_x.change_scales(1)
-        self.old_x.change_scales(1)
-        self.new_grad.change_scales(1)
-        self.old_grad.change_scales(1)
+#         self.grad_norm = CW.bcast(self.grad_norm, root=0)
+#         self.graddiff_norm = CW.bcast(self.graddiff_norm, root=0)
 
-        self.gamma = gamma
-        list(self.ic.items())[0][1].change_scales(1)
-        self.old_x['g'] = list(self.ic.items())[0][1]['g'].copy()
+#         return
 
-        self.deltaIC = self.backward_solver.state[0]
+#    # This works really well for periodic kdv
+#     def compute_gamma(self, epsilon_safety):
+#         if (self.loop_index == 0):
+#             return 1e-3
+#         else:
+#             # https://en.wikipedia.org/wiki/Gradient_descent
+#             grad_diff = self.new_grad - self.old_grad
+#             x_diff = self.new_x - self.old_x
+#             integ1 = d3.Integrate(x_diff * grad_diff).evaluate()
+#             integ2 = d3.Integrate(grad_diff * grad_diff).evaluate()
+#             if (CW.rank == 0):
+#                 gamma = epsilon_safety * np.abs(integ1['g'].flat[0]) / (integ2['g'].flat[0])
+#             else:
+#                 gamma = 0.0
+#             gamma = CW.bcast(gamma, root=0)
+#             return gamma
 
-        self.ic['u']['g'] = self.ic['u']['g'].copy() + gamma * self.deltaIC['g']
-        self.new_x['g'] = self.ic['u']['g'].copy()
+#     def descend(self, gamma, **kwargs):
 
-        statement = 'loop index = %i; ' %self.loop_index
-        statement += 'gamma = %e; ' %self.gamma
-        statement += 'grad norm = %e; ' %self.grad_norm
-        statement += 'step performance = %f; ' %self.step_performance
-        statement += 'HT norm = %e; ' %self.HT_norm
-        statement += addendum_str
+#         addendum_str = kwargs.get('addendum_str', '')
 
-        logger.info(statement)
-        self.loop_index += 1
+#         # This can probably go elsewhere (whereever it's getting dealiased)
+#         self.new_x.change_scales(1)
+#         self.old_x.change_scales(1)
+#         self.new_grad.change_scales(1)
+#         self.old_grad.change_scales(1)
 
-        self.indices.append(self.loop_index)
-        self.HT_norms.append(self.HT_norm)
+#         self.gamma = gamma
+#         list(self.ic.items())[0][1].change_scales(1)
+#         self.old_x['g'] = list(self.ic.items())[0][1]['g'].copy()
 
-    def update_timestep(self, dt):
-        self.dt = dt
-        if (self.dT / dt != int(self.dT / dt)):
-            logger.error("number of timesteps not divisible by number of checkpoints. Exiting...")
-            sys.exit()
-        if (self.T / dt != int(self.T / dt)):
-            logger.error("Run period not divisible by timestep (we're using uniform timesteps). Exiting...")
-            sys.exit()
-        self.dt_per_cp = int(self.dT // dt)
-        self.dt_per_loop = int(self.T / dt)
-        self.build_var_hotel()
+#         self.deltaIC = self.backward_solver.state[0]
 
-    class MyException(Exception):
+#         self.ic['u']['g'] = self.ic['u']['g'].copy() + gamma * self.deltaIC['g']
+#         self.new_x['g'] = self.ic['u']['g'].copy()
+
+#         statement = 'loop index = %i; ' %self.loop_index
+#         statement += 'gamma = %e; ' %self.gamma
+#         statement += 'grad norm = %e; ' %self.grad_norm
+#         statement += 'step performance = %f; ' %self.step_performance
+#         statement += 'ObjectiveT norm = %e; ' %self.ObjectiveT_norm
+#         statement += addendum_str
+
+#         logger.info(statement)
+#         self.loop_index += 1
+
+#         self.indices.append(self.loop_index)
+#         self.ObjectiveT_norms.append(self.ObjectiveT_norm)
+
+    class LoopIndexException(Exception):
+        pass
+
+    class NanNormException(Exception):
         pass
