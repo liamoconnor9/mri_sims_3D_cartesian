@@ -158,9 +158,9 @@ w2 = d3.div(d3.skew(u))
 W2 = d3.div(d3.skew(U))
 # ObjectiveT = 0.5*(w2 - W2)**2
 
-ObjectiveT = d3.dot(u - U, u - U)
+ObjectiveT = 0.5*d3.dot(u - U, u - U)
 opt.set_objectiveT(ObjectiveT)
-opt.backward_ic['u_t'] = (u - U)
+# opt.backward_ic['u_t'] = (u - U)
 
 from datetime import datetime
 startTime = datetime.now()

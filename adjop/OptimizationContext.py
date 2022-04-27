@@ -91,11 +91,11 @@ class OptimizationContext:
                 self.hotel[var.name] = np.zeros(grid_time_shape)
 
     def set_objectiveT(self, ObjectiveT):
-        self.ObjectiveT = ObjectiveT
+        self.ObjectiveT = 2*ObjectiveT
         self.backward_ic = OrderedDict()
-        # for forward_field in self.lagrangian_dict.keys():
-        #     backward_field = self.lagrangian_dict[forward_field]
-        #     self.backward_ic[backward_field.name] = ObjectiveT.sym_diff(forward_field)
+        for forward_field in self.lagrangian_dict.keys():
+            backward_field = self.lagrangian_dict[forward_field]
+            self.backward_ic[backward_field.name] = ObjectiveT.sym_diff(forward_field)
 
 
     def before_fullforward_solve(self):
