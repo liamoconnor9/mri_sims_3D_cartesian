@@ -55,6 +55,7 @@ Nz = config.getint('parameters', 'Nz')
 Reynolds = config.getfloat('parameters', 'Re')
 stop_sim_time = config.getfloat('parameters', 'T')
 max_timestep = config.getfloat('parameters', 'dt')
+add_handlers = config.getboolean('parameters', 'add_handlers')
 
 Schmidt = 1
 dealias = 3/2
@@ -100,12 +101,13 @@ u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01)
 u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01)
 
 # Analysis
-snapshots = solver.evaluator.add_file_handler(path + '/' + suffix + '/snapshots_target', sim_dt=0.01, max_writes=1)
-snapshots.add_task(s, name='tracer')
-snapshots.add_task(p, name='pressure')
-snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
-snapshots.add_task(d3.dot(ex, u), name='ux')
-snapshots.add_task(d3.dot(ez, u), name='uz')
+if (add_handlers):
+    snapshots = solver.evaluator.add_file_handler(path + '/' + suffix + '/snapshots_target', sim_dt=0.01, max_writes=1)
+    snapshots.add_task(s, name='tracer')
+    snapshots.add_task(p, name='pressure')
+    snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
+    snapshots.add_task(d3.dot(ex, u), name='ux')
+    snapshots.add_task(d3.dot(ez, u), name='uz')
 
 checkpoints = solver.evaluator.add_file_handler(path + '/' + suffix + '/checkpoint_target', max_writes=2, sim_dt=stop_sim_time, mode='overwrite')
 checkpoints.add_tasks(solver.state, layout='g')

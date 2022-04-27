@@ -35,15 +35,16 @@ from scipy import optimize
 
 class ShearOptimization(OptimizationContext):
     def before_fullforward_solve(self):
-        snapshots = self.forward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/snapshots_forward/snapshots_forward_loop' + str(self.loop_index), sim_dt=0.01, max_writes=10, mode='overwrite')
-        u = self.forward_solver.state[0]
-        s = self.forward_solver.state[1]
-        p = self.forward_solver.state[2]
-        snapshots.add_task(s, name='tracer')
-        snapshots.add_task(p, name='pressure')
-        snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
-        snapshots.add_task(d3.dot(ex, u), name='ux')
-        snapshots.add_task(d3.dot(ez, u), name='uz')
+        if self.add_handlers:
+            snapshots = self.forward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/snapshots_forward/snapshots_forward_loop' + str(self.loop_index), sim_dt=0.01, max_writes=10, mode='overwrite')
+            u = self.forward_solver.state[0]
+            s = self.forward_solver.state[1]
+            p = self.forward_solver.state[2]
+            snapshots.add_task(s, name='tracer')
+            snapshots.add_task(p, name='pressure')
+            snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
+            snapshots.add_task(d3.dot(ex, u), name='ux')
+            snapshots.add_task(d3.dot(ez, u), name='uz')
 
         logger.info('start evaluating f..')
 
@@ -54,18 +55,19 @@ class ShearOptimization(OptimizationContext):
         logger.info('done evaluating f. norm = {}'.format(self.ObjectiveT_norm))
 
     def before_backward_solve(self):
-        # setting tracer to end state of forward solve
-        self.forward_solver.state[1].change_scales(1)
-        self.backward_solver.state[1]['g'] = self.forward_solver.state[1]['g'].copy() - self.S['g'].copy()
-        snapshots_backward = self.backward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/snapshots_backward/snapshots_backward_loop' + str(self.loop_index), sim_dt=-0.01, max_writes=10, mode='overwrite')
-        u_t = self.backward_solver.state[0]
-        s_t = self.backward_solver.state[1]
-        p_t = self.backward_solver.state[2]
-        snapshots_backward.add_task(s_t, name='tracer')
-        snapshots_backward.add_task(p_t, name='pressure')
-        snapshots_backward.add_task(-d3.div(d3.skew(u_t)), name='vorticity')
-        snapshots_backward.add_task(d3.dot(ex, u_t), name='ux')
-        snapshots_backward.add_task(d3.dot(ez, u_t), name='uz')
+        if self.add_handlers:
+            # setting tracer to end state of forward solve
+            self.forward_solver.state[1].change_scales(1)
+            self.backward_solver.state[1]['g'] = self.forward_solver.state[1]['g'].copy() - self.S['g'].copy()
+            snapshots_backward = self.backward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/snapshots_backward/snapshots_backward_loop' + str(self.loop_index), sim_dt=-0.01, max_writes=10, mode='overwrite')
+            u_t = self.backward_solver.state[0]
+            s_t = self.backward_solver.state[1]
+            p_t = self.backward_solver.state[2]
+            snapshots_backward.add_task(s_t, name='tracer')
+            snapshots_backward.add_task(p_t, name='pressure')
+            snapshots_backward.add_task(-d3.div(d3.skew(u_t)), name='vorticity')
+            snapshots_backward.add_task(d3.dot(ex, u_t), name='ux')
+            snapshots_backward.add_task(d3.dot(ez, u_t), name='uz')
         logger.debug('Starting backward solve')
 
     def during_backward_solve(self):
@@ -89,6 +91,7 @@ logger.info(config.items('parameters'))
 # Parameters
 opt_iters = config.getint('parameters', 'opt_iters')
 num_cp = config.getint('parameters', 'num_cp')
+add_handlers = config.getboolean('parameters', 'add_handlers')
 
 Lx = config.getfloat('parameters', 'Lx')
 Lz = config.getfloat('parameters', 'Lz')
@@ -127,6 +130,7 @@ backward_solver = backward_problem.build_solver(d3.SBDF4)
 opt = ShearOptimization(domain, coords, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
 opt.set_time_domain(T, num_cp, dt)
 opt.opt_iters = opt_iters
+opt.add_handlers = add_handlers
 
 U = dist.VectorField(coords, name='U', bases=bases)
 S = dist.Field(name='S', bases=bases)
@@ -150,13 +154,13 @@ opt.ic['s'] = dist.Field(name='s', bases=bases)
 opt.ic['s']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 
 # Late time objective: ObjectiveT is minimized at t = T
-# w2 = d3.div(d3.skew(u))
-# W2 = d3.div(d3.skew(U))
+w2 = d3.div(d3.skew(u))
+W2 = d3.div(d3.skew(U))
 # ObjectiveT = 0.5*(w2 - W2)**2
 
 ObjectiveT = d3.dot(u - U, u - U)
-opt.set_ObjectiveT(ObjectiveT)
-opt.backward_ic['u_t'] = u - U
+opt.set_objectiveT(ObjectiveT)
+opt.backward_ic['u_t'] = (u - U)
 
 from datetime import datetime
 startTime = datetime.now()

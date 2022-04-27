@@ -25,8 +25,8 @@ CONFIG="shear_options.cfg"
 # SUFFIX="T1_coeff0ic_negbic_re1e4_N256"
 
 # If target simulation was previously run in OLDSUFFIX, just copy its contents over
-SUFFIX="T10_N256_test"
-# OLDSUFFIX=$SUFFIX
+SUFFIX="T5_N256_test"
+OLDSUFFIX=$SUFFIX
 # OLDSUFFIX="T1_0ic"
 MPIPROC=64
 
@@ -49,7 +49,7 @@ else
 fi
 
 mpiexec_mpt -np $MPIPROC python3 shear_cg.py $CONFIG $SUFFIX
-
+exit 1
 MPIPROC=80
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_forward frames_forward
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_backward frames_backward

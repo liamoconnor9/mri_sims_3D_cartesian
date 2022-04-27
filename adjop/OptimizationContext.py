@@ -45,6 +45,7 @@ class OptimizationContext:
         self.indices = []
 
         self.use_euler = True
+        self.add_handlers = False
         self.show = False
         self.show_backward = False
         self.show_cadence = 1
@@ -89,12 +90,12 @@ class OptimizationContext:
             if (var in self.lagrangian_dict.keys()):
                 self.hotel[var.name] = np.zeros(grid_time_shape)
 
-    def set_ObjectiveT(self, ObjectiveT):
+    def set_objectiveT(self, ObjectiveT):
         self.ObjectiveT = ObjectiveT
         self.backward_ic = OrderedDict()
-        for forward_field in self.lagrangian_dict.keys():
-            backward_field = self.lagrangian_dict[forward_field]
-            self.backward_ic[backward_field.name] = ObjectiveT.sym_diff(forward_field)
+        # for forward_field in self.lagrangian_dict.keys():
+        #     backward_field = self.lagrangian_dict[forward_field]
+        #     self.backward_ic[backward_field.name] = ObjectiveT.sym_diff(forward_field)
 
 
     def before_fullforward_solve(self):
@@ -368,4 +369,7 @@ class OptimizationContext:
         pass
 
     class NanNormException(Exception):
+        pass
+
+    class DescentStallException(Exception):
         pass
