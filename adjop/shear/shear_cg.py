@@ -23,6 +23,7 @@ CW = MPI.COMM_WORLD
 import logging
 import pathlib
 logger = logging.getLogger(__name__)
+# logger.setLevel(logging.info)
 from docopt import docopt
 from pathlib import Path
 from configparser import ConfigParser
@@ -46,19 +47,24 @@ class ShearOptimization(OptimizationContext):
             snapshots.add_task(d3.dot(ex, u), name='ux')
             snapshots.add_task(d3.dot(ez, u), name='uz')
 
-        logger.info('start evaluating f..')
+        logger.debug('start evaluating f..')
 
     def during_fullforward_solve(self):
         pass
 
     def after_fullforward_solve(self):
-        logger.info('done evaluating f. norm = {}'.format(self.ObjectiveT_norm))
+        loop_message = 'loop index = {}; '.format(self.loop_index)
+        loop_message += 'ObjectiveT = {}; '.format(self.ObjectiveT_norm)
+        for metric_name in self.metricsT_norms.keys():
+            loop_message += '{} = {}; '.format(metric_name, self.metricsT_norms[metric_name])
+        logger.info(loop_message)
 
     def before_backward_solve(self):
         if self.add_handlers:
             # setting tracer to end state of forward solve
-            self.forward_solver.state[1].change_scales(1)
-            self.backward_solver.state[1]['g'] = self.forward_solver.state[1]['g'].copy() - self.S['g'].copy()
+            # self.forward_solver.state[1].change_scales(1)
+            # self.backward_solver.state[1]['g'] = self.forward_solver.state[1]['g'].copy() - self.S['g'].copy()
+
             snapshots_backward = self.backward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/snapshots_backward/snapshots_backward_loop' + str(self.loop_index), sim_dt=-0.01, max_writes=10, mode='overwrite')
             u_t = self.backward_solver.state[0]
             s_t = self.backward_solver.state[1]
@@ -75,7 +81,7 @@ class ShearOptimization(OptimizationContext):
         pass
 
     def after_backward_solve(self):
-        logger.info('Completed backward solve')
+        logger.debug('Completed backward solve')
         pass
 
 args = docopt(__doc__)
@@ -142,7 +148,7 @@ with h5py.File(end_state_path) as f:
     U['g'] = f['tasks/u'][-1, :, :][:, slices[0], slices[1]]
     S['g'] = f['tasks/s'][-1, :, :][slices[0], slices[1]]
     logger.info('looding end state {}: t = {}'.format(end_state_path, f['scales/sim_time'][-1]))
-
+# sys.exit()
 opt.S = S
 # opt.ic['u'].fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
 coeff = 0.0
@@ -155,12 +161,27 @@ opt.ic['s']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 
 # Late time objective: ObjectiveT is minimized at t = T
 w2 = d3.div(d3.skew(u))
-W2 = d3.div(d3.skew(U))
-# ObjectiveT = 0.5*(w2 - W2)**2
+dx = lambda A: d3.Differentiate(A, coords['x'])
+dz = lambda A: d3.Differentiate(A, coords['z'])
+ux = u @ ex
+uz = u @ ez
+w2 = dx(uz) - dz(ux)
+Ux = U @ ex
+Uz = U @ ez
+W2 = dx(Uz) - dz(Ux)
+# W2 = d3.div(d3.skew(U))
 
-ObjectiveT = 0.5*d3.dot(u - U, u - U)
+# ObjectiveT = 0.5*(w2 - W2)**2
+ObjectiveT = d3.dot(u - U, u - U)
 opt.set_objectiveT(ObjectiveT)
-# opt.backward_ic['u_t'] = (u - U)
+
+opt.metricsT['u_error'] = d3.dot(u - U, u - U)
+
+# temp = opt.backward_ic['u_t']
+# logger.info(temp)
+# sys.exit()
+
+opt.backward_ic['s_t'] = opt.ic['s'].copy()
 
 from datetime import datetime
 startTime = datetime.now()
@@ -173,17 +194,25 @@ def check_status(x):
     logger.info('completed scipy py iteration')
     CW.barrier()
 
+# def newton_descent(fun, x0, args, **kwargs):
+#     # options = kwargs['options']
+#     maxiter = kwargs['maxiter']
+#     logger.info('maxiter = {}'.format(maxiter))
+#     return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
+
 try:
-    res1 = optimize.fmin_cg(opt.loop_forward, x0, fprime=opt.loop_backward, callback=check_status)
+    options = {'maxiter' : 2}
+    res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, options=options, callback=check_status, tol=1e-8, method='CG')
+    logger.info(res1)
+    # sys.exit()
 except opt.LoopIndexException as e:
     details = e.args[0]
     logger.info(details["message"])
 except opt.NanNormException as e:
     details = e.args[0]
     logger.info(details["message"])
-except Exception as e:
-    logger.info('Unknown exception occured: {}'.format(e))
-
+# except Exception as e:
+#     logger.info('Unknown exception occured: {}'.format(e))
 logger.info('####################################################')
 logger.info('COMPLETED OPTIMIZATION RUN')
 logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))

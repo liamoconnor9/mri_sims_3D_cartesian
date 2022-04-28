@@ -28,7 +28,7 @@ CONFIG="shear_options.cfg"
 SUFFIX="T5_N256_test"
 OLDSUFFIX=$SUFFIX
 # OLDSUFFIX="T1_0ic"
-MPIPROC=64
+MPIPROC=32
 
 mkdir $SUFFIX
 mkdir $SUFFIX/snapshots_forward

@@ -41,14 +41,16 @@ class OptimizationContext:
         self.loop_index = 0
         self.opt_iters = np.inf
         self.step_performance = np.nan
+        self.metricsT = {}
+        self.metricsT_norms = {}
         self.ObjectiveT_norms = []
         self.indices = []
 
-        self.use_euler = True
         self.add_handlers = False
         self.show = False
         self.show_backward = False
         self.show_cadence = 1
+        self.gamma_init = 0.01
 
         self.new_x = forward_solver.state[0].copy()
         self.new_grad = forward_solver.state[0].copy()
@@ -70,14 +72,12 @@ class OptimizationContext:
         self.num_cp = num_cp
         self.dt = dt
         self.dT = T / num_cp
-        if (self.dT / dt != int(self.dT / dt)):
+        if (not np.allclose(round(self.dT / dt), self.dT / dt)):
             logger.error("number of timesteps not divisible by number of checkpoints. Exiting...")
-            sys.exit()
-        if (self.T / dt != int(self.T / dt)):
+        if (not np.allclose(round(self.T / dt), self.T / dt)):
             logger.error("Run period not divisible by timestep (we're using uniform timesteps). Exiting...")
-            sys.exit()
-        self.dt_per_cp = int(self.dT / dt)
-        self.dt_per_loop = int(T / dt)
+        self.dt_per_cp = round(self.dT / dt)
+        self.dt_per_loop = round(T / dt)
         self.build_var_hotel()
 
     # Hotel stores the forward variables, at each timestep, in memory to inform adjoint solve
@@ -91,13 +91,14 @@ class OptimizationContext:
                 self.hotel[var.name] = np.zeros(grid_time_shape)
 
     def set_objectiveT(self, ObjectiveT):
-        self.ObjectiveT = 2*ObjectiveT
+        self.ObjectiveT = ObjectiveT
         self.backward_ic = OrderedDict()
         for forward_field in self.lagrangian_dict.keys():
             backward_field = self.lagrangian_dict[forward_field]
             self.backward_ic[backward_field.name] = ObjectiveT.sym_diff(forward_field)
 
 
+    # For a given problem, these should be overwritten to add filehandlers, animations, metrics, etc.
     def before_fullforward_solve(self):
         pass
 
@@ -113,7 +114,9 @@ class OptimizationContext:
     def after_backward_solve(self):
         pass
 
-    def loop(self): # move to main
+    # Depreciated with scipy.optimization.minimize
+    # calling this solves for the objective (forward) and the gradient (backward)
+    def loop(self): 
         self.loop_forward()
         self.loop_backward()
 
@@ -178,7 +181,7 @@ class OptimizationContext:
         self.after_backward_solve()
         self.loop_index += 1
 
-        return self.backward_solver.state[0].allgather_data().flatten().copy()
+        return self.gamma_init * self.backward_solver.state[0].allgather_data().flatten().copy()
         
     # Set starting point for loop
     def set_forward_ic(self):
@@ -296,6 +299,16 @@ class OptimizationContext:
 
         if (np.isnan(self.ObjectiveT_norm)):
             raise self.NanNormException({"message": "NaN ObjectiveT_norm computed. Ending optimization loop..."})
+
+        for metric_name in self.metricsT.keys():
+            metricT_norm = d3.Integrate(self.metricsT[metric_name]).evaluate()
+
+            if (CW.rank == 0):
+                self.metricsT_norms[metric_name] = metricT_norm['g'].flat[0]
+            else:
+                self.metricsT_norms[metric_name] = 0.0
+
+            self.metricsT_norms[metric_name] = CW.bcast(self.metricsT_norms[metric_name], root=0)
 
         return
 
