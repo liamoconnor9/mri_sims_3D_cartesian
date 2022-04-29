@@ -97,12 +97,12 @@ u['g'][0] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 # Match tracer to shear
 s['g'] = u['g'][0]
 # Add small vertical velocity perturbations localized to the shear layers
-u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01)
-u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01)
+u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx)
+u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx)
 
 # Analysis
 if (add_handlers):
-    snapshots = solver.evaluator.add_file_handler(path + '/' + suffix + '/snapshots_target', sim_dt=0.01, max_writes=1)
+    snapshots = solver.evaluator.add_file_handler(path + '/' + suffix + '/snapshots_target', sim_dt=0.01, max_writes=10)
     snapshots.add_task(s, name='tracer')
     snapshots.add_task(p, name='pressure')
     snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')

@@ -151,7 +151,7 @@ with h5py.File(end_state_path) as f:
 # sys.exit()
 opt.S = S
 # opt.ic['u'].fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
-coeff = 0.0
+coeff = 0.2
 opt.ic['u']['g'][0] = coeff * (1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1)))
 opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01))
 opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01))
@@ -160,20 +160,21 @@ opt.ic['s'] = dist.Field(name='s', bases=bases)
 opt.ic['s']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 
 # Late time objective: ObjectiveT is minimized at t = T
-w2 = d3.div(d3.skew(u))
+# w2 = d3.div(d3.skew(u))
 dx = lambda A: d3.Differentiate(A, coords['x'])
 dz = lambda A: d3.Differentiate(A, coords['z'])
 ux = u @ ex
 uz = u @ ez
-w2 = dx(uz) - dz(ux)
+w = dx(uz) - dz(ux)
 Ux = U @ ex
 Uz = U @ ez
-W2 = dx(Uz) - dz(Ux)
+W = dx(Uz) - dz(Ux)
 # W2 = d3.div(d3.skew(U))
 
-# ObjectiveT = 0.5*(w2 - W2)**2
+# ObjectiveT = 5*(w - W)**2
 ObjectiveT = d3.dot(u - U, u - U)
 opt.set_objectiveT(ObjectiveT)
+# opt.backward_ic['u_t'] = -1e0*d3.skew(d3.grad((w - W)))
 
 opt.metricsT['u_error'] = d3.dot(u - U, u - U)
 
@@ -181,7 +182,10 @@ opt.metricsT['u_error'] = d3.dot(u - U, u - U)
 # logger.info(temp)
 # sys.exit()
 
-opt.backward_ic['s_t'] = opt.ic['s'].copy()
+# opt.backward_ic['s_t'] = opt.ic['s'].copy()
+
+opt.backward_ic['s_t'] = dist.Field(name='s_t', bases=bases)
+opt.backward_ic['s_t']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 
 from datetime import datetime
 startTime = datetime.now()
@@ -194,17 +198,26 @@ def check_status(x):
     logger.info('completed scipy py iteration')
     CW.barrier()
 
-# def newton_descent(fun, x0, args, **kwargs):
-#     # options = kwargs['options']
-#     maxiter = kwargs['maxiter']
-#     logger.info('maxiter = {}'.format(maxiter))
-#     return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
+def newton_descent(fun, x0, args, **kwargs):
+    gamma = 0.001
+    maxiter = kwargs['maxiter']
+    jac = kwargs['jac']
+    for i in range(maxiter):
+        f = fun(x0)
+        gradf = jac(x0)
+        x0 -= gamma * gradf
+    logger.info('success')
+    logger.info('maxiter = {}'.format(maxiter))
+    return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
 
+# logging.basicConfig(filename='/path/to/your/log', level=....)
+logging.basicConfig(filename = opt.run_dir + '/' + opt.write_suffix + '/log.txt')
 try:
-    options = {'maxiter' : 2}
+    options = {'maxiter' : opt_iters}
     res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, options=options, callback=check_status, tol=1e-8, method='CG')
+    # res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, options=options, callback=check_status, tol=1e-8, method=newton_descent)
     logger.info(res1)
-    # sys.exit()
+    sys.exit()
 except opt.LoopIndexException as e:
     details = e.args[0]
     logger.info(details["message"])

@@ -18,6 +18,7 @@ def build_problem(domain, coords, Reynolds):
     p_t = dist.Field(name='p_t', bases=bases)
     s_t = dist.Field(name='s_t', bases=bases)
     u_t = dist.VectorField(coords, name='u_t', bases=bases)
+    u_d = dist.VectorField(coords, name='u_d', bases=bases)
     u = dist.VectorField(coords, name='u', bases=bases)
     tau_p_t = dist.Field(name='tau_p_t')
 
@@ -31,7 +32,9 @@ def build_problem(domain, coords, Reynolds):
     # Problem
     problem = d3.IVP([u_t, s_t, p_t, tau_p_t], namespace=locals())
     # problem.add_equation("dt(u_t) + grad(p_t) = (dot(u_t, transpose(grad(u))) - dot(u, grad(u_t)))")
+    # problem.add_equation("u_d = u")
     problem.add_equation("dt(u_t) + grad(p_t) + nu*lap(u_t) = (dot(u_t, transpose(grad(u))) - dot(u, grad(u_t)))")
+    # problem.add_equation("dt(u_t) + grad(p_t) + nu*lap(u_t) = 0")
     problem.add_equation("dt(s_t) + D*lap(s_t) = u_t@grad(s_t)")
     problem.add_equation("div(u_t) + tau_p_t = 0")
     problem.add_equation("integ(p_t) = 0") # Pressure gauge
