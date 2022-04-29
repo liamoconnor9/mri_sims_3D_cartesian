@@ -4,6 +4,7 @@ from ast import For
 from contextlib import nullcontext
 from turtle import backward
 import numpy as np
+
 path = os.path.dirname(os.path.abspath(__file__))
 import sys
 sys.path.append(path + "/..")
@@ -20,32 +21,95 @@ logger = logging.getLogger(__name__)
 import ForwardKDV
 import BackwardKDV
 import matplotlib.pyplot as plt
+from docopt import docopt
+from pathlib import Path
+from configparser import ConfigParser
+from scipy import optimize
+from datetime import datetime
 
-T = 5.0
-num_cp = 1
-dt = 5e-3
+class KdvOptimization(OptimizationContext):
+    def before_fullforward_solve(self):
+        if (self.loop_index % self.show_loop_cadence == 0 and self.show):
+            u = self.forward_solver.state[0]
+            u.change_scales(1)
+            self.fig = plt.figure()
+            self.p, = plt.plot(self.x_grid, u['g'])
+            plt.plot(self.x_grid, self.U_data)
+            self.fig.canvas.draw()
+            title = plt.title('loop index = {}; t = {}'.format(self.loop_index, round(self.forward_solver.sim_time, 1)))
+            # plt.show()
+                
+        logger.debug('start evaluating f..')
 
+    def during_fullforward_solve(self):
+        if (self.loop_index % self.show_loop_cadence == 0 and self.show and self.forward_solver.iteration % self.show_iter_cadence == 0):
+            u = self.forward_solver.state[0]
+            u.change_scales(1)
+            self.p.set_ydata(u['g'])
+            plt.title('loop index = {}; t = {}'.format(self.loop_index, round(self.forward_solver.sim_time, 1)))
+            plt.pause(1e-10)
+            self.fig.canvas.draw()
+
+    def after_fullforward_solve(self):
+        loop_message = 'loop index = {}; '.format(self.loop_index)
+        loop_message += 'objectiveT = {}; '.format(self.objectiveT_norm)
+        for metric_name in self.metricsT_norms.keys():
+            loop_message += '{} = {}; '.format(metric_name, self.metricsT_norms[metric_name])
+        logger.info(loop_message)
+        plt.close()
+
+    def before_backward_solve(self):
+        logger.debug('Starting backward solve')
+
+    def during_backward_solve(self):
+        # logger.debug('backward solver time = {}'.format(self.backward_solver.sim_time))
+        pass
+
+    def after_backward_solve(self):
+        logger.debug('Completed backward solve')
+        pass
+
+filename = Path('kdv_options.cfg')
+config = ConfigParser()
+config.read(str(filename))
+
+logger.info('Running kdv_burgers.py with the following parameters:')
+logger.info(config.items('parameters'))
+
+# Parameters
+Lx = config.getfloat('parameters', 'Lx')
+N = config.getint('parameters', 'Nx')
+
+a = config.getfloat('parameters', 'a')
+b = config.getfloat('parameters', 'b')
+T = config.getfloat('parameters', 'T')
+dt = config.getfloat('parameters', 'dt')
+num_cp = config.getint('parameters', 'num_cp')
+
+# Simulation Parameters
+dealias = 3/2
+dtype = np.float64
+
+periodic = config.getboolean('parameters', 'periodic')
+show_forward = config.getboolean('parameters', 'show')
 epsilon_safety = default_gamma = 0.6
-gain = 1.0
-show_forward = False
-cadence = 1
-opt_iters = 50
+show_iter_cadence = config.getint('parameters', 'show_iter_cadence')
+show_loop_cadence = config.getint('parameters', 'show_loop_cadence')
+opt_iters = config.getint('parameters', 'opt_iters')
 
 # Bases
-N = 256
-Lx = 10.
 xcoord = d3.Coordinate('x')
 dist = d3.Distributor(xcoord, dtype=np.float64)
 
-# xbasis = d3.ChebyshevT(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
-xbasis = d3.RealFourier(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
+if periodic:
+    xbasis = d3.RealFourier(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
+else:
+    xbasis = d3.ChebyshevT(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
 
 domain = Domain(dist, [xbasis])
 dist = domain.dist
 
 x = dist.local_grid(xbasis)
-a = 0.01
-b = 0.2
 forward_problem = ForwardKDV.build_problem(domain, xcoord, a, b)
 backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 
@@ -57,22 +121,13 @@ backward_solver = backward_problem.build_solver(d3.RK222)
 
 write_suffix = 'kdv0'
 
-path = os.path.dirname(os.path.abspath(__file__))
-U_data = np.loadtxt(path + '/kdv_U.txt')
-u = next(field for field in forward_solver.state if field.name == 'u')
-U = dist.Field(name='U', bases=xbasis)
-U['g'] = U_data
-
-# HT is maximized at t = T (Late time objective)
-HT = 0.5*(U - u)**2
-
-HTS = []
-nannorm_count = 0
-opt = OptimizationContext(domain, xcoord, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
+opt = KdvOptimization(domain, xcoord, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
 opt.beta_calc = 'euler'
 opt.set_time_domain(T, num_cp, dt)
-opt.x = x
-opt.use_euler = False
+opt.x_grid = x
+opt.show_iter_cadence = show_iter_cadence
+opt.show_loop_cadence = show_loop_cadence
+opt.show = show_forward
 n = 20
 mu = 4.1
 sig = 0.5
@@ -80,90 +135,41 @@ guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 opt.ic['u']['g'] = guess
 
-# Adjoint ic: -derivative of HT wrt u(T)
-backward_ic = {'u_t' : -HT.sym_diff(u)}
-opt.backward_ic = backward_ic
-opt.HT = HT
+path = os.path.dirname(os.path.abspath(__file__))
+U_data = np.loadtxt(path + '/kdv_U.txt')
+u = next(field for field in forward_solver.state if field.name == 'u')
+U = dist.Field(name='U', bases=xbasis)
+U['g'] = U_data
+
+objectiveT = 0.5*(U - u)**2
+opt.set_objectiveT(objectiveT)
+
+# opt.backward_ic = backward_ic
 opt.U_data = U_data
 opt.build_var_hotel()
 
-indices = []
-HT_norms = []
-dt_reduce_index = 0
+def newton_descent(fun, x0, args, **kwargs):
+    gamma = opt.compute_gamma(20)
+    maxiter = kwargs['maxiter']
+    jac = kwargs['jac']
+    for i in range(maxiter):
+        f = fun(x0)
+        gradf = jac(x0)
+        x0 -= gamma * gradf
+    logger.info('success')
+    logger.info('maxiter = {}'.format(maxiter))
+    return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
 
-from datetime import datetime
 startTime = datetime.now()
-# opt.show_cadence = 20
-# for i in range(opt_iters):
-#     if (i % 5 == 0):
-#         opt.show = show_forward
-#     else:
-#         opt.show = False
 
-#     opt.loop()
-
-#     # if (opt.HT_norm <= 1e-10):
-#     #     break
-
-#     indices.append(i)
-#     HT_norms.append(opt.HT_norm)
-#     gamma = opt.compute_gamma(epsilon_safety)
-#     # gamma = default_gamma
-#     opt.descend(gamma)
-
-# if not np.isnan(opt.HT_norm):
-#     HTS.append(HT_norms[-1])
-# logger.info('####################################################')
-# logger.info('COMPLETED OPTIMIZATION RUN')
-# logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))
-# logger.info('####################################################')
-
-# # plt.plot(indices, HT_norms, linewidth=2)
-# # plt.yscale('log')
-# # plt.ylabel('Error')
-# # plt.xlabel('Loop Index')
-# # plt.savefig(path + '/error_kdv.png')
-# # plt.close()
-
-# # mu = 5.5
-# # sig = 0.5
-# # soln = 1*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-# # approx = opt.ic['u']['g'].flatten()
-
-# # plt.plot(x, approx, label="Optimized IC")
-# # plt.plot(x, soln, linestyle='--', label="Real IC")
-# # plt.plot(x, guess, linestyle=':', label="Initial Guess")
-# # plt.xlabel(r'$x$')
-# # plt.ylabel(r'$u(x, 0)$')
-# # plt.legend()
-# # plt.savefig(path + '/opt_ic.png')
-# # plt.show()
-
-global x_old
-def f(x):
-    global x_old 
-    x_old = x.copy()
-    logger.info('start evaluating f..')
-    opt.ic['u'].change_scales(1)
-    opt.ic['u']['g'] = x.reshape(dist.grid_layout.local_shape(u.domain, scales=1)).copy()
-    opt.loop_forward()
-    logger.info('done evaluating f. norm = {}'.format(opt.HT_norm))
-    return opt.HT_norm
-
-def gradf(x, *args):
-    global x_old
-    logger.info('start grad f..')
-    if not np.allclose(x, x_old):
-        f(x)
-    opt.evaluate_gradf()
-    logger.info('done grad f..')
-    opt.new_grad.change_scales(1)
-    return -opt.new_grad['g'].flatten().copy()
-
+options = {'maxiter' : opt_iters}
 x0 = opt.ic['u']['g'].flatten().copy()  # Initial guess.
-# print(opt.ic['u']['g'].flatten().shape)
-# logger.info(opt.ic['u']['g'][slices].flatten().shape)
-# logger.info(opt.ic['u']['g'][slices].shape)
-# sys.exit()
-from scipy import optimize
-res1 = optimize.minimize(f, x0, jac=gradf, method='L-BFGS-B')
+res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method='L-BFGS-B')
+# res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method=newton_descent, options=options)
+
+logger.info('####################################################')
+logger.info('COMPLETED OPTIMIZATION RUN')
+logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))
+logger.info('BEST LOOP INDEX {}'.format(opt.best_index))
+logger.info('BEST objectiveT {}'.format(opt.best_objectiveT))
+logger.info('####################################################')

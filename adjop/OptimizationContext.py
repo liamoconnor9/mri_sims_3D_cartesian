@@ -43,13 +43,12 @@ class OptimizationContext:
         self.step_performance = np.nan
         self.metricsT = {}
         self.metricsT_norms = {}
-        self.ObjectiveT_norms = []
+        self.objectiveT_norms = []
         self.indices = []
 
         self.add_handlers = False
         self.show = False
         self.show_backward = False
-        self.show_cadence = 1
         self.gamma_init = 0.01
 
         self.new_x = forward_solver.state[0].copy()
@@ -90,13 +89,15 @@ class OptimizationContext:
             if (var in self.lagrangian_dict.keys()):
                 self.hotel[var.name] = np.zeros(grid_time_shape)
 
-    def set_objectiveT(self, ObjectiveT):
-        self.ObjectiveT = ObjectiveT
+    def set_objectiveT(self, objectiveT):
+        self.objectiveT = objectiveT
         self.backward_ic = OrderedDict()
         for forward_field in self.lagrangian_dict.keys():
             backward_field = self.lagrangian_dict[forward_field]
-            self.backward_ic[backward_field.name] = ObjectiveT.sym_diff(forward_field)
+            self.backward_ic[backward_field.name] = objectiveT.sym_diff(forward_field)
 
+    def reshape_soln(self, x):
+        return x.reshape(self.domain.grid_shape(scales=1))[:]
 
     # For a given problem, these should be overwritten to add filehandlers, animations, metrics, etc.
     def before_fullforward_solve(self):
@@ -127,7 +128,11 @@ class OptimizationContext:
 
         self.x = x
         self.ic['u'].change_scales(1)
-        self.ic['u']['g'] = x.reshape((2,) + self.domain.grid_shape(scales=1))[:, self.slices[0], self.slices[1]]
+        # self.ic['u']['g'] = x.reshape((2,) + self.domain.grid_shape(scales=1))[:, self.slices[0], self.slices[1]]
+
+        self.old_x['g'] = self.ic['u']['g'].copy()
+        self.ic['u']['g'] = self.reshape_soln(x)
+        self.new_x['g'] = self.ic['u']['g'].copy()
 
         self.before_fullforward_solve()
         
@@ -138,24 +143,22 @@ class OptimizationContext:
 
         self.set_forward_ic()       
 
-        # self.resume_forward_handlers()
         self.solve_forward_full()
-        # self.pause_forward_handlers()
 
         self.forward_solver.evaluator.handlers.clear()
         
         # self.solve_forward()
         self.evaluate_objectiveT()
-        self.ObjectiveT_norms.append(self.ObjectiveT_norm)
+        self.objectiveT_norms.append(self.objectiveT_norm)
         self.indices.append(self.loop_index)
         self.after_fullforward_solve()
 
-        if (self.ObjectiveT_norm <= min(self.ObjectiveT_norms)):
+        if (self.objectiveT_norm <= min(self.objectiveT_norms)):
             self.x_opt = x
             self.best_index = self.loop_index
-            self.best_objectiveT = self.ObjectiveT_norm
+            self.best_objectiveT = self.objectiveT_norm
 
-        return self.ObjectiveT_norm
+        return self.objectiveT_norm
 
     def loop_backward(self, x):
 
@@ -177,6 +180,9 @@ class OptimizationContext:
         # Evaluate after fields are evolved (new state)
         self.backward_solver.state[0].change_scales(1)
         self.backward_solver.state[0]['g']
+
+        self.old_grad['g'] = self.new_grad['g'].copy()
+        self.new_grad['g'] = self.backward_solver.state[0]['g'].copy()
 
         self.after_backward_solve()
         self.loop_index += 1
@@ -204,36 +210,37 @@ class OptimizationContext:
         checkpoints.add_tasks(solver.state, layout='g')
 
         # Main loop
-        if (self.show):
-            u = solver.state[0]
-            u.change_scales(1)
-            fig = plt.figure()
-            p, = plt.plot(self.x, u['g'])
-            plt.plot(self.x, self.U_data)
-            plt.title('Loop Index = {}'.format(self.loop_index))
-            fig.canvas.draw()
+        # if (self.show):
+        #     u = solver.state[0]
+        #     u.change_scales(1)
+        #     fig = plt.figure()
+        #     p, = plt.plot(self.x, u['g'])
+        #     plt.plot(self.x, self.U_data)
+        #     plt.title('Loop Index = {}'.format(self.loop_index))
+        #     fig.canvas.draw()
         try:
             logger.debug('Starting forward solve')
             for t_ind in range(self.dt_per_loop):
 
-                solver.step(self.dt)
                 if (t_ind >= self.dt_per_loop - self.dt_per_cp):
                     for var in solver.state:
                         if (var.name in self.hotel.keys()):
                             var.change_scales(1)
                             self.hotel[var.name][t_ind - (self.dt_per_loop - self.dt_per_cp)] = var['g'].copy()
+                solver.step(self.dt)
+                self.during_fullforward_solve()
 
-                if self.show and t_ind % self.show_cadence == 0:
-                    u.change_scales(1)
-                    p.set_ydata(u['g'])
-                    plt.pause(5e-3)
-                    fig.canvas.draw()
+                # if self.show and t_ind % self.show_cadence == 0:
+                #     u.change_scales(1)
+                #     p.set_ydata(u['g'])
+                #     plt.pause(5e-3)
+                #     fig.canvas.draw()
 
         except:
             logger.error('Exception raised in forward solve, triggering end of main loop.')
             raise
         finally:
-            plt.close()
+            # plt.close()
             logger.debug('Completed forward solve')
 
     def solve_forward(self):
@@ -247,7 +254,6 @@ class OptimizationContext:
                     if (var.name in self.hotel.keys()):
                         var.change_scales(1)
                         self.hotel[var.name][t_ind] = var['g'].copy()
-                self.during_fullforward_solve()
                 logger.debug('Forward solver: sim_time = {}'.format(self.forward_solver.sim_time))
 
         except:
@@ -288,17 +294,17 @@ class OptimizationContext:
 
     def evaluate_objectiveT(self):
 
-        ObjectiveT_norm = d3.Integrate(self.ObjectiveT).evaluate()
+        objectiveT_norm = d3.Integrate(self.objectiveT).evaluate()
 
         if (CW.rank == 0):
-            self.ObjectiveT_norm = ObjectiveT_norm['g'].flat[0]
+            self.objectiveT_norm = objectiveT_norm['g'].flat[0]
         else:
-            self.ObjectiveT_norm = 0.0
+            self.objectiveT_norm = 0.0
 
-        self.ObjectiveT_norm = CW.bcast(self.ObjectiveT_norm, root=0)
+        self.objectiveT_norm = CW.bcast(self.objectiveT_norm, root=0)
 
-        if (np.isnan(self.ObjectiveT_norm)):
-            raise self.NanNormException({"message": "NaN ObjectiveT_norm computed. Ending optimization loop..."})
+        if (np.isnan(self.objectiveT_norm)):
+            raise self.NanNormException({"message": "NaN objectiveT_norm computed. Ending optimization loop..."})
 
         for metric_name in self.metricsT.keys():
             metricT_norm = d3.Integrate(self.metricsT[metric_name]).evaluate()
@@ -329,22 +335,22 @@ class OptimizationContext:
 
 #         return
 
-#    # This works really well for periodic kdv
-#     def compute_gamma(self, epsilon_safety):
-#         if (self.loop_index == 0):
-#             return 1e-3
-#         else:
-#             # https://en.wikipedia.org/wiki/Gradient_descent
-#             grad_diff = self.new_grad - self.old_grad
-#             x_diff = self.new_x - self.old_x
-#             integ1 = d3.Integrate(x_diff * grad_diff).evaluate()
-#             integ2 = d3.Integrate(grad_diff * grad_diff).evaluate()
-#             if (CW.rank == 0):
-#                 gamma = epsilon_safety * np.abs(integ1['g'].flat[0]) / (integ2['g'].flat[0])
-#             else:
-#                 gamma = 0.0
-#             gamma = CW.bcast(gamma, root=0)
-#             return gamma
+   # This works really well for periodic kdv
+    def compute_gamma(self, epsilon_safety):
+        if (self.loop_index == 0):
+            return 1e-3
+        else:
+            # https://en.wikipedia.org/wiki/Gradient_descent
+            grad_diff = self.new_grad - self.old_grad
+            x_diff = self.new_x - self.old_x
+            integ1 = d3.Integrate(x_diff * grad_diff).evaluate()
+            integ2 = d3.Integrate(grad_diff * grad_diff).evaluate()
+            if (CW.rank == 0):
+                gamma = epsilon_safety * np.abs(integ1['g'].flat[0]) / (integ2['g'].flat[0])
+            else:
+                gamma = 0.0
+            gamma = CW.bcast(gamma, root=0)
+            return gamma
 
 #     def descend(self, gamma, **kwargs):
 
@@ -369,14 +375,14 @@ class OptimizationContext:
 #         statement += 'gamma = %e; ' %self.gamma
 #         statement += 'grad norm = %e; ' %self.grad_norm
 #         statement += 'step performance = %f; ' %self.step_performance
-#         statement += 'ObjectiveT norm = %e; ' %self.ObjectiveT_norm
+#         statement += 'objectiveT norm = %e; ' %self.objectiveT_norm
 #         statement += addendum_str
 
 #         logger.info(statement)
 #         self.loop_index += 1
 
 #         self.indices.append(self.loop_index)
-#         self.ObjectiveT_norms.append(self.ObjectiveT_norm)
+#         self.objectiveT_norms.append(self.objectiveT_norm)
 
     class LoopIndexException(Exception):
         pass

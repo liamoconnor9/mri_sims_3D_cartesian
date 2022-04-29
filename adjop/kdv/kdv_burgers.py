@@ -13,20 +13,35 @@ import dedalus.public as d3
 import logging
 logger = logging.getLogger(__name__)
 import os
+from docopt import docopt
+from pathlib import Path
+from configparser import ConfigParser
+
+filename = Path('kdv_options.cfg')
+config = ConfigParser()
+config.read(str(filename))
+
+logger.info('Running kdv_burgers.py with the following parameters:')
+logger.info(config.items('parameters'))
+
+# Parameters
+Lx = config.getfloat('parameters', 'Lx')
+Nx = config.getint('parameters', 'Nx')
+
+a = config.getfloat('parameters', 'a')
+b = config.getfloat('parameters', 'b')
+stop_sim_time = config.getfloat('parameters', 'T')
+timestep = config.getfloat('parameters', 'dt')
 
 # Simulation Parameters
-Lx = 10
-Nx = 256
-a = 0.01
-b = 0.2
 dealias = 3/2
 dtype = np.float64
-stop_sim_time = 10.0
 
-periodic = True
+periodic = config.getboolean('parameters', 'periodic')
+show = config.getboolean('parameters', 'show')
+
 timestepper = d3.SBDF2
 epsilon_safety = 1
-timestep = 5e-4
 
 # Bases
 xcoord = d3.Coordinate('x')
@@ -79,16 +94,17 @@ solver.stop_sim_time = stop_sim_time
 # Main loop
 # Main loop
 u.change_scales(1)
-fig = plt.figure()
-p, = plt.plot(x, u['g'])
-fig.canvas.draw()
-title = plt.title('t=%f' %solver.sim_time)
+if (show):
+    fig = plt.figure()
+    p, = plt.plot(x, u['g'])
+    fig.canvas.draw()
+    title = plt.title('t=%f' %solver.sim_time)
 
 for iter in range(int(solver.stop_sim_time // timestep) + 1):
     solver.step(timestep)
     # if solver.iteration % 100 == 0:
     logger.info('Iteration=%i, Time=%e, dt=%e' %(solver.iteration, solver.sim_time, timestep))
-    if solver.iteration % 50 == 0:
+    if show and solver.iteration % 50 == 0:
         u.change_scales(1)
         p.set_ydata(u['g'])
         plt.title('t=%f' %solver.sim_time)
@@ -102,15 +118,3 @@ u_T = u['g'].copy()
 path = os.path.dirname(os.path.abspath(__file__))
 np.savetxt(path + '/kdv_U.txt', u_T)
 logger.info('saved final state')
-
-# # Plot
-# plt.figure(figsize=(6, 4))
-# plt.pcolormesh(x.ravel(), np.array(t_list), np.array(u_list), cmap='RdBu_r', shading='gouraud', rasterized=True, clim=(-0.8, 0.8))
-# plt.xlim(0, Lx)
-# plt.ylim(0, stop_sim_time)
-# plt.xlabel('x')
-# plt.ylabel('t')
-# plt.title(f'KdV-Burgers, (a,b)=({a},{b})')
-# plt.tight_layout()
-# plt.savefig('kdv_burgers.pdf')
-# plt.savefig('kdv_burgers.png', dpi=200)

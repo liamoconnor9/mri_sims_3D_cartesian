@@ -54,7 +54,7 @@ class ShearOptimization(OptimizationContext):
 
     def after_fullforward_solve(self):
         loop_message = 'loop index = {}; '.format(self.loop_index)
-        loop_message += 'ObjectiveT = {}; '.format(self.ObjectiveT_norm)
+        loop_message += 'objectiveT = {}; '.format(self.objectiveT_norm)
         for metric_name in self.metricsT_norms.keys():
             loop_message += '{} = {}; '.format(metric_name, self.metricsT_norms[metric_name])
         logger.info(loop_message)
@@ -159,7 +159,7 @@ opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/
 opt.ic['s'] = dist.Field(name='s', bases=bases)
 opt.ic['s']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 
-# Late time objective: ObjectiveT is minimized at t = T
+# Late time objective: objectiveT is minimized at t = T
 # w2 = d3.div(d3.skew(u))
 dx = lambda A: d3.Differentiate(A, coords['x'])
 dz = lambda A: d3.Differentiate(A, coords['z'])
@@ -171,9 +171,9 @@ Uz = U @ ez
 W = dx(Uz) - dz(Ux)
 # W2 = d3.div(d3.skew(U))
 
-# ObjectiveT = 5*(w - W)**2
-ObjectiveT = d3.dot(u - U, u - U)
-opt.set_objectiveT(ObjectiveT)
+# objectiveT = 5*(w - W)**2
+objectiveT = d3.dot(u - U, u - U)
+opt.set_objectiveT(objectiveT)
 # opt.backward_ic['u_t'] = -1e0*d3.skew(d3.grad((w - W)))
 
 opt.metricsT['u_error'] = d3.dot(u - U, u - U)
@@ -230,5 +230,5 @@ logger.info('####################################################')
 logger.info('COMPLETED OPTIMIZATION RUN')
 logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))
 logger.info('BEST LOOP INDEX {}'.format(opt.best_index))
-logger.info('BEST ObjectiveT {}'.format(opt.best_objectiveT))
+logger.info('BEST objectiveT {}'.format(opt.best_objectiveT))
 logger.info('####################################################')
