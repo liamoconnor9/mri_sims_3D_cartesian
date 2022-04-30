@@ -33,10 +33,17 @@ import ForwardShear
 import BackwardShear
 import matplotlib.pyplot as plt
 from scipy import optimize
+from natsort import natsorted
 
 class ShearOptimization(OptimizationContext):
+    def reshape_soln(self, x):
+        return x.reshape((2,) + self.domain.grid_shape(scales=1))[:, slices[0], slices[1]]
+
     def before_fullforward_solve(self):
-        if self.add_handlers:
+        if self.add_handlers and self.loop_index % self.handler_loop_cadence == 0:
+            checkpoints = self.forward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/checkpoints/checkpoint_loop'  + str(self.loop_index), max_writes=1, sim_dt=self.T, mode='overwrite')
+            checkpoints.add_tasks(self.forward_solver.state, layout='g')
+
             snapshots = self.forward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/snapshots_forward/snapshots_forward_loop' + str(self.loop_index), sim_dt=0.01, max_writes=10, mode='overwrite')
             u = self.forward_solver.state[0]
             s = self.forward_solver.state[1]
@@ -60,7 +67,7 @@ class ShearOptimization(OptimizationContext):
         logger.info(loop_message)
 
     def before_backward_solve(self):
-        if self.add_handlers:
+        if self.add_handlers and self.loop_index % self.handler_loop_cadence == 0:
             # setting tracer to end state of forward solve
             # self.forward_solver.state[1].change_scales(1)
             # self.backward_solver.state[1]['g'] = self.forward_solver.state[1]['g'].copy() - self.S['g'].copy()
@@ -97,6 +104,7 @@ logger.info(config.items('parameters'))
 # Parameters
 opt_iters = config.getint('parameters', 'opt_iters')
 num_cp = config.getint('parameters', 'num_cp')
+handler_loop_cadence = config.getint('parameters', 'handler_loop_cadence')
 add_handlers = config.getboolean('parameters', 'add_handlers')
 
 Lx = config.getfloat('parameters', 'Lx')
@@ -130,13 +138,14 @@ u = forward_problem.variables[0]
 u_t = backward_problem.variables[0]
 lagrangian_dict = {u : u_t}
 
-forward_solver = forward_problem.build_solver(d3.RK443)
-backward_solver = backward_problem.build_solver(d3.SBDF4)
+forward_solver = forward_problem.build_solver(d3.RK222)
+backward_solver = backward_problem.build_solver(d3.RK222)
 
 opt = ShearOptimization(domain, coords, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
 opt.set_time_domain(T, num_cp, dt)
 opt.opt_iters = opt_iters
 opt.add_handlers = add_handlers
+opt.handler_loop_cadence = handler_loop_cadence
 
 U = dist.VectorField(coords, name='U', bases=bases)
 S = dist.Field(name='S', bases=bases)
@@ -151,10 +160,26 @@ with h5py.File(end_state_path) as f:
 # sys.exit()
 opt.S = S
 # opt.ic['u'].fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
-coeff = 0.2
+
+coeff = 0.0
 opt.ic['u']['g'][0] = coeff * (1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1)))
 opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01))
 opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01))
+
+
+# restart_dir = path + '/' + write_suffix + '/checkpoints'
+# checkpoint_names = [name for name in os.listdir(restart_dir) if 'loop' in name]
+# last_checkpoint = natsorted(checkpoint_names)[-1]
+# print(last_checkpoint)
+# sys.exit()
+# last_checkpoint_path = restart_dir + '/' + last_checkpoint
+# write, last_dt = solver.load_state(last_checkpoint_path, -1)
+# logger.info("loading previous state")
+
+# # Timestepping and output
+# dt = last_dt
+# fh_mode = 'append'
+
 
 opt.ic['s'] = dist.Field(name='s', bases=bases)
 opt.ic['s']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
@@ -214,7 +239,7 @@ def newton_descent(fun, x0, args, **kwargs):
 logging.basicConfig(filename = opt.run_dir + '/' + opt.write_suffix + '/log.txt')
 try:
     options = {'maxiter' : opt_iters}
-    res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, options=options, callback=check_status, tol=1e-8, method='CG')
+    res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, options=options, callback=check_status, tol=1e-8, method='L-BFGS-B')
     # res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, options=options, callback=check_status, tol=1e-8, method=newton_descent)
     logger.info(res1)
     sys.exit()

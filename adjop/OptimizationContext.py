@@ -46,7 +46,7 @@ class OptimizationContext:
         self.objectiveT_norms = []
         self.indices = []
 
-        self.add_handlers = False
+        # self.add_handlers = False
         self.show = False
         self.show_backward = False
         self.gamma_init = 0.01
@@ -171,7 +171,7 @@ class OptimizationContext:
         self.solve_backward()
 
         for i in range(1, self.num_cp):
-            self.forward_solver.load_state(self.path + '/checkpoints_' + self.write_suffix + '/checkpoints_kdv0_s1.h5', -i)
+            self.forward_solver.load_state(self.run_dir + '/' + self.write_suffix + '/checkpoints_internal/checkponts_internal_s1.h5', -i)
             self.solve_forward()
             self.solve_backward()
 
@@ -206,7 +206,7 @@ class OptimizationContext:
         solver.iteration = 0
         solver.stop_sim_time = self.T
 
-        checkpoints = solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/checkpoints'.format(self.write_suffix), max_writes=self.num_cp - 1, iter=self.dt_per_cp, mode='overwrite')
+        checkpoints = solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/checkponts_internal', max_writes=self.num_cp - 1, iter=self.dt_per_cp, mode='overwrite')
         checkpoints.add_tasks(solver.state, layout='g')
 
         # Main loop
