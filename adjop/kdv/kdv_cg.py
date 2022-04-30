@@ -56,6 +56,7 @@ class KdvOptimization(OptimizationContext):
         for metric_name in self.metricsT_norms.keys():
             loop_message += '{} = {}; '.format(metric_name, self.metricsT_norms[metric_name])
         logger.info(loop_message)
+        plt.pause(3e-1)
         plt.close()
 
     def before_backward_solve(self):
@@ -116,8 +117,8 @@ backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 # Names of the forward, and corresponding adjoint variables
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 
-forward_solver = forward_problem.build_solver(d3.RK222)
-backward_solver = backward_problem.build_solver(d3.RK222)
+forward_solver = forward_problem.build_solver(d3.SBDF2)
+backward_solver = backward_problem.build_solver(d3.SBDF2)
 
 write_suffix = 'kdv0'
 
