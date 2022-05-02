@@ -29,67 +29,12 @@ from pathlib import Path
 from configparser import ConfigParser
 
 from OptimizationContext import OptimizationContext
+from ShearOptimization import ShearOptimization
 import ForwardShear
 import BackwardShear
 import matplotlib.pyplot as plt
 from scipy import optimize
 from natsort import natsorted
-
-class ShearOptimization(OptimizationContext):
-    def reshape_soln(self, x):
-        return x.reshape((2,) + self.domain.grid_shape(scales=1))[:, slices[0], slices[1]]
-
-    def before_fullforward_solve(self):
-        if self.add_handlers and self.loop_index % self.handler_loop_cadence == 0:
-            checkpoints = self.forward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/checkpoints/checkpoint_loop'  + str(self.loop_index), max_writes=1, sim_dt=self.T, mode='overwrite')
-            checkpoints.add_tasks(self.forward_solver.state, layout='g')
-
-            snapshots = self.forward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/snapshots_forward/snapshots_forward_loop' + str(self.loop_index), sim_dt=0.01, max_writes=10, mode='overwrite')
-            u = self.forward_solver.state[0]
-            s = self.forward_solver.state[1]
-            p = self.forward_solver.state[2]
-            snapshots.add_task(s, name='tracer')
-            snapshots.add_task(p, name='pressure')
-            snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
-            snapshots.add_task(d3.dot(ex, u), name='ux')
-            snapshots.add_task(d3.dot(ez, u), name='uz')
-
-        logger.debug('start evaluating f..')
-
-    def during_fullforward_solve(self):
-        pass
-
-    def after_fullforward_solve(self):
-        loop_message = 'loop index = {}; '.format(self.loop_index)
-        loop_message += 'objectiveT = {}; '.format(self.objectiveT_norm)
-        for metric_name in self.metricsT_norms.keys():
-            loop_message += '{} = {}; '.format(metric_name, self.metricsT_norms[metric_name])
-        logger.info(loop_message)
-
-    def before_backward_solve(self):
-        if self.add_handlers and self.loop_index % self.handler_loop_cadence == 0:
-            # setting tracer to end state of forward solve
-            # self.forward_solver.state[1].change_scales(1)
-            # self.backward_solver.state[1]['g'] = self.forward_solver.state[1]['g'].copy() - self.S['g'].copy()
-
-            snapshots_backward = self.backward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/snapshots_backward/snapshots_backward_loop' + str(self.loop_index), sim_dt=-0.01, max_writes=10, mode='overwrite')
-            u_t = self.backward_solver.state[0]
-            s_t = self.backward_solver.state[1]
-            p_t = self.backward_solver.state[2]
-            snapshots_backward.add_task(s_t, name='tracer')
-            snapshots_backward.add_task(p_t, name='pressure')
-            snapshots_backward.add_task(-d3.div(d3.skew(u_t)), name='vorticity')
-            snapshots_backward.add_task(d3.dot(ex, u_t), name='ux')
-            snapshots_backward.add_task(d3.dot(ez, u_t), name='uz')
-        logger.debug('Starting backward solve')
-
-    def during_backward_solve(self):
-        # logger.debug('backward solver time = {}'.format(self.backward_solver.sim_time))
-        pass
-
-    def after_backward_solve(self):
-        logger.debug('Completed backward solve')
-        pass
 
 args = docopt(__doc__)
 filename = Path(args['<config_file>'])
@@ -106,6 +51,7 @@ opt_iters = config.getint('parameters', 'opt_iters')
 num_cp = config.getint('parameters', 'num_cp')
 handler_loop_cadence = config.getint('parameters', 'handler_loop_cadence')
 add_handlers = config.getboolean('parameters', 'add_handlers')
+guide_coeff = config.getfloat('parameters', 'guide_coeff')
 
 Lx = config.getfloat('parameters', 'Lx')
 Lz = config.getfloat('parameters', 'Lz')
@@ -150,6 +96,7 @@ opt.handler_loop_cadence = handler_loop_cadence
 U = dist.VectorField(coords, name='U', bases=bases)
 S = dist.Field(name='S', bases=bases)
 slices = dist.grid_layout.slices(domain, scales=1)
+opt.slices = slices
 
 # Populate U with end state of known initial condition
 end_state_path = path + '/' + write_suffix + '/checkpoint_target/checkpoint_target_s1.h5'
@@ -161,10 +108,14 @@ with h5py.File(end_state_path) as f:
 opt.S = S
 # opt.ic['u'].fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
 
-coeff = 0.0
-opt.ic['u']['g'][0] = coeff * (1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1)))
-opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01))
-opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01))
+opt.ic['u']['g'][0] = guide_coeff * (1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1)))
+opt.ic['u']['g'][1] += guide_coeff * 0.1 * np.sin(2*np.pi*x/Lx)
+opt.ic['u']['g'][1] += guide_coeff * 0.1 * np.sin(2*np.pi*x/Lx)
+
+#old ic
+# opt.ic['u']['g'][0] = coeff * (1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1)))
+# opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01))
+# opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01))
 
 
 # restart_dir = path + '/' + write_suffix + '/checkpoints'
@@ -196,12 +147,13 @@ Uz = U @ ez
 W = dx(Uz) - dz(Ux)
 # W2 = d3.div(d3.skew(U))
 
-# objectiveT = 5*(w - W)**2
-objectiveT = d3.dot(u - U, u - U)
+objectiveT = (w - W)**2
+# objectiveT = d3.dot(u - U, u - U)
 opt.set_objectiveT(objectiveT)
-# opt.backward_ic['u_t'] = -1e0*d3.skew(d3.grad((w - W)))
+opt.backward_ic['u_t'] = -2.0*d3.skew(d3.grad((w - W)))
 
 opt.metricsT['u_error'] = d3.dot(u - U, u - U)
+opt.metricsT['omega_error'] = (w - W)**2
 
 # temp = opt.backward_ic['u_t']
 # logger.info(temp)
