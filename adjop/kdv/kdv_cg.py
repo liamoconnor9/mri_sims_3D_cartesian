@@ -91,12 +91,14 @@ num_cp = config.getint('parameters', 'num_cp')
 dealias = 3/2
 dtype = np.float64
 
+opt_iters = config.getint('parameters', 'opt_iters')
+method = str(config.get('parameters', 'scipy_method'))
+
 periodic = config.getboolean('parameters', 'periodic')
 show_forward = config.getboolean('parameters', 'show')
 epsilon_safety = default_gamma = 0.6
 show_iter_cadence = config.getint('parameters', 'show_iter_cadence')
 show_loop_cadence = config.getint('parameters', 'show_loop_cadence')
-opt_iters = config.getint('parameters', 'opt_iters')
 
 # Bases
 xcoord = d3.Coordinate('x')
@@ -117,14 +119,17 @@ backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 # Names of the forward, and corresponding adjoint variables
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 
-forward_solver = forward_problem.build_solver(d3.SBDF2)
-backward_solver = backward_problem.build_solver(d3.SBDF2)
+forward_solver = forward_problem.build_solver(d3.RK222)
+backward_solver = backward_problem.build_solver(d3.RK222)
 
 write_suffix = 'kdv0'
 
 opt = KdvOptimization(domain, xcoord, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
 opt.beta_calc = 'euler'
 opt.set_time_domain(T, num_cp, dt)
+opt.opt_iters = opt_iters
+
+
 opt.x_grid = x
 opt.show_iter_cadence = show_iter_cadence
 opt.show_loop_cadence = show_loop_cadence
@@ -148,26 +153,38 @@ opt.set_objectiveT(objectiveT)
 # opt.backward_ic = backward_ic
 opt.U_data = U_data
 opt.build_var_hotel()
+opt.gamma_init = 1.0
 
-def newton_descent(fun, x0, args, **kwargs):
-    gamma = opt.compute_gamma(20)
+def euler_descent(fun, x0, args, **kwargs):
+    opt.gamma_init = 1.0
     maxiter = kwargs['maxiter']
     jac = kwargs['jac']
     for i in range(maxiter):
         f = fun(x0)
         gradf = jac(x0)
+        gamma = opt.compute_gamma(1.0)
         x0 -= gamma * gradf
-    logger.info('success')
-    logger.info('maxiter = {}'.format(maxiter))
     return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
 
+if (method == "euler"):
+    method = euler_descent
+
 startTime = datetime.now()
+try:
+    tol = 1e-10
+    options = {'maxiter' : opt_iters, 'ftol' : tol, 'gtol' : tol}
+    x0 = opt.ic['u']['g'].flatten().copy()  # Initial guess.
+    res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method=method, tol=tol, options=options)
+    # res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method='L-BFGS-B', tol=tol, options=options)
+    # res1 = optimize.minimize(opt.loop_forwaoh rd, x0, jac=opt.loop_backward, method=euler_descent, options=options)
+    logger.info('scipy message {}'.format(res1.message))
 
-options = {'maxiter' : opt_iters}
-x0 = opt.ic['u']['g'].flatten().copy()  # Initial guess.
-res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method='L-BFGS-B')
-# res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method=newton_descent, options=options)
-
+except opt.LoopIndexException as e:
+    details = e.args[0]
+    logger.info(details["message"])
+except opt.NanNormException as e:
+    details = e.args[0]
+    logger.info(details["message"])
 logger.info('####################################################')
 logger.info('COMPLETED OPTIMIZATION RUN')
 logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))

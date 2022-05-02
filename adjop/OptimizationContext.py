@@ -128,6 +128,8 @@ class OptimizationContext:
 
         self.x = x
         self.ic['u'].change_scales(1)
+        self.old_x.change_scales(1)
+        self.new_x.change_scales(1)
         # self.ic['u']['g'] = x.reshape((2,) + self.domain.grid_shape(scales=1))[:, self.slices[0], self.slices[1]]
 
         self.old_x['g'] = self.ic['u']['g'].copy()
@@ -180,6 +182,9 @@ class OptimizationContext:
         # Evaluate after fields are evolved (new state)
         self.backward_solver.state[0].change_scales(1)
         self.backward_solver.state[0]['g']
+
+        self.old_grad.change_scales(1)
+        self.new_grad.change_scales(1)
 
         self.old_grad['g'] = self.new_grad['g'].copy()
         self.new_grad['g'] = self.backward_solver.state[0]['g'].copy()
@@ -337,7 +342,7 @@ class OptimizationContext:
 
    # This works really well for periodic kdv
     def compute_gamma(self, epsilon_safety):
-        if (self.loop_index == 0):
+        if (self.loop_index == 1):
             return 1e-3
         else:
             # https://en.wikipedia.org/wiki/Gradient_descent
