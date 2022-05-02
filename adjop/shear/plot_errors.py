@@ -28,7 +28,7 @@ with open(path + '/' + write_suffix + '/errors_data.pickle', 'rb') as handle:
     
 maxindex = max(global_errors.keys())
 for loop_ind in range(maxindex + 1):
-    if not loop_ind in global_errors.keys():
+    if (loop_ind != 95 and loop_ind % 20 != 0)  or not loop_ind in global_errors.keys():
         continue
     errors_data = global_errors[loop_ind]
     errors_unzipped = [list(t) for t in zip(*errors_data)]
@@ -40,4 +40,4 @@ plt.xlabel('time')
 plt.ylabel(r'$<|u(t) - U(t)|^2>$')
 plt.title(write_suffix)
 plt.legend()
-plt.savefig(path + '/' + write_suffix + '/errors_test2.png')
+plt.savefig(path + '/' + write_suffix + '/errors_trace.png')

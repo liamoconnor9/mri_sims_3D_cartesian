@@ -137,12 +137,4 @@ except:
 finally:
     solver.log_stats()
 
-
 logger.info('solve complete, sim time = {}'.format(solver.sim_time))
-
-u.change_scales(1)
-u_T0 = u['g'][0].copy()
-u_T1 = u['g'][1].copy()
-np.savetxt(path + '/shear_U0.txt', u_T0)
-np.savetxt(path + '/shear_U1.txt', u_T1)
-logger.info('saved final state')
