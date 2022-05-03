@@ -24,14 +24,14 @@ DIR="$(dirname "$(readlink -f "$0")")/"
 CONFIG="shear_options.cfg"
 
 # If target simulation was previously run in OLDSUFFIX, just copy its contents over
-SUFFIX="T3_N512_testcadence3"
+SUFFIX="T3_N512_testcadence"
 
 mkdir $SUFFIX/frames_error
 mkdir $SUFFIX/movies_error
 
-MPIPROC=10
+MPIPROC=80
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots_error.py $SUFFIX snapshots_target snapshots_forward frames_error
-mpiexec_mpt -np 1 python3 plot_errors.py $SUFFIX snapshots_target snapshots_forward frames_error
+# mpiexec_mpt -np 1 python3 plot_errors.py $SUFFIX snapshots_target snapshots_forward frames_error
 exit 1
 
 for d in $SUFFIX/frames_error/*/ ; do
