@@ -350,11 +350,17 @@ class OptimizationContext:
             x_diff = self.new_x - self.old_x
             integ1 = d3.Integrate(x_diff * grad_diff).evaluate()
             integ2 = d3.Integrate(grad_diff * grad_diff).evaluate()
+
+            old_grad_sqrd_integ = d3.Integrate(self.old_grad * self.old_grad).evaluate()
             if (CW.rank == 0):
                 gamma = epsilon_safety * np.abs(integ1['g'].flat[0]) / (integ2['g'].flat[0])
+                old_grad_sqrd = old_grad_sqrd_integ['g'].flat[0]
             else:
                 gamma = 0.0
+                old_grad_sqrd = 0.0
             gamma = CW.bcast(gamma, root=0)
+            self.old_grad_sqrd = CW.bcast(old_grad_sqrd, root=0)
+
             return gamma
 
 #     def descend(self, gamma, **kwargs):

@@ -158,11 +158,20 @@ opt.gamma_init = 1.0
 def euler_descent(fun, x0, args, **kwargs):
     opt.gamma_init = 1.0
     maxiter = kwargs['maxiter']
+    f = 0.0
+    gamma = 0.0
     jac = kwargs['jac']
     for i in range(maxiter):
+        old_f = f
         f = fun(x0)
         gradf = jac(x0)
+        old_gamma = gamma
         gamma = opt.compute_gamma(1.0)
+        if i > 0:
+            step_p = (old_f - f) / old_gamma / opt.old_grad_sqrd
+            # logger.info("step_p = {}".format(step_p))
+            opt.metricsT_norms['step_p'] = step_p
+
         x0 -= gamma * gradf
     return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
 
