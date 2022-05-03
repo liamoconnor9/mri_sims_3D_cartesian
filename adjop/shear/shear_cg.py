@@ -33,7 +33,7 @@ from ShearOptimization import ShearOptimization
 import ForwardShear
 import BackwardShear
 import matplotlib.pyplot as plt
-from scipy import optimize
+from scipy.optimize import minimize, basinhopping, OptimizeResult
 from natsort import natsorted
 
 args = docopt(__doc__)
@@ -47,7 +47,10 @@ logger.info('Running shear_flow.py with the following parameters:')
 logger.info(config.items('parameters'))
 
 # Parameters
+basinhopping_iters = config.getint('parameters', 'basinhopping_iters')
 opt_iters = config.getint('parameters', 'opt_iters')
+method = str(config.get('parameters', 'scipy_method'))
+
 num_cp = config.getint('parameters', 'num_cp')
 handler_loop_cadence = config.getint('parameters', 'handler_loop_cadence')
 add_handlers = config.getboolean('parameters', 'add_handlers')
@@ -147,13 +150,13 @@ Uz = U @ ez
 W = dx(Uz) - dz(Ux)
 # W2 = d3.div(d3.skew(U))
 
-objectiveT = (w - W)**2
-# objectiveT = d3.dot(u - U, u - U)
+# objectiveT = (w - W)**2
+objectiveT = d3.dot(u - U, u - U)
 opt.set_objectiveT(objectiveT)
 
 # opt.backward_ic['u_t'] = -2.0*d3.skew(d3.grad((w - W)))
 
-opt.backward_ic['u_t'] = ex * dz(w - W) - ez * dx(w - W)
+# opt.backward_ic['u_t'] = ex * dz(w - W) - ez * dx(w - W)
 
 opt.metricsT['u_error'] = d3.dot(u - U, u - U)
 opt.metricsT['omega_error'] = (w - W)**2
@@ -167,18 +170,11 @@ opt.metricsT['omega_error'] = (w - W)**2
 opt.backward_ic['s_t'] = dist.Field(name='s_t', bases=bases)
 opt.backward_ic['s_t']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 
-from datetime import datetime
-startTime = datetime.now()
-
-opt.ic['u'].change_scales(1)
-opt.ic['u']['g']
-x0 = opt.ic['u'].allgather_data().flatten().copy()  # Initial guess.
-
 def check_status(x):
     logger.info('completed scipy py iteration')
     CW.barrier()
 
-def newton_descent(fun, x0, args, **kwargs):
+def euler_descent(fun, x0, args, **kwargs):
     gamma = 0.001
     maxiter = kwargs['maxiter']
     jac = kwargs['jac']
@@ -188,16 +184,35 @@ def newton_descent(fun, x0, args, **kwargs):
         x0 -= gamma * gradf
     logger.info('success')
     logger.info('maxiter = {}'.format(maxiter))
-    return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
+    return OptimizeResult(x=x0, success=True, message='beep boop')
+
+if (method == "euler"):
+    method = euler_descent
 
 # logging.basicConfig(filename='/path/to/your/log', level=....)
-logging.basicConfig(filename = opt.run_dir + '/' + opt.write_suffix + '/log.txt')
+# logging.basicConfig(filename = opt.run_dir + '/' + opt.write_suffix + '/log.txt')
+
+from datetime import datetime
+startTime = datetime.now()
+
+opt.ic['u'].change_scales(1)
+opt.ic['u']['g']
+x0 = opt.ic['u'].allgather_data().flatten().copy()  # Initial guess.
+
+options = {'maxiter' : opt_iters}
+# try:
+#     res0 = basinhopping(opt.loop_forward, x0, basinhopping_iters, jac=opt.loop_backward, options=options, callback=check_status, tol=1e-8, method=method)
+#     logger.info(res0)
+# except opt.LoopIndexException as e:
+#     details = e.args[0]
+#     logger.info(details["message"])
+# except opt.NanNormException as e:
+#     details = e.args[0]
+    # logger.info(details["message"])
+
 try:
-    options = {'maxiter' : opt_iters}
-    res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, options=options, callback=check_status, tol=1e-8, method='L-BFGS-B')
-    # res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, options=options, callback=check_status, tol=1e-8, method=newton_descent)
+    res1 = minimize(opt.loop_forward, x0, jac=opt.loop_backward, options=options, callback=check_status, tol=1e-8, method=method)
     logger.info(res1)
-    sys.exit()
 except opt.LoopIndexException as e:
     details = e.args[0]
     logger.info(details["message"])

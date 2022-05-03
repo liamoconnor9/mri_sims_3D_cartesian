@@ -36,7 +36,7 @@ for loop_ind in range(maxindex + 1):
     error = errors_unzipped[1]
     plt.plot(time, error, label='loop index {}'.format(loop_ind))
 plt.yscale('log')
-plt.xlabel('time')
+plt.xlabel(r'$t$')
 plt.ylabel(r'$<|u(t) - U(t)|^2>$')
 plt.title(write_suffix)
 plt.legend()

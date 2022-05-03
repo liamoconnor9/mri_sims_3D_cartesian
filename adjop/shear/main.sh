@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
-#PBS -l select=2:ncpus=40:mpiprocs=40:model=sky_ele
-#PBS -l walltime=12:00:00
+#PBS -l select=2:ncpus=40:mpiprocs=40:model=bro
+#PBS -l walltime=2:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -26,35 +26,37 @@ CONFIG="shear_options.cfg"
 
 # If target simulation was previously run in OLDSUFFIX, just copy its contents over
 # SUFFIX="T3_N512_vorticity"
-SUFFIX="T3_N512_coeff0p95_Re2e5"
-# OLDSUFFIX="T3_N512_coeff0p9_Re2e5"
-OLDSUFFIX=$SUFFIX
+SUFFIX="T3_N512_coeff0p5_Re2e5"
+# OLDSUFFIX="Tp5_N512_coeff0p95_Re2e5"
+# OLDSUFFIX=$SUFFIX
 MPIPROC=64
 
-mkdir $SUFFIX
-mkdir $SUFFIX/checkpoints
-mkdir $SUFFIX/snapshots_forward
-mkdir $SUFFIX/snapshots_backward
-mkdir $SUFFIX/frames_forward
-mkdir $SUFFIX/frames_backward
-mkdir $SUFFIX/frames_target
-mkdir $SUFFIX/frames_error
-mkdir $SUFFIX/movies_forward
-mkdir $SUFFIX/movies_backward
-mkdir $SUFFIX/movies_error
+if [ ! -d "$SUFFIX" ]; then
+    mkdir $SUFFIX
+    mkdir $SUFFIX/checkpoints
+    mkdir $SUFFIX/snapshots_forward
+    mkdir $SUFFIX/snapshots_backward
+    mkdir $SUFFIX/frames_forward
+    mkdir $SUFFIX/frames_backward
+    mkdir $SUFFIX/frames_target
+    mkdir $SUFFIX/frames_error
+    mkdir $SUFFIX/movies_forward
+    mkdir $SUFFIX/movies_backward
+    mkdir $SUFFIX/movies_error
 
-if [ -v OLDSUFFIX ];then
-    cp -r $OLDSUFFIX/checkpoint_target/ $SUFFIX/checkpoint_target/
-    cp -r $OLDSUFFIX/snapshots_target/ $SUFFIX/snapshots_target/
-    cp $OLDSUFFIX/movie_target.mp4 $SUFFIX/movie_target.mp4
-else
-    mpiexec_mpt -np $MPIPROC python3 shear_flow.py $CONFIG $SUFFIX
-    mpiexec_mpt -np $MPIPROC python3 plot_snapshots_og.py $SUFFIX snapshots_target frames_target
-    png2mp4 $SUFFIX/frames_target/ $SUFFIX/movie_target.mp4 60
+    if [ -v OLDSUFFIX ];then
+        cp -r $OLDSUFFIX/checkpoint_target/ $SUFFIX/checkpoint_target/
+        cp -r $OLDSUFFIX/snapshots_target/ $SUFFIX/snapshots_target/
+        cp $OLDSUFFIX/movie_target.mp4 $SUFFIX/movie_target.mp4
+    else
+        mpiexec_mpt -np $MPIPROC python3 shear_flow.py $CONFIG $SUFFIX
+        mpiexec_mpt -np $MPIPROC python3 plot_snapshots_og.py $SUFFIX snapshots_target frames_target
+        png2mp4 $SUFFIX/frames_target/ $SUFFIX/movie_target.mp4 60
+    fi
 fi
 
 mpiexec_mpt -np $MPIPROC python3 shear_cg.py $CONFIG $SUFFIX
-# exit 1
+exit 1
 MPIPROC=80
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_forward frames_forward
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_backward frames_backward

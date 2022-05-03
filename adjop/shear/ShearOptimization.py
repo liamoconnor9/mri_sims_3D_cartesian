@@ -44,6 +44,7 @@ class ShearOptimization(OptimizationContext):
         if self.add_handlers and self.loop_index % self.handler_loop_cadence == 0:
             checkpoints = self.forward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/checkpoints/checkpoint_loop'  + str(self.loop_index), max_writes=1, sim_dt=self.T, mode='overwrite')
             checkpoints.add_tasks(self.forward_solver.state, layout='g')
+            ex, ez = self.coords.unit_vector_fields(self.domain.dist)
 
             snapshots = self.forward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/snapshots_forward/snapshots_forward_loop' + str(self.loop_index), sim_dt=0.01, max_writes=10, mode='overwrite')
             u = self.forward_solver.state[0]
@@ -72,6 +73,7 @@ class ShearOptimization(OptimizationContext):
             # setting tracer to end state of forward solve
             # self.forward_solver.state[1].change_scales(1)
             # self.backward_solver.state[1]['g'] = self.forward_solver.state[1]['g'].copy() - self.S['g'].copy()
+            ex, ez = self.coords.unit_vector_fields(self.domain.dist)
 
             snapshots_backward = self.backward_solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/snapshots_backward/snapshots_backward_loop' + str(self.loop_index), sim_dt=-0.01, max_writes=10, mode='overwrite')
             u_t = self.backward_solver.state[0]
