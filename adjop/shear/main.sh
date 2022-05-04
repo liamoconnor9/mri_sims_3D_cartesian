@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
-#PBS -l select=2:ncpus=40:mpiprocs=40:model=sky_ele
-#PBS -l walltime=4:00:00
+#PBS -l select=1:ncpus=40:mpiprocs=40:model=sky_ele
+#PBS -l walltime=2:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -26,12 +26,13 @@ CONFIG="shear_options.cfg"
 
 # If target simulation was previously run in OLDSUFFIX, just copy its contents over
 # SUFFIX="T3_N512_vorticity"
-SUFFIX="T3_N512_coeff0p95_Re2e5"
-# OLDSUFFIX="Tp5_N512_coeff0p95_Re2e5"
+SUFFIX="T3_N256_coeff0p9_Re2e5"
+# OLDSUFFIX="T3_N256_coeff0p90_Re2e4"
 # OLDSUFFIX=$SUFFIX
-MPIPROC=64
+MPIPROC=32
 
 if [ ! -d "$SUFFIX" ]; then
+
     mkdir $SUFFIX
     mkdir $SUFFIX/checkpoints
     mkdir $SUFFIX/snapshots_forward
@@ -53,11 +54,16 @@ if [ ! -d "$SUFFIX" ]; then
         mpiexec_mpt -np $MPIPROC python3 plot_snapshots_og.py $SUFFIX snapshots_target frames_target
         png2mp4 $SUFFIX/frames_target/ $SUFFIX/movie_target.mp4 60
     fi
+
 fi
 
 mpiexec_mpt -np $MPIPROC python3 shear_cg.py $CONFIG $SUFFIX
+MPIPROC=10
+mpiexec_mpt -np $MPIPROC python3 plot_snapshots_error.py $SUFFIX snapshots_target snapshots_forward frames_error
+mpiexec_mpt -np 1 python3 plot_errors.py $SUFFIX snapshots_target snapshots_forward frames_error
+
 exit 1
-MPIPROC=80
+MPIPROC=40
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_forward frames_forward
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_backward frames_backward
 
