@@ -119,8 +119,8 @@ backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 # Names of the forward, and corresponding adjoint variables
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 
-forward_solver = forward_problem.build_solver(d3.RK222)
-backward_solver = backward_problem.build_solver(d3.RK222)
+forward_solver = forward_problem.build_solver(d3.RK443)
+backward_solver = backward_problem.build_solver(d3.SBDF1)
 
 write_suffix = 'kdv0'
 
@@ -138,6 +138,7 @@ n = 20
 mu = 4.1
 sig = 0.5
 guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+guess = x*0
 
 opt.ic['u']['g'] = guess
 
@@ -149,6 +150,11 @@ U['g'] = U_data
 
 objectiveT = 0.5*(U - u)**2
 opt.set_objectiveT(objectiveT)
+
+n = 20
+mu = 5.5
+sig = 0.5
+soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 # opt.backward_ic = backward_ic
 opt.U_data = U_data
@@ -200,3 +206,21 @@ logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))
 logger.info('BEST LOOP INDEX {}'.format(opt.best_index))
 logger.info('BEST objectiveT {}'.format(opt.best_objectiveT))
 logger.info('####################################################')
+
+# print(x0)
+x0 = opt.best_x
+plt.plot(x, x0, label='Optimized IC')
+plt.plot(x, soln, linestyle=':', label='Target IC')
+plt.plot(x, guess, linestyle='--', label='Initial Guess')
+plt.legend()
+plt.xlabel(r'$x$')
+plt.ylabel(r'$u(x, 0)$')
+plt.savefig(path + '/ics.png')
+plt.close()
+
+plt.plot(opt.objectiveT_norms)
+plt.xlabel('loop index')
+plt.ylabel(r'$0.5(u(T) - U(T))^2$')
+plt.title('Error')
+plt.savefig(path + '/error.png')
+# plt.show()

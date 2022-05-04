@@ -31,7 +31,7 @@ Nx = config.getint('parameters', 'Nx')
 a = config.getfloat('parameters', 'a')
 b = config.getfloat('parameters', 'b')
 stop_sim_time = config.getfloat('parameters', 'T')
-timestep = config.getfloat('parameters', 'dt')
+timestep = config.getfloat('parameters', 'dt') / 4.0
 
 # Simulation Parameters
 dealias = 3/2
@@ -40,7 +40,7 @@ dtype = np.float64
 periodic = config.getboolean('parameters', 'periodic')
 show = config.getboolean('parameters', 'show')
 
-timestepper = d3.SBDF2
+timestepper = d3.RK443
 epsilon_safety = 1
 
 # Bases

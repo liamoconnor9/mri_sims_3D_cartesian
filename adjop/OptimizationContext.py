@@ -156,7 +156,7 @@ class OptimizationContext:
         self.after_fullforward_solve()
 
         if (self.objectiveT_norm <= min(self.objectiveT_norms)):
-            self.x_opt = x
+            self.best_x = x
             self.best_index = self.loop_index
             self.best_objectiveT = self.objectiveT_norm
 
@@ -227,12 +227,12 @@ class OptimizationContext:
             logger.debug('Starting forward solve')
             for t_ind in range(self.dt_per_loop):
 
+                solver.step(self.dt)
                 if (t_ind >= self.dt_per_loop - self.dt_per_cp):
                     for var in solver.state:
                         if (var.name in self.hotel.keys()):
                             var.change_scales(1)
                             self.hotel[var.name][t_ind - (self.dt_per_loop - self.dt_per_cp)] = var['g'].copy()
-                solver.step(self.dt)
                 self.during_fullforward_solve()
 
                 # if self.show and t_ind % self.show_cadence == 0:
