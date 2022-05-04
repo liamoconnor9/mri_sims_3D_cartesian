@@ -9,7 +9,7 @@ CW = MPI.COMM_WORLD
 import matplotlib.pyplot as plt
 import inspect
 import logging
-logging.getLogger('solvers').setLevel(logging.INFO)
+logging.getLogger('solvers').setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
 from collections import OrderedDict
 
@@ -173,7 +173,7 @@ class OptimizationContext:
         self.solve_backward()
 
         for i in range(1, self.num_cp):
-            self.forward_solver.load_state(self.run_dir + '/' + self.write_suffix + '/checkpoints_internal/checkponts_internal_s1.h5', -i)
+            self.forward_solver.load_state(self.run_dir + '/' + self.write_suffix + '/checkpoints_internal/checkpoints_internal_s1.h5', -i)
             self.solve_forward()
             self.solve_backward()
 
@@ -211,7 +211,7 @@ class OptimizationContext:
         solver.iteration = 0
         solver.stop_sim_time = self.T
 
-        checkpoints = solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/checkponts_internal', max_writes=self.num_cp - 1, iter=self.dt_per_cp, mode='overwrite')
+        checkpoints = solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/checkpoints_internal', max_writes=self.num_cp - 1, iter=self.dt_per_cp, mode='overwrite')
         checkpoints.add_tasks(solver.state, layout='g')
 
         # Main loop

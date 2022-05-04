@@ -23,6 +23,7 @@ CW = MPI.COMM_WORLD
 import logging
 import pathlib
 logger = logging.getLogger(__name__)
+logging.getLogger('solvers').setLevel(logging.ERROR)
 # logger.setLevel(logging.info)
 from docopt import docopt
 from pathlib import Path
@@ -42,11 +43,16 @@ write_suffix = args['<run_suffix>']
 
 config = ConfigParser()
 config.read(str(filename))
+path + '/' + write_suffix
+# fh = logging.FileHandler(path + '/' + write_suffix + '/log.log')
+# fh.setLevel(logging.INFO)
+# logger.addHandler(fh)
 
 logger.info('Running shear_flow.py with the following parameters:')
 logger.info(config.items('parameters'))
 
 # Parameters
+load_state = config.getboolean('parameters', 'load_state')
 basinhopping_iters = config.getint('parameters', 'basinhopping_iters')
 opt_iters = config.getint('parameters', 'opt_iters')
 method = str(config.get('parameters', 'scipy_method'))
@@ -107,36 +113,36 @@ with h5py.File(end_state_path) as f:
     U['g'] = f['tasks/u'][-1, :, :][:, slices[0], slices[1]]
     S['g'] = f['tasks/s'][-1, :, :][slices[0], slices[1]]
     logger.info('looding end state {}: t = {}'.format(end_state_path, f['scales/sim_time'][-1]))
-# sys.exit()
-opt.S = S
-# opt.ic['u'].fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
 
-opt.ic['u']['g'][0] = guide_coeff * (1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1)))
-opt.ic['u']['g'][1] += guide_coeff * 0.1 * np.sin(2*np.pi*x/Lx)
-opt.ic['u']['g'][1] += guide_coeff * 0.1 * np.sin(2*np.pi*x/Lx)
+if (load_state):
+    restart_dir = path + '/' + write_suffix + '/checkpoints'
+    checkpoint_names = [name for name in os.listdir(restart_dir) if 'loop' in name]
+    last_checkpoint = natsorted(checkpoint_names)[-1]
+    restart_file = restart_dir + '/' + last_checkpoint + '/' + last_checkpoint + '_s1.h5'
+    with h5py.File(restart_file) as f:
+        opt.ic['u']['g'] = f['tasks/u'][-1, :, :][:, slices[0], slices[1]]
+        S['g'] = f['tasks/s'][-1, :, :][slices[0], slices[1]]
+        logger.info('looding loop_index {}'.format(restart_file))
+        loop_str_index = restart_file.rfind('loop') + 4
+        old_loop_index = int(restart_file[loop_str_index:-6])
+        opt.loop_index = old_loop_index + 1
+else:
+    # opt.ic['u'].fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
 
-#old ic
-# opt.ic['u']['g'][0] = coeff * (1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1)))
-# opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01))
-# opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01))
+    opt.ic['u']['g'][0] = guide_coeff * (1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1)))
+    opt.ic['u']['g'][1] += guide_coeff * 0.1 * np.sin(2*np.pi*x/Lx)
+    opt.ic['u']['g'][1] += guide_coeff * 0.1 * np.sin(2*np.pi*x/Lx)
 
+    #old ic
+    # opt.ic['u']['g'][0] = coeff * (1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1)))
+    # opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01))
+    # opt.ic['u']['g'][1] += coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01))
 
-# restart_dir = path + '/' + write_suffix + '/checkpoints'
-# checkpoint_names = [name for name in os.listdir(restart_dir) if 'loop' in name]
-# last_checkpoint = natsorted(checkpoint_names)[-1]
-# print(last_checkpoint)
-# sys.exit()
-# last_checkpoint_path = restart_dir + '/' + last_checkpoint
-# write, last_dt = solver.load_state(last_checkpoint_path, -1)
-# logger.info("loading previous state")
-
-# # Timestepping and output
-# dt = last_dt
-# fh_mode = 'append'
-
-
+# set tracer initial condition
 opt.ic['s'] = dist.Field(name='s', bases=bases)
 opt.ic['s']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
+opt.backward_ic['s_t'] = dist.Field(name='s_t', bases=bases)
+opt.backward_ic['s_t']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 
 # Late time objective: objectiveT is minimized at t = T
 # w2 = d3.div(d3.skew(u))
@@ -155,23 +161,14 @@ objectiveT = d3.dot(u - U, u - U)
 opt.set_objectiveT(objectiveT)
 
 # opt.backward_ic['u_t'] = -2.0*d3.skew(d3.grad((w - W)))
-
-# opt.backward_ic['u_t'] = ex * dz(w - W) - ez * dx(w - W)
+# opt.backward_ic['u_t'] = 2.0 * (ex * dz(w - W) - ez * dx(w - W))
 
 opt.metricsT['u_error'] = d3.dot(u - U, u - U)
 opt.metricsT['omega_error'] = (w - W)**2
 
-# temp = opt.backward_ic['u_t']
-# logger.info(temp)
-# sys.exit()
-
-# opt.backward_ic['s_t'] = opt.ic['s'].copy()
-
-opt.backward_ic['s_t'] = dist.Field(name='s_t', bases=bases)
-opt.backward_ic['s_t']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 
 def check_status(x):
-    logger.info('completed scipy py iteration')
+    # logger.info('completed scipy py iteration')
     CW.barrier()
 
 def euler_descent(fun, x0, args, **kwargs):

@@ -23,6 +23,7 @@ CW = MPI.COMM_WORLD
 import logging
 import pathlib
 logger = logging.getLogger(__name__)
+logging.getLogger('solvers').setLevel(logging.ERROR)
 # logger.setLevel(logging.info)
 from docopt import docopt
 from pathlib import Path

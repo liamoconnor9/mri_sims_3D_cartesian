@@ -28,7 +28,7 @@ with open(path + '/' + write_suffix + '/errors_data.pickle', 'rb') as handle:
     
 maxindex = max(global_errors.keys())
 for loop_ind in range(maxindex + 1):
-    if (loop_ind != 95 and loop_ind % 20 != 0)  or not loop_ind in global_errors.keys():
+    if (loop_ind % 10 != 0)  or not loop_ind in global_errors.keys():
         continue
     errors_data = global_errors[loop_ind]
     errors_unzipped = [list(t) for t in zip(*errors_data)]

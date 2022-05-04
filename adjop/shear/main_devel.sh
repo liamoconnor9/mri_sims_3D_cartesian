@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
 #PBS -l select=1:ncpus=40:mpiprocs=40:model=sky_ele
-#PBS -l walltime=2:00:00
+#PBS -l walltime=6:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -21,12 +21,12 @@ cd ~/scratch/dedalus/mri/adjop/shear
 
 FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"
-CONFIG="shear_options.cfg"
+CONFIG="shear_options_devel.cfg"
 # SUFFIX="T1_coeff0ic_negbic_re1e4_N256"
 
 # If target simulation was previously run in OLDSUFFIX, just copy its contents over
 # SUFFIX="T3_N512_vorticity"
-SUFFIX="T3_N256_coeff0p9_Re2e5"
+SUFFIX="T3_N256_coeff0p9_Re2e6"
 # OLDSUFFIX="T3_N256_coeff0p90_Re2e4"
 # OLDSUFFIX=$SUFFIX
 MPIPROC=32
@@ -61,8 +61,9 @@ mpiexec_mpt -np $MPIPROC python3 shear_cg.py $CONFIG $SUFFIX
 MPIPROC=10
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots_error.py $SUFFIX snapshots_target snapshots_forward frames_error
 mpiexec_mpt -np 1 python3 plot_errors.py $SUFFIX snapshots_target snapshots_forward frames_error
-
 exit 1
+
+
 MPIPROC=40
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_forward frames_forward
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_backward frames_backward
