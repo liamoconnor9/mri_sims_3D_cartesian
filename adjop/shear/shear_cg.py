@@ -157,11 +157,11 @@ W = dx(Uz) - dz(Ux)
 # W2 = d3.div(d3.skew(U))
 
 # objectiveT = (w - W)**2
-objectiveT = d3.dot(u - U, u - U)
+objectiveT = d3.dot(u - U, u - U) + (w - W)**2 / 100.0
 opt.set_objectiveT(objectiveT)
 
 # opt.backward_ic['u_t'] = -2.0*d3.skew(d3.grad((w - W)))
-# opt.backward_ic['u_t'] = 2.0 * (ex * dz(w - W) - ez * dx(w - W))
+opt.backward_ic['u_t'] += (ex * dz(w - W) - ez * dx(w - W)) / 50.0
 
 opt.metricsT['u_error'] = d3.dot(u - U, u - U)
 opt.metricsT['omega_error'] = (w - W)**2
