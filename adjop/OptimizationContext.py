@@ -46,6 +46,9 @@ class OptimizationContext:
         self.objectiveT_norms = []
         self.indices = []
 
+        self.do_track_metrics = False
+        self.metricsT_norms_lists = {}
+
         # self.add_handlers = False
         self.show = False
         self.show_backward = False
@@ -321,7 +324,16 @@ class OptimizationContext:
 
             self.metricsT_norms[metric_name] = CW.bcast(self.metricsT_norms[metric_name], root=0)
 
+        if self.do_track_metrics:
+            for metricT_name in self.metricsT_norms.keys():
+                self.metricsT_norms_lists[metricT_name].append(self.metricsT_norms[metricT_name])
+
         return
+
+    def track_metrics(self):
+        self.do_track_metrics = True
+        for metricT_name in self.metricsT.keys():
+            self.metricsT_norms_lists[metricT_name] = []
 
 #     def evaluate_initial_state(self):
 

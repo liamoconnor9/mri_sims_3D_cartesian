@@ -165,7 +165,7 @@ opt.backward_ic['u_t'] += (ex * dz(w - W) - ez * dx(w - W)) / 50.0
 
 opt.metricsT['u_error'] = d3.dot(u - U, u - U)
 opt.metricsT['omega_error'] = (w - W)**2
-
+opt.track_metrics()
 
 def check_status(x):
     # logger.info('completed scipy py iteration')
@@ -224,3 +224,29 @@ logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))
 logger.info('BEST LOOP INDEX {}'.format(opt.best_index))
 logger.info('BEST objectiveT {}'.format(opt.best_objectiveT))
 logger.info('####################################################')
+
+# for metricT_name in opt.metricsT_norms_lists.keys():
+    # logger.(opt.metricsT_norms_lists[metricT_name])
+
+if CW.rank == 0:
+
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(13.5, 4.5), constrained_layout=True)
+    ax1.plot(opt.indices, opt.objectiveT_norms)
+    ax1.set_xlabel('loop index')
+    ax1.set_ylabel('ObjectiveT')
+    # ax1.title.set_text(str(opt.objectiveT))
+
+    keys = list(opt.metricsT_norms_lists.keys())
+    ax2.plot(opt.indices, opt.metricsT_norms_lists[keys[0]])
+    ax2.set_xlabel('loop index')
+    ax2.set_ylabel(keys[0])
+    # ax2.title.set_text(str(opt.metricsT[keys[0]]))
+
+    ax3.plot(opt.indices, opt.metricsT_norms_lists[keys[1]])
+    ax3.set_xlabel('loop index')
+    ax3.set_ylabel(keys[1])
+    # ax3.title.set_text(str(opt.metricsT[keys[1]]))
+
+    fig.suptitle(write_suffix)
+    plt.savefig(opt.run_dir + '/' + opt.write_suffix + '/metricsT.png')
+    logger.info('metricsT fig saved')
