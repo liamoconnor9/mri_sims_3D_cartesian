@@ -119,8 +119,11 @@ backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 # Names of the forward, and corresponding adjoint variables
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 grads = []
-# timesteppers = [(d3.RK443, d3.RK111)]
-timesteppers = [(d3.RK443, d3.CNAB2), (d3.RK443, d3.SBDF2), (d3.RK443, d3.RK443)]
+
+# timesteppers = [(d3.RK443, d3.SBDF1), (d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF3), (d3.RK443, d3.SBDF4)]
+# timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.MCNAB2), (d3.RK443, d3.CNLF2), (d3.RK443, d3.CNAB2)]
+timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.RK222)]
+# timesteppers = [(d3.RK443, d3.RK111), (d3.RK443, d3.RK222), (d3.RK443, d3.RK443), (d3.RK443, d3.RKGFY), (d3.RK443, d3.RKSMR)]
 for timestepper_pair in timesteppers:
     
     forward_solver = forward_problem.build_solver(timestepper_pair[0])
@@ -144,14 +147,15 @@ for timestepper_pair in timesteppers:
     sig = 0.5
     soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     soln_f = dist.Field(name='soln_f', bases=xbasis)
-    soln_f['g'] = soln.reshape((1, 512))
+    soln_f['g'] = soln.reshape((1, N))
 
     n = 20
     mu = 4.1
     sig = 0.5
     guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     guess = x*0
-    delta = -0.001*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    # delta = -0.0*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    delta = -0.00001*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     guess = soln + delta
 
 
