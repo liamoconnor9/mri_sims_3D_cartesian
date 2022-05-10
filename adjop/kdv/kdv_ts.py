@@ -118,110 +118,119 @@ backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 
 # Names of the forward, and corresponding adjoint variables
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
+grads = []
+# timesteppers = [(d3.RK443, d3.RK111)]
+timesteppers = [(d3.RK443, d3.CNAB2), (d3.RK443, d3.SBDF2), (d3.RK443, d3.RK443)]
+for timestepper_pair in timesteppers:
+    
+    forward_solver = forward_problem.build_solver(timestepper_pair[0])
+    backward_solver = backward_problem.build_solver(timestepper_pair[1])
 
-forward_solver = forward_problem.build_solver(d3.RK443)
-backward_solver = backward_problem.build_solver(d3.CNAB2)
+    write_suffix = 'kdv0'
 
-write_suffix = 'kdv0'
-
-opt = KdvOptimization(domain, xcoord, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
-opt.beta_calc = 'euler'
-opt.set_time_domain(T, num_cp, dt)
-opt.opt_iters = opt_iters
-
-
-opt.x_grid = x
-opt.show_iter_cadence = show_iter_cadence
-opt.show_loop_cadence = show_loop_cadence
-opt.show = show_forward
-
-n = 20
-mu = 5.5
-sig = 0.5
-soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-soln_f = dist.Field(name='soln_f', bases=xbasis)
-soln_f['g'] = soln.reshape((1, 512))
-
-n = 20
-mu = 4.1
-sig = 0.5
-guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-guess = x*0
-delta = -0.001*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-guess = soln + delta
+    opt = KdvOptimization(domain, xcoord, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
+    opt.beta_calc = 'euler'
+    opt.set_time_domain(T, num_cp, dt)
+    opt.opt_iters = opt_iters
 
 
-opt.ic['u']['g'] = guess
+    opt.x_grid = x
+    opt.show_iter_cadence = show_iter_cadence
+    opt.show_loop_cadence = show_loop_cadence
+    opt.show = show_forward
 
-path = os.path.dirname(os.path.abspath(__file__))
-U_data = np.loadtxt(path + '/kdv_U.txt')
-u = next(field for field in forward_solver.state if field.name == 'u')
-U = dist.Field(name='U', bases=xbasis)
-U['g'] = U_data
+    n = 20
+    mu = 5.5
+    sig = 0.5
+    soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    soln_f = dist.Field(name='soln_f', bases=xbasis)
+    soln_f['g'] = soln.reshape((1, 512))
 
-objectiveT = 0.5*(U - u)**2
-opt.set_objectiveT(objectiveT)
+    n = 20
+    mu = 4.1
+    sig = 0.5
+    guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    guess = x*0
+    delta = -0.001*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    guess = soln + delta
 
-# opt.backward_ic = backward_ic
-opt.U_data = U_data
-opt.build_var_hotel()
-opt.gamma_init = 1.0
 
-def euler_descent(fun, x0, args, **kwargs):
+    opt.ic['u']['g'] = guess
+
+    path = os.path.dirname(os.path.abspath(__file__))
+    U_data = np.loadtxt(path + '/kdv_U.txt')
+    u = next(field for field in forward_solver.state if field.name == 'u')
+    U = dist.Field(name='U', bases=xbasis)
+    U['g'] = U_data
+
+    objectiveT = 0.5*(U - u)**2
+    opt.set_objectiveT(objectiveT)
+
+    # opt.backward_ic = backward_ic
+    opt.U_data = U_data
+    opt.build_var_hotel()
     opt.gamma_init = 1.0
-    maxiter = kwargs['maxiter']
-    f = 0.0
-    gamma = 0.0
-    jac = kwargs['jac']
-    for i in range(maxiter):
-        old_f = f
-        f = fun(x0)
-        gradf = jac(x0)
-        old_gamma = gamma
-        gamma = opt.compute_gamma(1.0)
-        if i > 0:
-            step_p = (old_f - f) / old_gamma / opt.old_grad_sqrd
-            # logger.info("step_p = {}".format(step_p))
-            opt.metricsT_norms['step_p'] = step_p
 
-        x0 -= gamma * gradf
-    return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
+    def euler_descent(fun, x0, args, **kwargs):
+        opt.gamma_init = 1.0
+        maxiter = kwargs['maxiter']
+        f = 0.0
+        gamma = 0.0
+        jac = kwargs['jac']
+        for i in range(maxiter):
+            old_f = f
+            f = fun(x0)
+            gradf = jac(x0)
+            old_gamma = gamma
+            gamma = opt.compute_gamma(1.0)
+            if i > 0:
+                step_p = (old_f - f) / old_gamma / opt.old_grad_sqrd
+                # logger.info("step_p = {}".format(step_p))
+                opt.metricsT_norms['step_p'] = step_p
 
-if (method == "euler"):
-    method = euler_descent
+            x0 -= gamma * gradf
+        return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
 
-startTime = datetime.now()
-try:
-    tol = 1e-10
-    options = {'maxiter' : opt_iters, 'ftol' : tol, 'gtol' : tol}
-    x0 = opt.ic['u']['g'].flatten().copy()  # Initial guess.
-    res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method=method, tol=tol, options=options)
-    # res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method='L-BFGS-B', tol=tol, options=options)
-    # res1 = optimize.minimize(opt.loop_forwaoh rd, x0, jac=opt.loop_backward, method=euler_descent, options=options)
-    logger.info('scipy message {}'.format(res1.message))
+    if (method == "euler"):
+        method = euler_descent
 
-except opt.LoopIndexException as e:
-    details = e.args[0]
-    logger.info(details["message"])
-except opt.NanNormException as e:
-    details = e.args[0]
-    logger.info(details["message"])
-logger.info('####################################################')
-logger.info('COMPLETED OPTIMIZATION RUN')
-logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))
-logger.info('BEST LOOP INDEX {}'.format(opt.best_index))
-logger.info('BEST objectiveT {}'.format(opt.best_objectiveT))
-logger.info('####################################################')
+    startTime = datetime.now()
+    try:
+        tol = 1e-10
+        options = {'maxiter' : opt_iters, 'ftol' : tol, 'gtol' : tol}
+        x0 = opt.ic['u']['g'].flatten().copy()  # Initial guess.
+        res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method=method, tol=tol, options=options)
+        # res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method='L-BFGS-B', tol=tol, options=options)
+        # res1 = optimize.minimize(opt.loop_forwaoh rd, x0, jac=opt.loop_backward, method=euler_descent, options=options)
+        logger.info('scipy message {}'.format(res1.message))
 
-# diff = dist.Field(name='diff', bases=xbasis)
-# diff['g'] = soln_f['g'] - opt.ic['u']['g']
-# L1_integ = d3.Integrate(((diff)**2)**0.5).evaluate()
-# logger.info('L1 error = {}'.format(L1_integ['g'].flat[0]))
+    except opt.LoopIndexException as e:
+        details = e.args[0]
+        logger.info(details["message"])
+    except opt.NanNormException as e:
+        details = e.args[0]
+        logger.info(details["message"])
+    logger.info('####################################################')
+    logger.info('COMPLETED OPTIMIZATION RUN')
+    logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))
+    logger.info('BEST LOOP INDEX {}'.format(opt.best_index))
+    logger.info('BEST objectiveT {}'.format(opt.best_objectiveT))
+    logger.info('####################################################')
 
-forward_ts = type(opt.forward_solver.timestepper).__name__
-backward_ts = type(opt.backward_solver.timestepper).__name__
-plt.plot(x, opt.new_grad['g'], label='{}, {}'.format(forward_ts, backward_ts))
+    # diff = dist.Field(name='diff', bases=xbasis)
+    # diff['g'] = soln_f['g'] - opt.ic['u']['g']
+    # L1_integ = d3.Integrate(((diff)**2)**0.5).evaluate()
+    # logger.info('L1 error = {}'.format(L1_integ['g'].flat[0]))
+
+    forward_ts = type(opt.forward_solver.timestepper).__name__
+    backward_ts = type(opt.backward_solver.timestepper).__name__
+    grads.append(opt.new_grad['g'].copy())
+
 plt.plot(x, delta, label='apriori gradient')
+
+for i in range(len(timesteppers)):
+    plt.plot(x, grads[i], label='{}, {}'.format(timesteppers[i][0].__name__, timesteppers[i][1].__name__), linestyle=':')
+
 plt.legend()
 plt.xlabel('x')
 plt.ylabel(r'$\mu(x, 0)$')
