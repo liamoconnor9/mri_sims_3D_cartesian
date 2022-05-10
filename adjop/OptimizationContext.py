@@ -120,9 +120,10 @@ class OptimizationContext:
 
     # Depreciated with scipy.optimization.minimize
     # calling this solves for the objective (forward) and the gradient (backward)
-    def loop(self): 
-        self.loop_forward()
-        self.loop_backward()
+    def loop(self, x): 
+        f = self.loop_forward(x)
+        f_prime = self.loop_backward(x)
+        return f, f_prime
 
     def loop_forward(self, x):
 
@@ -230,12 +231,12 @@ class OptimizationContext:
             logger.debug('Starting forward solve')
             for t_ind in range(self.dt_per_loop):
 
-                solver.step(self.dt)
                 if (t_ind >= self.dt_per_loop - self.dt_per_cp):
                     for var in solver.state:
                         if (var.name in self.hotel.keys()):
                             var.change_scales(1)
                             self.hotel[var.name][t_ind - (self.dt_per_loop - self.dt_per_cp)] = var['g'].copy()
+                solver.step(self.dt)
                 self.during_fullforward_solve()
 
                 # if self.show and t_ind % self.show_cadence == 0:
