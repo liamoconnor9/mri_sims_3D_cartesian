@@ -70,7 +70,7 @@ class KdvOptimization(OptimizationContext):
         logger.debug('Completed backward solve')
         pass
 
-filename = Path('kdv_options.cfg')
+filename = path + '/kdv_options.cfg'
 config = ConfigParser()
 config.read(str(filename))
 
@@ -120,7 +120,7 @@ backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 
 forward_solver = forward_problem.build_solver(d3.RK443)
-backward_solver = backward_problem.build_solver(d3.SBDF1)
+backward_solver = backward_problem.build_solver(d3.RK222)
 
 write_suffix = 'kdv0'
 
@@ -155,6 +155,8 @@ n = 20
 mu = 5.5
 sig = 0.5
 soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+soln_f = dist.Field(name='soln_f', bases=xbasis)
+soln_f['g'] = soln.reshape((1, 512))
 
 # opt.backward_ic = backward_ic
 opt.U_data = U_data
@@ -207,20 +209,26 @@ logger.info('BEST LOOP INDEX {}'.format(opt.best_index))
 logger.info('BEST objectiveT {}'.format(opt.best_objectiveT))
 logger.info('####################################################')
 
-# print(x0)
-x0 = opt.best_x
-plt.plot(x, x0, label='Optimized IC')
-plt.plot(x, soln, linestyle=':', label='Target IC')
-plt.plot(x, guess, linestyle='--', label='Initial Guess')
-plt.legend()
-plt.xlabel(r'$x$')
-plt.ylabel(r'$u(x, 0)$')
-plt.savefig(path + '/ics.png')
-plt.close()
+diff = dist.Field(name='diff', bases=xbasis)
+diff['g'] = soln_f['g'] - opt.ic['u']['g']
+L1_integ = d3.Integrate(((diff)**2)**0.5).evaluate()
+logger.info('L1 error = {}'.format(L1_integ['g'].flat[0]))
 
-plt.plot(opt.objectiveT_norms)
-plt.xlabel('loop index')
-plt.ylabel(r'$0.5(u(T) - U(T))^2$')
-plt.title('Error')
-plt.savefig(path + '/error.png')
+# print(x0)
+# x0 = opt.best_x
+# plt.plot(x, x0, label='Optimized IC')
+# plt.plot(x, soln, linestyle=':', label='Target IC')
+# plt.plot(x, guess, linestyle='--', label='Initial Guess')
+# plt.legend()
+# plt.xlabel(r'$x$')
+# plt.ylabel(r'$u(x, 0)$')
+# plt.savefig(path + '/ics.png')
 # plt.show()
+# plt.close()
+
+# plt.plot(opt.objectiveT_norms)
+# plt.xlabel('loop index')
+# plt.ylabel(r'$0.5(u(T) - U(T))^2$')
+# plt.title('Error')
+# plt.savefig(path + '/error.png')
+# # plt.show()
