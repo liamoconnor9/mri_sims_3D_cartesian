@@ -54,12 +54,12 @@ Nz = config.getint('parameters', 'Nz')
 
 Reynolds = config.getfloat('parameters', 'Re')
 stop_sim_time = config.getfloat('parameters', 'T')
-max_timestep = config.getfloat('parameters', 'dt')
+max_timestep = config.getfloat('parameters', 'dt') / 2.0
 add_handlers = config.getboolean('parameters', 'add_handlers')
 
 Schmidt = 1
 dealias = 3/2
-timestepper = d3.RK222
+timestepper = d3.RK443
 dtype = np.float64
 
 # Bases
@@ -97,8 +97,8 @@ u['g'][0] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 # Match tracer to shear
 s['g'] = u['g'][0]
 # Add small vertical velocity perturbations localized to the shear layers
-u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx)
-u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx)
+u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01)
+u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01)
 
 # Analysis
 if (add_handlers):

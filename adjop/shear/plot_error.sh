@@ -23,7 +23,7 @@ FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"
 
 # If target simulation was previously run in OLDSUFFIX, just copy its contents over
-SUFFIX="T3_N256_coeff0p90_Re2e4"
+SUFFIX="T0p5_N512_coeff0p0_Re2e4_oldic"
 
 mkdir $SUFFIX/frames_error
 mkdir $SUFFIX/movies_error
