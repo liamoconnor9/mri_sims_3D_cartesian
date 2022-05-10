@@ -61,12 +61,28 @@ class KdvOptimization(OptimizationContext):
 
     def before_backward_solve(self):
         logger.debug('Starting backward solve')
+        if (self.loop_index % self.show_loop_cadence == 0 and self.show):
+            u = self.backward_solver.state[0]
+            u.change_scales(1)
+            self.fig = plt.figure()
+            self.p, = plt.plot(self.x_grid, u['g'])
+            self.fig.canvas.draw()
+            title = plt.title('loop index = {}; t = {}'.format(self.loop_index, round(self.backward_solver.sim_time, 1)))
 
     def during_backward_solve(self):
+        if (self.loop_index % self.show_loop_cadence == 0 and self.show and self.backward_solver.iteration % self.show_iter_cadence == 0):
+            u = self.backward_solver.state[0]
+            u.change_scales(1)
+            self.p.set_ydata(u['g'])
+            plt.title('loop index = {}; t = {}'.format(self.loop_index, round(self.backward_solver.sim_time, 1)))
+            plt.pause(1e-10)
+            self.fig.canvas.draw()
         # logger.debug('backward solver time = {}'.format(self.backward_solver.sim_time))
         pass
 
     def after_backward_solve(self):
+        plt.pause(3e-1)
+        plt.close()
         logger.debug('Completed backward solve')
         pass
 
@@ -123,6 +139,7 @@ grads = []
 # timesteppers = [(d3.RK443, d3.SBDF1), (d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF3), (d3.RK443, d3.SBDF4)]
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.MCNAB2), (d3.RK443, d3.CNLF2), (d3.RK443, d3.CNAB2)]
 timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.RK222)]
+timesteppers = [(d3.RK443, d3.SBDF2)]
 # timesteppers = [(d3.RK443, d3.RK111), (d3.RK443, d3.RK222), (d3.RK443, d3.RK443), (d3.RK443, d3.RKGFY), (d3.RK443, d3.RKSMR)]
 for timestepper_pair in timesteppers:
     
