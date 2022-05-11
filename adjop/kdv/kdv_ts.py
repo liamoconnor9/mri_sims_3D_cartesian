@@ -136,10 +136,11 @@ backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 grads = []
 
+# timesteppers = [(d3.RK443, d3.SBDF1), (d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF3)]
 # timesteppers = [(d3.RK443, d3.SBDF1), (d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF3), (d3.RK443, d3.SBDF4)]
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.MCNAB2), (d3.RK443, d3.CNLF2), (d3.RK443, d3.CNAB2)]
-timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.RK222)]
-timesteppers = [(d3.RK443, d3.SBDF2)]
+# timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.RK222), (d3.RK443, d3.MCNAB2)]
+# timesteppers = [(d3.RK443, d3.SBDF2)]
 # timesteppers = [(d3.RK443, d3.RK111), (d3.RK443, d3.RK222), (d3.RK443, d3.RK443), (d3.RK443, d3.RKGFY), (d3.RK443, d3.RKSMR)]
 for timestepper_pair in timesteppers:
     
@@ -172,7 +173,7 @@ for timestepper_pair in timesteppers:
     guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     guess = x*0
     # delta = -0.0*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-    delta = -0.00001*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    delta = -0.0001*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     guess = soln + delta
 
 
@@ -247,7 +248,7 @@ for timestepper_pair in timesteppers:
     backward_ts = type(opt.backward_solver.timestepper).__name__
     grads.append(opt.new_grad['g'].copy())
 
-plt.plot(x, delta, label='apriori gradient')
+plt.plot(x, -(soln - opt.ic['u']['g'])[0, :], label='apriori gradient')
 
 for i in range(len(timesteppers)):
     plt.plot(x, grads[i], label='{}, {}'.format(timesteppers[i][0].__name__, timesteppers[i][1].__name__), linestyle=':')

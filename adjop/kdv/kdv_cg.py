@@ -140,7 +140,7 @@ mu = 5.5
 sig = 0.5
 soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 soln_f = dist.Field(name='soln_f', bases=xbasis)
-soln_f['g'] = soln.reshape((1, 512))
+soln_f['g'] = soln.reshape((1, N))
 
 n = 20
 mu = 4.1
