@@ -136,11 +136,12 @@ backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 grads = []
 
-# timesteppers = [(d3.RK443, d3.SBDF1), (d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF3)]
+timesteppers = [(d3.RK443, d3.SBDF1), (d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF3)]
 # timesteppers = [(d3.RK443, d3.SBDF1), (d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF3), (d3.RK443, d3.SBDF4)]
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.MCNAB2), (d3.RK443, d3.CNLF2), (d3.RK443, d3.CNAB2)]
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.RK222), (d3.RK443, d3.MCNAB2)]
-# timesteppers = [(d3.RK443, d3.SBDF2)]
+timesteppers = [(d3.RK443, d3.SBDF4), (d3.RK443, d3.RK443)]
+# timesteppers = [(d3.RK443, d3.RK222)]
 # timesteppers = [(d3.RK443, d3.RK111), (d3.RK443, d3.RK222), (d3.RK443, d3.RK443), (d3.RK443, d3.RKGFY), (d3.RK443, d3.RKSMR)]
 for timestepper_pair in timesteppers:
     
@@ -176,14 +177,15 @@ for timestepper_pair in timesteppers:
     delta = -0.0001*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     guess = soln + delta
 
+    guess_data = np.loadtxt(path + '/kdv_guess.txt')
+    opt.ic['u']['g'] = guess_data
+    # opt.ic['u']['g'] = 0.0
 
-    opt.ic['u']['g'] = guess
-
-    path = os.path.dirname(os.path.abspath(__file__))
     U_data = np.loadtxt(path + '/kdv_U.txt')
     u = next(field for field in forward_solver.state if field.name == 'u')
     U = dist.Field(name='U', bases=xbasis)
     U['g'] = U_data
+
 
     objectiveT = 0.5*(U - u)**2
     opt.set_objectiveT(objectiveT)
@@ -249,9 +251,11 @@ for timestepper_pair in timesteppers:
     grads.append(opt.new_grad['g'].copy())
 
 plt.plot(x, -(soln - opt.ic['u']['g'])[0, :], label='apriori gradient')
-
+mag_ap_grad = np.max(np.abs((soln - opt.ic['u']['g'])[0, :]))
 for i in range(len(timesteppers)):
-    plt.plot(x, grads[i], label='{}, {}'.format(timesteppers[i][0].__name__, timesteppers[i][1].__name__), linestyle=':')
+    grad = grads[i]
+    normed_grad = grad * mag_ap_grad / np.max(np.abs(grad))
+    plt.plot(x, normed_grad, label='{}, {}'.format(timesteppers[i][0].__name__, timesteppers[i][1].__name__), linestyle=':')
 
 plt.legend()
 plt.xlabel('x')
@@ -259,6 +263,13 @@ plt.ylabel(r'$\mu(x, 0)$')
 plt.title('Gradient')
 plt.savefig(path + '/grad_u.png')
 plt.show()
+
+# u = opt.ic['u']
+# u.change_scales(1)
+# u_T = u['g'].copy()
+# path = os.path.dirname(os.path.abspath(__file__))
+# np.savetxt(path + '/kdv_guess.txt', u_T)
+# logger.info('saved final state')
 
 # print(x0)
 # x0 = opt.best_x
