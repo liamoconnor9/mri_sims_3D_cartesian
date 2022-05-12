@@ -216,7 +216,7 @@ for i in range(len(timesteppers)):
 plt.legend()
 plt.xlabel('x')
 plt.ylabel(r'$\mu(x, 0)$')
-plt.title(r'(-) Gradient: normalized by $L_0$ norm')
+plt.title(r'(-) Gradient: normalized by $L_0$ norm, dt = {:.2e}'.format(dt))
 plt.savefig(path + '/grad_u.png')
 plt.show()
 
