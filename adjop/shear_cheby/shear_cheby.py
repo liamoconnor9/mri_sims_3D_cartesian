@@ -29,7 +29,7 @@ import sys
 
 # Parameters
 Lx, Lz = 4, 1
-Nx, Nz = 256, 128
+Nx, Nz = 32, 16
 Reynolds = 1e3
 S = 1
 dealias = 3/2

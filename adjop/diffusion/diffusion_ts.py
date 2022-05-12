@@ -18,8 +18,8 @@ CW = MPI.COMM_WORLD
 import logging
 import pathlib
 logger = logging.getLogger(__name__)
-import ForwardKDV
-import BackwardKDV
+import ForwardDiffusion
+import BackwardDiffusion
 import matplotlib.pyplot as plt
 import matplotlib
 from docopt import docopt
@@ -27,18 +27,18 @@ from pathlib import Path
 from configparser import ConfigParser
 from scipy import optimize
 from datetime import datetime
-from KdvOptimization import KdvOptimization
+from DiffusionOptimization import DiffusionOptimization
 
 # sys.path.append("/home/liamo")
 # import publication_settings
 # matplotlib.rcParams.update(publication_settings.params)
 # plt.rcParams.update({'figure.autolayout': True})
 
-filename = path + '/kdv_options.cfg'
+filename = path + '/diffusion_options.cfg'
 config = ConfigParser()
 config.read(str(filename))
 
-logger.info('Running kdv_burgers.py with the following parameters:')
+logger.info('Running diffusion_ts.py with the following parameters:')
 logger.info(config.items('parameters'))
 
 # Parameters
@@ -46,7 +46,6 @@ Lx = config.getfloat('parameters', 'Lx')
 N = config.getint('parameters', 'Nx')
 
 a = config.getfloat('parameters', 'a')
-b = config.getfloat('parameters', 'b')
 T = config.getfloat('parameters', 'T')
 dt = config.getfloat('parameters', 'dt')
 num_cp = config.getint('parameters', 'num_cp')
@@ -77,8 +76,8 @@ domain = Domain(dist, [xbasis])
 dist = domain.dist
 
 x = dist.local_grid(xbasis)
-forward_problem = ForwardKDV.build_problem(domain, xcoord, a, b)
-backward_problem = BackwardKDV.build_problem(domain, xcoord, a, b)
+forward_problem = ForwardDiffusion.build_problem(domain, xcoord, a)
+backward_problem = BackwardDiffusion.build_problem(domain, xcoord, a)
 
 # Names of the forward, and corresponding adjoint variables
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
@@ -97,9 +96,9 @@ for timestepper_pair in timesteppers:
     forward_solver = forward_problem.build_solver(timestepper_pair[0])
     backward_solver = backward_problem.build_solver(timestepper_pair[1])
 
-    write_suffix = 'kdv0'
+    write_suffix = 'diffusion0'
 
-    opt = KdvOptimization(domain, xcoord, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
+    opt = DiffusionOptimization(domain, xcoord, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
     opt.beta_calc = 'euler'
     opt.set_time_domain(T, num_cp, dt)
     opt.opt_iters = opt_iters
@@ -123,15 +122,15 @@ for timestepper_pair in timesteppers:
     guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     guess = x*0
     # delta = -0.0*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-    eps = 1e-7
+    eps = 1e-8
     delta = -eps*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     guess = soln + delta
 
-    # guess_data = np.loadtxt(path + '/kdv_guess.txt')
+    # guess_data = np.loadtxt(path + '/diffusion_guess.txt')
     opt.ic['u']['g'] = guess
     # opt.ic['u']['g'] = 0.0
 
-    U_data = np.loadtxt(path + '/kdv_U.txt')
+    U_data = np.loadtxt(path + '/diffusion_U.txt')
     u = next(field for field in forward_solver.state if field.name == 'u')
     U = dist.Field(name='U', bases=xbasis)
     U['g'] = U_data
@@ -226,7 +225,7 @@ plt.show()
 # u.change_scales(1)
 # u_T = u['g'].copy()
 # path = os.path.dirname(os.path.abspath(__file__))
-# np.savetxt(path + '/kdv_guess.txt', u_T)
+# np.savetxt(path + '/diffusion_guess.txt', u_T)
 # logger.info('saved final state')
 
 # print(x0)
