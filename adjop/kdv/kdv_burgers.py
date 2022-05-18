@@ -39,6 +39,7 @@ dtype = np.float64
 
 periodic = config.getboolean('parameters', 'periodic')
 show = config.getboolean('parameters', 'show')
+show_iter_cadence = config.getint('parameters', 'show_iter_cadence') * 4
 
 timestepper = d3.RK443
 epsilon_safety = 1
@@ -84,7 +85,7 @@ else:
 # Initial conditions
 x = dist.local_grid(xbasis)
 mu = 5.5
-sig = 0.5
+sig = 1.5
 u['g'] = 1*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 # Solver
@@ -104,7 +105,7 @@ for iter in range(int(solver.stop_sim_time // timestep) + 1):
     solver.step(timestep)
     # if solver.iteration % 100 == 0:
     logger.info('Iteration=%i, Time=%e, dt=%e' %(solver.iteration, solver.sim_time, timestep))
-    if show and solver.iteration % 50 == 0:
+    if show and solver.iteration % show_iter_cadence == 0:
         u.change_scales(1)
         p.set_ydata(u['g'])
         plt.title('t=%f' %solver.sim_time)

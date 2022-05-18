@@ -85,8 +85,8 @@ lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 grads = []
 
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF4)]
-timesteppers = [(d3.RK443, d3.SBDF2)]
-timesteppers += [(d3.RK443, d3.RK222), (d3.RK443, d3.RK443)]
+timesteppers = [(d3.RK443, d3.RK443)]
+# timesteppers += [(d3.RK443, d3.RK222), (d3.RK443, d3.RK443)]
 # timesteppers = [(d3.RK443, d3.SBDF1), (d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF3), (d3.RK443, d3.SBDF4)]
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.MCNAB2), (d3.RK443, d3.CNLF2), (d3.RK443, d3.CNAB2)]
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.RK222), (d3.RK443, d3.MCNAB2)]
@@ -112,18 +112,18 @@ for timestepper_pair in timesteppers:
 
     n = 20
     mu = 5.5
-    sig = 0.5
+    sig = 1.5
     soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     soln_f = dist.Field(name='soln_f', bases=xbasis)
     soln_f['g'] = soln.reshape((1, N))
 
     n = 20
     mu = 4.1
-    sig = 0.5
+    sig = 1.5
     guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     guess = x*0
     # delta = -0.0*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-    eps = 1e-7
+    eps = 1e-6
     delta = -eps*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     guess = soln + delta
 
