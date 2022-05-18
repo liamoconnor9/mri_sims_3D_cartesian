@@ -106,7 +106,7 @@ sig = 0.5
 guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 guess = x*0
 delta = -0.001*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-guess = soln + delta
+guess = 0.0
 
 
 opt.ic['u']['g'] = guess
@@ -176,16 +176,16 @@ logger.info('####################################################')
 # L1_integ = d3.Integrate(((diff)**2)**0.5).evaluate()
 # logger.info('L1 error = {}'.format(L1_integ['g'].flat[0]))
 
-forward_ts = type(opt.forward_solver.timestepper).__name__
-backward_ts = type(opt.backward_solver.timestepper).__name__
-plt.plot(x, opt.new_grad['g'], label='{}, {}'.format(forward_ts, backward_ts))
-plt.plot(x, delta, label='apriori gradient')
-plt.legend()
-plt.xlabel('x')
-plt.ylabel(r'$\mu(x, 0)$')
-plt.title('Gradient')
-plt.savefig(path + '/grad_u.png')
-plt.show()
+# forward_ts = type(opt.forward_solver.timestepper).__name__
+# backward_ts = type(opt.backward_solver.timestepper).__name__
+# plt.plot(x, opt.new_grad['g'], label='{}, {}'.format(forward_ts, backward_ts))
+# plt.plot(x, delta, label='apriori gradient')
+# plt.legend()
+# plt.xlabel('x')
+# plt.ylabel(r'$\mu(x, 0)$')
+# plt.title('Gradient')
+# plt.savefig(path + '/grad_u.png')
+# plt.show()
 
 # print(x0)
 # x0 = opt.best_x

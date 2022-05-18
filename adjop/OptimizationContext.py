@@ -87,10 +87,11 @@ class OptimizationContext:
         self.hotel = OrderedDict()
         # shape = [self.dt_per_cp]
         grid_shape = self.ic['u']['g'].shape
-        grid_time_shape = (self.dt_per_cp,) + grid_shape
+        # grid_time_shape = (self.dt_per_cp,) + grid_shape
         for var in self.forward_problem.variables:
             if (var in self.lagrangian_dict.keys()):
-                self.hotel[var.name] = np.zeros(grid_time_shape)
+                # self.hotel[var.name] = np.zeros(grid_time_shape)
+                self.hotel[var.name] = []
 
     def set_objectiveT(self, objectiveT):
         self.objectiveT = objectiveT
@@ -120,7 +121,8 @@ class OptimizationContext:
 
     # Depreciated with scipy.optimization.minimize
     # calling this solves for the objective (forward) and the gradient (backward)
-    def loop(self, x): 
+    def loop(self, x):
+        self.build_var_hotel() 
         f = self.loop_forward(x)
         f_prime = self.loop_backward(x)
         return f, f_prime
@@ -235,7 +237,7 @@ class OptimizationContext:
                     for var in solver.state:
                         if (var.name in self.hotel.keys()):
                             var.change_scales(1)
-                            self.hotel[var.name][t_ind - (self.dt_per_loop - self.dt_per_cp)] = var['g'].copy()
+                            self.hotel[var.name].append(var['g'].copy())
                 solver.step(self.dt)
                 self.during_fullforward_solve()
 
