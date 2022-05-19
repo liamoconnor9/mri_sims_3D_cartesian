@@ -83,9 +83,11 @@ backward_problem = BackwardDiffusion.build_problem(domain, xcoord, a)
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 grads = []
 
+eps = 1e-5
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF4)]
 timesteppers = [(d3.RK443, d3.SBDF2)]
-timesteppers += [(d3.RK443, d3.RK222), (d3.RK443, d3.RK443)]
+wavenumbers = list(range(1, 3))
+# timesteppers += [(d3.RK443, d3.RK222), (d3.RK443, d3.RK443)]
 # timesteppers = [(d3.RK443, d3.SBDF1), (d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF3), (d3.RK443, d3.SBDF4)]
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.MCNAB2), (d3.RK443, d3.CNLF2), (d3.RK443, d3.CNAB2)]
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.RK222), (d3.RK443, d3.MCNAB2)]
@@ -122,8 +124,8 @@ for timestepper_pair in timesteppers:
     guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     guess = x*0
     # delta = -0.0*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-    eps = 1e-8
-    delta = -eps*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    1e-5
+    delta = -eps*np.sin(11 * x*np.pi / Lx)
     guess = soln + delta
 
     # guess_data = np.loadtxt(path + '/diffusion_guess.txt')
