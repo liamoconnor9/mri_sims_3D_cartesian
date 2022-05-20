@@ -30,6 +30,8 @@ Nx = config.getint('parameters', 'Nx')
 
 a = config.getfloat('parameters', 'a')
 b = config.getfloat('parameters', 'b')
+sig = config.getfloat('parameters', 'sig_ic')
+ic_scale = config.getfloat('parameters', 'ic_scale')
 stop_sim_time = config.getfloat('parameters', 'T')
 timestep = config.getfloat('parameters', 'dt') / 4.0
 
@@ -85,8 +87,8 @@ else:
 # Initial conditions
 x = dist.local_grid(xbasis)
 mu = 5.5
-sig = 1.5
-u['g'] = 1*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+# sig = 1.5
+u['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 # Solver
 solver = problem.build_solver(timestepper)
