@@ -1,4 +1,3 @@
-from numpy.linalg import norm
 from distutils.command.bdist import show_formats
 import os
 from ast import For
@@ -87,9 +86,8 @@ grads = []
 eps = 1e-1
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF4)]
 timesteppers = [(d3.RK443, d3.SBDF2)]
-wavenumbers = list(range(1, 40))
-angles = []
-# wavenumbers = [1]
+wavenumbers = list(range(1, 10))
+wavenumbers = [1]
 # timesteppers += [(d3.RK443, d3.RK222), (d3.RK443, d3.RK443)]
 # timesteppers = [(d3.RK443, d3.SBDF1), (d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF3), (d3.RK443, d3.SBDF4)]
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.MCNAB2), (d3.RK443, d3.CNLF2), (d3.RK443, d3.CNAB2)]
@@ -128,7 +126,7 @@ for kx in wavenumbers:
     guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     guess = x*0
     # delta = -0.0*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-    delta = eps*np.sin((2*kx - 1) * x*np.pi / Lx)
+    delta = eps*np.sin(kx * x*np.pi / Lx)
     guess = soln + delta
 
     # guess_data = np.loadtxt(path + '/diffusion_guess.txt')
@@ -204,13 +202,6 @@ for kx in wavenumbers:
     backward_ts = type(opt.backward_solver.timestepper).__name__
     grads.append(opt.new_grad['g'].copy())
 
-    mag_ap_grad = np.max(np.abs((soln - opt.ic['u']['g'])[0, :]))
-    apgrad = -(soln - opt.ic['u']['g'])[0, :] / mag_ap_grad
-    numgrad = grads[-1] / eps
-
-    angle = np.arccos(np.inner(apgrad, numgrad) / (norm(apgrad, ord=1) * norm(numgrad, ord=1)))
-    angles.append(angle * 180 / np.pi)
-
 import matplotlib as mpl
 mpl.rcParams['lines.linewidth'] = 2
 
@@ -218,14 +209,56 @@ from itertools import cycle
 lines = ["-","--","-.",":"]
 linecycler = cycle(lines)
 
+mag_ap_grad = np.max(np.abs((soln - opt.ic['u']['g'])[0, :]))
+apgrad = -(soln - opt.ic['u']['g'])[0, :] / mag_ap_grad
 
+angles = []
+from numpy.linalg import norm
+for numgrad in grads:
+    angle = np.arccos(np.inner(apgrad, numgrad) / (norm(apgrad) * norm(numgrad)))
+    angles.append(angle * 180 / np.pi)
 
-print(angles)
-
-plt.scatter(wavenumbers, angles)
-plt.xlabel('wavenumbers')
-plt.show()
-
-# plt.plot(x, -(soln - opt.ic['u']['g'])[0, :] / mag_ap_grad, label='(-) apriori gradient', linewidth=4, color='black')
-# plt.plot(x, delta / eps)
+# plt.scatter(wavenumbers, angles)
+# plt.xlabel('wavenumbers')
 # plt.show()
+
+plt.plot(x, -(soln - opt.ic['u']['g'])[0, :] / mag_ap_grad, label='(-) apriori gradient', linewidth=4, color='black')
+plt.plot(x, grads[0])
+plt.show()
+# for i in range(len(timesteppers)):
+#     grad = grads[i]
+#     normed_grad = grad / np.max(np.abs(grad))
+#     plt.plot(x, normed_grad, linestyle=next(linecycler), label='{}, {}'.format(timesteppers[i][0].__name__, timesteppers[i][1].__name__))
+
+# plt.legend()
+# plt.xlabel('x')
+# plt.ylabel(r'$\mu(x, 0)$')
+# plt.title(r'(-) Gradient: normalized by $L-\infty$ norm, $\varepsilon$ = {:.1e}'.format(eps))
+# plt.savefig(path + '/grad_u.png')
+# plt.show()
+
+# u = opt.ic['u']
+# u.change_scales(1)
+# u_T = u['g'].copy()
+# path = os.path.dirname(os.path.abspath(__file__))
+# np.savetxt(path + '/diffusion_guess.txt', u_T)
+# logger.info('saved final state')
+
+# print(x0)
+# x0 = opt.best_x
+# plt.plot(x, x0, label='Optimized IC')
+# plt.plot(x, soln, linestyle=':', label='Target IC')
+# plt.plot(x, guess, linestyle='--', label='Initial Guess')
+# plt.legend()
+# plt.xlabel(r'$x$')
+# plt.ylabel(r'$u(x, 0)$')
+# plt.savefig(path + '/ics.png')
+# plt.show()
+# plt.close()
+
+# plt.plot(opt.objectiveT_norms)
+# plt.xlabel('loop index')
+# plt.ylabel(r'$0.5(u(T) - U(T))^2$')
+# plt.title('Error')
+# plt.savefig(path + '/error.png')
+# # plt.show()

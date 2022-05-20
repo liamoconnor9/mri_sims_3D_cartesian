@@ -84,7 +84,7 @@ backward_problem = BackwardDiffusion.build_problem(domain, xcoord, a)
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 grads = []
 
-eps = 1e-1
+eps = 1e-3
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF4)]
 timesteppers = [(d3.RK443, d3.SBDF2)]
 wavenumbers = list(range(1, 40))
@@ -96,8 +96,8 @@ angles = []
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.RK222), (d3.RK443, d3.MCNAB2)]
 # timesteppers = [(d3.RK443, d3.RK111), (d3.RK443, d3.RK222), (d3.RK443, d3.RK443), (d3.RK443, d3.RKGFY), (d3.RK443, d3.RKSMR)]
 
-for kx in wavenumbers:
-    
+def compute_objective(guess):
+    kx = 1
     timestepper_pair = timesteppers[0]
     forward_solver = forward_problem.build_solver(timestepper_pair[0])
     backward_solver = backward_problem.build_solver(timestepper_pair[1])
@@ -121,15 +121,6 @@ for kx in wavenumbers:
     soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     soln_f = dist.Field(name='soln_f', bases=xbasis)
     soln_f['g'] = soln.reshape((1, N))
-
-    n = 20
-    mu = 4.1
-    sig = 0.5
-    guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-    guess = x*0
-    # delta = -0.0*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-    delta = eps*np.sin((2*kx - 1) * x*np.pi / Lx)
-    guess = soln + delta
 
     # guess_data = np.loadtxt(path + '/diffusion_guess.txt')
     opt.ic['u']['g'] = guess
@@ -169,25 +160,33 @@ for kx in wavenumbers:
             x0 -= gamma * gradf
         return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
 
+    method = 'L-BFGS-B'
     if (method == "euler"):
         method = euler_descent
 
     startTime = datetime.now()
-    try:
-        tol = 1e-10
-        options = {'maxiter' : opt_iters, 'ftol' : tol, 'gtol' : tol}
-        x0 = opt.ic['u']['g'].flatten().copy()  # Initial guess.
-        res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method=method, tol=tol, options=options)
-        # res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method='L-BFGS-B', tol=tol, options=options)
-        # res1 = optimize.minimize(opt.loop_forwaoh rd, x0, jac=opt.loop_backward, method=euler_descent, options=options)
-        logger.info('scipy message {}'.format(res1.message))
 
-    except opt.LoopIndexException as e:
-        details = e.args[0]
-        logger.info(details["message"])
-    except opt.NanNormException as e:
-        details = e.args[0]
-        logger.info(details["message"])
+    x0 = opt.ic['u']['g'].flatten().copy()  # Initial guess.
+    obj = opt.loop_forward(x0)
+    opt.loop_backward(x0)
+    grad = opt.new_grad['g'].copy()
+    return obj, grad
+
+    # try:
+    #     tol = 1e-10
+    #     options = {'maxiter' : opt_iters, 'ftol' : tol, 'gtol' : tol}
+    #     x0 = opt.ic['u']['g'].flatten().copy()  # Initial guess.
+    #     res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method=method, tol=tol, options=options)
+    #     # res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method='L-BFGS-B', tol=tol, options=options)
+    #     # res1 = optimize.minimize(opt.loop_forwaoh rd, x0, jac=opt.loop_backward, method=euler_descent, options=options)
+    #     logger.info('scipy message {}'.format(res1.message))
+
+    # except opt.LoopIndexException as e:
+    #     details = e.args[0]
+    #     logger.info(details["message"])
+    # except opt.NanNormException as e:
+    #     details = e.args[0]
+    #     logger.info(details["message"])
     logger.info('####################################################')
     logger.info('COMPLETED OPTIMIZATION RUN')
     logger.info('TOTAL TIME {}'.format(datetime.now() - startTime))
@@ -211,20 +210,58 @@ for kx in wavenumbers:
     angle = np.arccos(np.inner(apgrad, numgrad) / (norm(apgrad, ord=1) * norm(numgrad, ord=1)))
     angles.append(angle * 180 / np.pi)
 
-import matplotlib as mpl
-mpl.rcParams['lines.linewidth'] = 2
+n = 20
+mu = 5.5
+sig = 0.5
+soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+delta = -eps*np.exp(-np.power(x - 4.0, 2.) / (2 * np.power(sig, 2.)))
+# delta = eps*np.sin((2 - 1) * x*np.pi / Lx)
+guess = soln + delta
 
-from itertools import cycle
-lines = ["-","--","-.",":"]
-linecycler = cycle(lines)
 
+L_guess, grad = compute_objective(guess)
+delL_ap = []
+delL_diff = []
 
+# delta /= np.max(np.abs(delta))
+# grad /= np.max(np.abs(grad))
 
-print(angles)
+delta /= np.linalg.norm(delta)
+grad /= np.linalg.norm(grad)
 
-plt.scatter(wavenumbers, angles)
-plt.xlabel('wavenumbers')
+varepss = np.linspace(0.0, 4*eps, 30)
+for vareps in varepss:
+    logger.info('VAREPS = {}'.format(vareps))
+    delL_ap.append(compute_objective(guess  - vareps * delta)[0] - L_guess)
+    delL_diff.append(compute_objective(guess  - vareps * grad)[0] - L_guess)
+
+plt.scatter(varepss, np.array(delL_diff) - np.array(delL_ap), label = 'Apriori Gradient')
+# plt.scatter(varepss, , label = 'Diffused Gradient')
+# plt.legend()
+plt.ylabel(r'$\delta \mathcal{L}_{diff} - \delta \mathcal{L}_{apriori}$')
+plt.xlabel(r'$\varepsilon$')
+plt.title(r'$\epsilon = $' + str(eps) + r'; $L2$ Normalization')
+plt.savefig(path + '/deltaL_L2_comp.png')
 plt.show()
+
+# plt.plot(x, grad)
+# plt.plot(x, delta)
+# plt.show()
+
+# import matplotlib as mpl
+# mpl.rcParams['lines.linewidth'] = 2
+
+# from itertools import cycle
+# lines = ["-","--","-.",":"]
+# linecycler = cycle(lines)
+
+
+
+# print(angles)
+
+# plt.scatter(wavenumbers, angles)
+# plt.xlabel('wavenumbers')
+# plt.show()
 
 # plt.plot(x, -(soln - opt.ic['u']['g'])[0, :] / mag_ap_grad, label='(-) apriori gradient', linewidth=4, color='black')
 # plt.plot(x, delta / eps)
