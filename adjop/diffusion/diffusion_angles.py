@@ -84,7 +84,7 @@ backward_problem = BackwardDiffusion.build_problem(domain, xcoord, a)
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 grads = []
 
-eps = 1e0
+eps = 1e-3
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF4)]
 timesteppers = [(d3.RK443, d3.SBDF2)]
 wavenumbers = list(range(1, 40))
@@ -118,7 +118,7 @@ def compute_objective(guess):
     n = 20
     mu = 5.5
     sig = 0.5
-    soln = 0*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
     soln_f = dist.Field(name='soln_f', bases=xbasis)
     soln_f['g'] = soln.reshape((1, N))
 
@@ -129,7 +129,7 @@ def compute_objective(guess):
     U_data = np.loadtxt(path + '/diffusion_U.txt')
     u = next(field for field in forward_solver.state if field.name == 'u')
     U = dist.Field(name='U', bases=xbasis)
-    U['g'] = 0
+    U['g'] = U_data
 
 
     objectiveT = 0.5*(U - u)**2
@@ -215,48 +215,38 @@ def compute_objective(guess):
 n = 20
 mu = 5.5
 sig = 0.5
-soln = 0*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-delta = -eps*np.exp(-np.power(x - 4.0, 2.) / (2 * np.power(sig, 2.)))
-# delta = eps*np.sin((8) * x*np.pi / Lx)
+soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+# delta = -eps*np.exp(-np.power(x - 4.0, 2.) / (2 * np.power(sig, 2.)))
+delta = eps*np.sin((8) * x*np.pi / Lx)
 guess = soln + delta
 
 
 L_guess, grad = compute_objective(guess)
 
-delL_ap = []
-delL_diff = []
+plt.plot(x, grad)
+plt.plot(x,delta)
+plt.show()
+sys.exit()
+
+# delL_ap = []
+# delL_diff = []
 
 # delta /= np.max(np.abs(delta))
 # grad /= np.max(np.abs(grad))
 
+delta /= np.linalg.norm(delta)
+grad /= np.linalg.norm(grad)
 
-delta_f = dist.Field(name='delta_f', bases=xbasis)
-grad_f = dist.Field(name='grad_f', bases=xbasis)
-
-delta_f['g'] = delta
-grad_f['g'] = grad
-
-# delta_norm = np.linalg.norm(delta, ord=1)
-# grad_norm = np.linalg.norm(grad, ord=1)
-
-delta_norm = d3.Integrate((delta_f * delta_f)**0.5).evaluate()['g'][0]
-grad_norm = d3.Integrate((grad_f * grad_f)**0.5).evaluate()['g'][0]
-
-delta /= delta_norm
-grad /= grad_norm
-
-varepss = np.linspace(0.0, 1e-14*eps, 100)
+varepss = np.linspace(0.0, 4*eps, 30)
 for vareps in varepss:
     logger.info('VAREPS = {}'.format(vareps))
     delL_ap.append(compute_objective(guess  - vareps * delta)[0] - L_guess)
     delL_diff.append(compute_objective(guess  - vareps * grad)[0] - L_guess)
 
-# plt.scatter(varepss, np.array(delL_diff) - np.array(delL_ap), label = 'Apriori Gradient')
-plt.scatter(varepss, np.array(delL_ap), label = 'Apriori Gradient')
-plt.scatter(varepss, np.array(delL_diff), label = 'Diffused Gradient')
-plt.legend()
-# plt.ylabel(r'$\delta \mathcal{L}_{diff} - \delta \mathcal{L}_{apriori}$')
-plt.ylabel(r'$\delta \mathcal{L}$')
+plt.scatter(varepss, np.array(delL_diff) - np.array(delL_ap), label = 'Apriori Gradient')
+# plt.scatter(varepss, , label = 'Diffused Gradient')
+# plt.legend()
+plt.ylabel(r'$\delta \mathcal{L}_{diff} - \delta \mathcal{L}_{apriori}$')
 plt.xlabel(r'$\varepsilon$')
 plt.title(r'$\epsilon = $' + str(eps) + r'; $L2$ Normalization')
 plt.savefig(path + '/deltaL_L2_comp.png')

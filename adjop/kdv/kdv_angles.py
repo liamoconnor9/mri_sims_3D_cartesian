@@ -95,11 +95,13 @@ timesteppers = [(d3.RK443, d3.RK443)]
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.RK222), (d3.RK443, d3.MCNAB2)]
 # timesteppers = [(d3.RK443, d3.RK111), (d3.RK443, d3.RK222), (d3.RK443, d3.RK443), (d3.RK443, d3.RKGFY), (d3.RK443, d3.RKSMR)]
 
-eps = 0.1
+eps = 0.001
 wavenumbers = list(range(1,30))
 # wavenumbers = [1]
 angles = []
-for kx in wavenumbers:
+# for kx in wavenumbers:
+def compute_objective(guess):
+    kx = 1
     timestepper_pair = timesteppers[0]
     forward_solver = forward_problem.build_solver(timestepper_pair[0])
     backward_solver = backward_problem.build_solver(timestepper_pair[1])
@@ -124,15 +126,15 @@ for kx in wavenumbers:
     soln_f = dist.Field(name='soln_f', bases=xbasis)
     soln_f['g'] = soln.reshape((1, N))
 
-    n = 20
-    mu = 4.1
-    # sig = 1.5
-    guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-    guess = x*0
-    # delta = -0.0*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-    # delta = -eps*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-    delta = eps*np.sin((2*kx) * x*np.pi / Lx)
-    guess = ic_scale*(soln + delta)
+    # n = 20
+    # mu = 4.1
+    # # sig = 1.5
+    # guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    # guess = x*0
+    # # delta = -0.0*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    # # delta = -eps*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    # delta = eps*np.sin((2*kx) * x*np.pi / Lx)
+    # guess = ic_scale*(soln + delta)
 
     # guess_data = np.loadtxt(path + '/kdv_guess.txt')
     opt.ic['u']['g'] = guess
@@ -172,8 +174,15 @@ for kx in wavenumbers:
             x0 -= gamma * gradf
         return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
 
+    method = 'L-BFGS-B'
     if (method == "euler"):
         method = euler_descent
+
+    x0 = opt.ic['u']['g'].flatten().copy()  # Initial guess.
+    obj = opt.loop_forward(x0)
+    opt.loop_backward(x0)
+    grad = opt.new_grad['g'].copy()
+    return obj, grad
 
     startTime = datetime.now()
     try:
@@ -214,32 +223,67 @@ for kx in wavenumbers:
     angle = np.arccos(np.inner(apgrad, numgrad) / (norm(apgrad) * norm(numgrad)))
     angles.append(angle * 180 / np.pi)
 
-print(angles)
+n = 20
+mu = 5.5
+sig = 1.5
+soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+delta = -eps*np.exp(-np.power(x - 4.0, 2.) / (2 * np.power(sig, 2.)))
+# delta = eps*np.sin((2 - 1) * x*np.pi / Lx)
+guess = soln + delta
 
-import matplotlib as mpl
-mpl.rcParams['lines.linewidth'] = 2
 
-from itertools import cycle
-lines = ["-","--","-.",":"]
-linecycler = cycle(lines)
+L_guess, grad = compute_objective(guess)
+delL_ap = []
+delL_diff = []
 
-# plt.scatter(np.array(wavenumbers)**2, angles)
-# plt.show()
+# delta /= np.max(np.abs(delta))
+# grad /= np.max(np.abs(grad))
 
-mag_ap_grad = np.max(np.abs(delta))
-plt.plot(x, (delta) / mag_ap_grad, label='(-) apriori gradient', linewidth=4, color='black')
+delta /= np.linalg.norm(delta)
+grad /= np.linalg.norm(grad)
 
-for i in range(len(timesteppers)):
-    grad = grads[i]
-    normed_grad = grad / np.max(np.abs(grad))
-    plt.plot(x, normed_grad, linestyle=next(linecycler), label='{}, {}'.format(timesteppers[i][0].__name__, timesteppers[i][1].__name__))
+varepss = np.linspace(0.0, 1000*eps, 4)
+for vareps in varepss:
+    logger.info('VAREPS = {}'.format(vareps))
+    delL_ap.append(compute_objective(guess  - vareps * delta)[0])
+    delL_diff.append(compute_objective(guess  - vareps * grad)[0])
 
+plt.scatter(varepss, np.array(delL_ap), label = 'Apriori Gradient')
+plt.scatter(varepss, np.array(delL_diff), label = 'Diffused Gradient')
 plt.legend()
-plt.xlabel('x')
-plt.ylabel(r'$\mu(x, 0)$')
-plt.title(r'(-) Gradient: normalized by $L-\infty$ norm, $\varepsilon$ = {:.1e}'.format(eps))
-plt.savefig(path + '/grad_u.png')
+plt.ylabel(r'$\delta \mathcal{L}$')
+# plt.ylabel(r'$\delta \mathcal{L}_{diff} - \delta \mathcal{L}_{apriori}$')
+plt.xlabel(r'$\varepsilon$')
+plt.title(r'$\epsilon = $' + str(eps) + r'; $L2$ Normalization')
+plt.savefig(path + '/deltaL_L2_comp.png')
 plt.show()
+
+# print(angles)
+
+# import matplotlib as mpl
+# mpl.rcParams['lines.linewidth'] = 2
+
+# from itertools import cycle
+# lines = ["-","--","-.",":"]
+# linecycler = cycle(lines)
+
+# # plt.scatter(np.array(wavenumbers)**2, angles)
+# # plt.show()
+
+# mag_ap_grad = np.max(np.abs(delta))
+# plt.plot(x, (delta) / mag_ap_grad, label='(-) apriori gradient', linewidth=4, color='black')
+
+# for i in range(len(timesteppers)):
+#     grad = grads[i]
+#     normed_grad = grad / np.max(np.abs(grad))
+#     plt.plot(x, normed_grad, linestyle=next(linecycler), label='{}, {}'.format(timesteppers[i][0].__name__, timesteppers[i][1].__name__))
+
+# plt.legend()
+# plt.xlabel('x')
+# plt.ylabel(r'$\mu(x, 0)$')
+# plt.title(r'(-) Gradient: normalized by $L-\infty$ norm, $\varepsilon$ = {:.1e}'.format(eps))
+# plt.savefig(path + '/grad_u.png')
+# plt.show()
 
 # u = opt.ic['u']
 # u.change_scales(1)

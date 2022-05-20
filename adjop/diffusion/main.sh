@@ -27,5 +27,6 @@ CONFIG="diffusion_options.cfg"
 # OLDSUFFIX=$SUFFIX
 
 python3 diffusion.py
-python3 diffusion_ts.py
+python3 diffusion_grad_fidelity.py
+# python3 diffusion_ts.py
 # python3 diffusion_cg.py
