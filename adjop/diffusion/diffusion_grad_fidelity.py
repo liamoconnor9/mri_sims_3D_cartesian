@@ -238,14 +238,14 @@ grad_f['g'] = grad
 
 # delta_norm = np.linalg.norm(delta, ord=1)
 # grad_norm = np.linalg.norm(grad, ord=1)
-
-delta_norm = d3.Integrate((delta_f * delta_f)**0.5).evaluate()['g'][0]
-grad_norm = d3.Integrate((grad_f * grad_f)**0.5).evaluate()['g'][0]
+p = 1.7
+delta_norm = d3.Integrate(np.abs(delta_f)**p).evaluate()['g'][0]**(1/p)
+grad_norm = d3.Integrate(np.abs(grad_f)**p).evaluate()['g'][0]**(1/p)
 
 delta /= delta_norm
 grad /= grad_norm
 
-varepss = np.linspace(0.0, 1e-14*eps, 100)
+varepss = np.linspace(0.0, 1e-10*eps, 10)
 for vareps in varepss:
     logger.info('VAREPS = {}'.format(vareps))
     delL_ap.append(compute_objective(guess  - vareps * delta)[0] - L_guess)
