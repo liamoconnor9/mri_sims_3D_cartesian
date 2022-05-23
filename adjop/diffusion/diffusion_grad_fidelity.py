@@ -238,28 +238,29 @@ grad_f['g'] = grad
 
 # delta_norm = np.linalg.norm(delta, ord=1)
 # grad_norm = np.linalg.norm(grad, ord=1)
-p = 1.7
-delta_norm = d3.Integrate(np.abs(delta_f)**p).evaluate()['g'][0]**(1/p)
-grad_norm = d3.Integrate(np.abs(grad_f)**p).evaluate()['g'][0]**(1/p)
+pvec = np.linspace(1.0, 2.0, 30)
+vareps = 1e-10*eps
+for p in pvec:
 
-delta /= delta_norm
-grad /= grad_norm
+    delta_norm = d3.Integrate(np.abs(delta_f)**p).evaluate()['g'][0]**(1/p)
+    grad_norm = d3.Integrate(np.abs(grad_f)**p).evaluate()['g'][0]**(1/p)
 
-varepss = np.linspace(0.0, 1e-10*eps, 10)
-for vareps in varepss:
-    logger.info('VAREPS = {}'.format(vareps))
+    delta /= delta_norm
+    grad /= grad_norm
+    
+    logger.info('p = {}'.format(p))
     delL_ap.append(compute_objective(guess  - vareps * delta)[0] - L_guess)
     delL_diff.append(compute_objective(guess  - vareps * grad)[0] - L_guess)
 
 # plt.scatter(varepss, np.array(delL_diff) - np.array(delL_ap), label = 'Apriori Gradient')
-plt.scatter(varepss, np.array(delL_ap), label = 'Apriori Gradient')
-plt.scatter(varepss, np.array(delL_diff), label = 'Diffused Gradient')
+plt.scatter(pvec, np.array(delL_ap), label = 'Apriori Gradient')
+plt.scatter(pvec, np.array(delL_diff), label = 'Diffused Gradient')
 plt.legend()
 # plt.ylabel(r'$\delta \mathcal{L}_{diff} - \delta \mathcal{L}_{apriori}$')
 plt.ylabel(r'$\delta \mathcal{L}$')
-plt.xlabel(r'$\varepsilon$')
-plt.title(r'$\epsilon = $' + str(eps) + r'; $L2$ Normalization')
-plt.savefig(path + '/deltaL_L2_comp.png')
+plt.xlabel(r'$p$')
+plt.title(r'$\varepsilon = $' + str(vareps) + r'; $p$-norm Normalization')
+plt.savefig(path + '/deltaL_Lp.png')
 plt.show()
 
 # plt.plot(x, grad)
