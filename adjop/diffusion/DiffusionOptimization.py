@@ -28,7 +28,18 @@ from scipy import optimize
 from datetime import datetime
 
 class DiffusionOptimization(OptimizationContext):
+
+    def project_ic(self):
+        u = self.ic['u']
+        uf = self.domain.dist.Field(name='uf', bases=self.domain.bases)
+        uf['g'] = (u['g'][0, :].copy())**2
+        int1 = (uf*self.w1).evaluate()
+        int2 = (uf*self.w2).evaluate()
+        self.x1.append(d3.Integrate(int1, 'x').evaluate()['g'].flat[0])
+        self.x2.append(d3.Integrate(int2, 'x').evaluate()['g'].flat[0])
+
     def before_fullforward_solve(self):
+        self.project_ic()
         if (self.loop_index % self.show_loop_cadence == 0 and self.show):
             u = self.forward_solver.state[0]
             u.change_scales(1)

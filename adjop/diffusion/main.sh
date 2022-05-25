@@ -26,7 +26,7 @@ CONFIG="diffusion_options.cfg"
 # SUFFIX="T5_N256_reverse"
 # OLDSUFFIX=$SUFFIX
 
-python3 diffusion.py
-python3 diffusion_grad_fidelity.py
+# python3 diffusion.py
+python3 diffusion_cg.py
+# python3 diffusion_grad_fidelity.py
 # python3 diffusion_ts.py
-# python3 diffusion_cg.py
