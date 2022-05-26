@@ -99,13 +99,8 @@ soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 soln_f = dist.Field(name='soln_f', bases=xbasis)
 soln_f['g'] = soln.reshape((1, N))
 
-n = 20
-mu = 4.1
-sig = 0.5
-guess = -np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-guess = x*0
-delta = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-guess = delta
+delta = 0*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+guess = soln + delta
 
 
 opt.ic['u']['g'] = guess.copy()
