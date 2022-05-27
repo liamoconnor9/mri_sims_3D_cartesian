@@ -39,7 +39,7 @@ class DiffusionOptimization(OptimizationContext):
         self.x2.append(d3.Integrate(int2, 'x').evaluate()['g'].flat[0])
 
     def before_fullforward_solve(self):
-        self.project_ic()
+        # self.project_ic()
         if (self.loop_index % self.show_loop_cadence == 0 and self.show):
             u = self.forward_solver.state[0]
             u.change_scales(1)

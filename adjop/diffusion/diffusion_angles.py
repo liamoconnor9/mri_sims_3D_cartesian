@@ -84,10 +84,9 @@ backward_problem = BackwardDiffusion.build_problem(domain, xcoord, a)
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 grads = []
 
-eps = 1e-3
+eps = 1e0
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF4)]
 timesteppers = [(d3.RK443, d3.SBDF2)]
-wavenumbers = list(range(1, 40))
 angles = []
 # wavenumbers = [1]
 # timesteppers += [(d3.RK443, d3.RK222), (d3.RK443, d3.RK443)]
@@ -96,8 +95,8 @@ angles = []
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.RK222), (d3.RK443, d3.MCNAB2)]
 # timesteppers = [(d3.RK443, d3.RK111), (d3.RK443, d3.RK222), (d3.RK443, d3.RK443), (d3.RK443, d3.RKGFY), (d3.RK443, d3.RKSMR)]
 
-def compute_objective(guess):
-    kx = 1
+def compute_objective(guess, obj_exp=2):
+    # kx = 1
     timestepper_pair = timesteppers[0]
     forward_solver = forward_problem.build_solver(timestepper_pair[0])
     backward_solver = backward_problem.build_solver(timestepper_pair[1])
@@ -132,8 +131,11 @@ def compute_objective(guess):
     U['g'] = U_data
 
 
-    objectiveT = 0.5*(U - u)**2
+    objectiveT = (U - u)**obj_exp / obj_exp
     opt.set_objectiveT(objectiveT)
+
+    opt.objectiveT = (d3.Differentiate(d3.Differentiate(U - u, xcoord), xcoord))**obj_exp / obj_exp
+    opt.backward_ic['u_t'] = -(d3.Differentiate(d3.Differentiate(d3.Differentiate(d3.Differentiate(U - u, xcoord), xcoord), xcoord), xcoord))**(obj_exp - 1)
 
     # opt.backward_ic = backward_ic
     opt.U_data = U_data
@@ -216,12 +218,42 @@ n = 20
 mu = 5.5
 sig = 0.5
 soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-# delta = -eps*np.exp(-np.power(x - 4.0, 2.) / (2 * np.power(sig, 2.)))
-delta = eps*np.sin((8) * x*np.pi / Lx)
-guess = soln + delta
 
+sigs = np.linspace(0.01, 1.5, 30)
+exps = [2, 4, 6, 8, 20]
+anglesss = []
+for exp in exps:
+    angles = np.zeros_like(sigs)
+    for i, sig in enumerate(sigs):
+        delta = -eps*np.exp(-np.power(x - 4.0, 2.) / (2 * np.power(sig, 2.)))
+        # delta = eps*np.sin((8) * x*np.pi / Lx)
+        guess = soln.copy() + delta
+        L_guess, grad = compute_objective(guess, obj_exp=exp)
+        
+        apgrad = delta / eps
+        numgrad = grad / eps
 
-L_guess, grad = compute_objective(guess)
+        # plt.plot(apgrad, label='ap')
+        # plt.plot(numgrad, label='diff')
+        # plt.show()
+
+        angle = np.arccos(np.inner(apgrad, numgrad) / (norm(apgrad, ord=2) * norm(numgrad, ord=2)))
+        angles[i] = angle * 180 / np.pi
+    anglesss.append(angles)
+    # print(angles.tolist())
+
+Langstr = r'$\mathcal{L}$'
+for i, angles in enumerate(anglesss):
+    plt.scatter(sigs, angles, label= Langstr + r'~$\langle (uxx(T) - Uxx(T))^{} \rangle$'.format(exps[i]))
+plt.legend()
+plt.xlabel(r'$\sigma$')
+plt.ylabel(r'$\theta$')
+plt.title('Gradient-' + r'$\delta u$' + ' angle ' + r'$\theta$' + '; L2 Norm')
+plt.savefig(path + '/exp_angles_uxx.png')
+plt.show()
+print('done')
+sys.exit()
+
 
 plt.plot(x, grad)
 plt.plot(x,delta)
