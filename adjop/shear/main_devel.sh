@@ -26,9 +26,9 @@ CONFIG="shear_options_devel.cfg"
 
 # If target simulation was previously run in OLDSUFFIX, just copy its contents over
 # SUFFIX="T3_N512_vorticity"
-SUFFIX="T2_N512_Re8e4"
+SUFFIX="T10_N512_Re8e4"
 # OLDSUFFIX="T3_N256_coeff0p90_Re2e4"
-# OLDSUFFIX=$SUFFIX
+OLDSUFFIX=$SUFFIX
 MPIPROC=64
 
 if [ ! -d "$SUFFIX" ]; then

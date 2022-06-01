@@ -94,7 +94,7 @@ u = forward_problem.variables[0]
 u_t = backward_problem.variables[0]
 lagrangian_dict = {u : u_t}
 
-forward_solver = forward_problem.build_solver(d3.RK222)
+forward_solver = forward_problem.build_solver(d3.RK443)
 backward_solver = backward_problem.build_solver(d3.RK222)
 
 opt = ShearOptimization(domain, coords, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
@@ -158,11 +158,11 @@ W = dx(Uz) - dz(Ux)
 # W2 = d3.div(d3.skew(U))
 
 # objectiveT = (w - W)**2
-objectiveT = d3.dot(u - U, u - U) + omega_weight * (w - W)**2
+objectiveT = d3.dot(u - U, u - U)
 opt.set_objectiveT(objectiveT)
 
 # opt.backward_ic['u_t'] = -2.0*d3.skew(d3.grad((w - W)))
-opt.backward_ic['u_t'] += 2*omega_weight * (ex * dz(w - W) - ez * dx(w - W))
+# opt.backward_ic['u_t'] += 2*omega_weight * (ex * dz(w - W) - ez * dx(w - W))
 
 opt.metricsT['u_error'] = d3.dot(u - U, u - U)
 opt.metricsT['omega_error'] = (w - W)**2
