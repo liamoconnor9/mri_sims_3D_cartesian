@@ -38,8 +38,11 @@ from natsort import natsorted
 
 class ShearOptimization(OptimizationContext):
     def reshape_soln(self, x):
-        slices = self.slices
-        return x.reshape((2,) + self.domain.grid_shape(scales=1))[:, slices[0], slices[1]]
+        slices = self.opt_slices
+        if self.opt_layout == 'c':
+            return x.reshape((2,) + self.domain.coeff_shape)[:, slices[0], slices[1]]
+        else:
+            return x.reshape((2,) + self.domain.grid_shape(scales=self.opt_scales))[:, slices[0], slices[1]]
 
     def before_fullforward_solve(self):
         if self.add_handlers and self.loop_index % self.handler_loop_cadence == 0:

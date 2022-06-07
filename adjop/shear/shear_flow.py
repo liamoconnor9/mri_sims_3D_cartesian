@@ -82,7 +82,8 @@ ex, ez = coords.unit_vector_fields(dist)
 
 # Problem
 problem = d3.IVP([u, s, p, tau_p], namespace=locals())
-problem.add_equation("dt(u) + grad(p) - nu*lap(u) = - dot(u, grad(u))")
+problem.add_equation("dt(u) + grad(p) - nu*lap(u) = - dot(u, transpose(grad(u)))")
+# problem.add_equation("dt(u) + grad(p) - nu*lap(u) = - dot(u, grad(u))")
 problem.add_equation("dt(s) - D*lap(s) = - u@grad(s)")
 problem.add_equation("div(u) + tau_p = 0")
 problem.add_equation("integ(p) = 0") # Pressure gauge

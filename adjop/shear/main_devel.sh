@@ -12,7 +12,7 @@ deactivate
 unset PYTHONPATH
 source ~/miniconda3/etc/profile.d/conda.sh
 export PYTHONNOUSERSITE=1
-conda activate dedalus-d3
+conda activate dedalus3
 # support lots of text output to stdio for analysis
 export MPI_UNBUFFERED_STDIO=true
 
@@ -26,9 +26,9 @@ CONFIG="shear_options_devel.cfg"
 
 # If target simulation was previously run in OLDSUFFIX, just copy its contents over
 # SUFFIX="T3_N512_vorticity"
-SUFFIX="T10_N512_Re8e4"
+SUFFIX="T5_N512_Re8e4"
 # OLDSUFFIX="T3_N256_coeff0p90_Re2e4"
-OLDSUFFIX=$SUFFIX
+# OLDSUFFIX=$SUFFIX
 MPIPROC=64
 
 if [ ! -d "$SUFFIX" ]; then
@@ -58,13 +58,13 @@ if [ ! -d "$SUFFIX" ]; then
 fi
 
 mpiexec_mpt -np $MPIPROC python3 shear_cg.py $CONFIG $SUFFIX
-MPIPROC=10
-mpiexec_mpt -np $MPIPROC python3 plot_snapshots_error.py $SUFFIX snapshots_target snapshots_forward frames_error
-mpiexec_mpt -np 1 python3 plot_errors.py $SUFFIX snapshots_target snapshots_forward frames_error
+# MPIPROC=10
+# mpiexec_mpt -np $MPIPROC python3 plot_snapshots_error.py $SUFFIX snapshots_target snapshots_forward frames_error
+# mpiexec_mpt -np 1 python3 plot_errors.py $SUFFIX snapshots_target snapshots_forward frames_error
 exit 1
 
 
-MPIPROC=40
+# MPIPROC=40
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_forward frames_forward
 mpiexec_mpt -np $MPIPROC python3 plot_snapshots.py $SUFFIX snapshots_backward frames_backward
 

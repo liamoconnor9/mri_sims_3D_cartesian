@@ -4,6 +4,7 @@ import numpy as np
 import os
 import sys
 import dedalus.public as d3
+from dedalus.core.future import FutureField
 from mpi4py import MPI
 CW = MPI.COMM_WORLD
 import matplotlib.pyplot as plt
@@ -98,9 +99,15 @@ class OptimizationContext:
         self.backward_ic = OrderedDict()
         for forward_field in self.lagrangian_dict.keys():
             backward_field = self.lagrangian_dict[forward_field]
-            self.backward_ic[backward_field.name] = objectiveT.sym_diff(forward_field)
+            backic = objectiveT.sym_diff(forward_field)
+            if backic == 0:
+                continue
+            self.backward_ic[backward_field.name] = backic
 
     def reshape_soln(self, x):
+
+
+        # return x.reshape(self.domain.coeff_shape)[:]
         return x.reshape(self.domain.grid_shape(scales=1))[:]
 
     # For a given problem, these should be overwritten to add filehandlers, animations, metrics, etc.
@@ -122,32 +129,35 @@ class OptimizationContext:
     # Depreciated with scipy.optimization.minimize
     # calling this solves for the objective (forward) and the gradient (backward)
     def loop(self, x):
-        self.build_var_hotel() 
         f = self.loop_forward(x)
         f_prime = self.loop_backward(x)
         return f, f_prime
 
     def loop_forward(self, x):
 
+        self.build_var_hotel() 
         if (self.loop_index >= self.opt_iters):
             raise self.LoopIndexException({"message": "Achieved the proper number of loop index"})
-
+        
+        scales = self.opt_scales
+        layout = self.opt_layout
         self.x = x
-        self.ic['u'].change_scales(1)
-        self.old_x.change_scales(1)
-        self.new_x.change_scales(1)
-        # self.ic['u']['g'] = x.reshape((2,) + self.domain.grid_shape(scales=1))[:, self.slices[0], self.slices[1]]
+        self.ic['u'].change_scales(scales)
+        self.old_x.change_scales(scales)
+        self.new_x.change_scales(scales)
+        # self.ic['u'][layout] = x.reshape((2,) + self.domain.grid_shape(scales=1))[:, self.slices[0], self.slices[1]]
 
-        self.old_x['g'] = self.ic['u']['g'].copy()
-        self.ic['u']['g'] = self.reshape_soln(x)
-        self.new_x['g'] = self.ic['u']['g'].copy()
+        self.old_x[layout] = self.ic['u'][layout].copy()
+        
+        self.ic['u'][layout] = self.reshape_soln(x)
+        self.new_x[layout] = self.ic['u'][layout].copy()
 
         self.before_fullforward_solve()
         
         # Grab before fields are evolved (old state)
-        self.old_grad.change_scales(1)
-        self.backward_solver.state[0].change_scales(1)
-        self.old_grad['g'] = self.backward_solver.state[0]['g'].copy()
+        self.old_grad.change_scales(scales)
+        self.backward_solver.state[0].change_scales(scales)
+        self.old_grad[layout] = self.backward_solver.state[0][layout].copy()
 
         self.set_forward_ic()       
 
@@ -186,19 +196,21 @@ class OptimizationContext:
         self.backward_solver.evaluator.handlers.clear()
 
         # Evaluate after fields are evolved (new state)
-        self.backward_solver.state[0].change_scales(1)
-        self.backward_solver.state[0]['g']
+        scales = self.opt_scales
+        self.backward_solver.state[0].change_scales(scales)
+        layout = self.opt_layout
+        self.backward_solver.state[0][layout]
 
-        self.old_grad.change_scales(1)
-        self.new_grad.change_scales(1)
+        self.old_grad.change_scales(scales)
+        self.new_grad.change_scales(scales)
 
-        self.old_grad['g'] = self.new_grad['g'].copy()
-        self.new_grad['g'] = self.backward_solver.state[0]['g'].copy()
+        self.old_grad[layout] = self.new_grad[layout].copy()
+        self.new_grad[layout] = self.backward_solver.state[0][layout].copy()
 
         self.after_backward_solve()
         self.loop_index += 1
 
-        return self.gamma_init * self.backward_solver.state[0].allgather_data().flatten().copy()
+        return self.gamma_init * self.backward_solver.state[0].allgather_data(layout=layout).flatten().copy()
         
     # Set starting point for loop
     def set_forward_ic(self):
@@ -281,7 +293,7 @@ class OptimizationContext:
         # flip dictionary s.t. keys are backward var names and items are forward var names
         flipped_ld = dict((backward_var, forward_var) for forward_var, backward_var in self.lagrangian_dict.items())
         for backward_field in self.backward_solver.state:
-            if (backward_field.name in self.backward_ic.keys()):
+            if (backward_field.name in self.backward_ic.keys() and isinstance(self.backward_ic[backward_field.name], FutureField)):
                 backward_ic_field = self.backward_ic[backward_field.name].evaluate()
                 backward_field.change_scales(1)
                 backward_ic_field.change_scales(1)
@@ -292,6 +304,8 @@ class OptimizationContext:
         try:
             for t_ind in range(self.dt_per_cp):
                 for var in self.hotel.keys():
+                    if not var in self.backward_solver.problem.namespace.keys():
+                        continue
                     self.backward_solver.problem.namespace[var].change_scales(1)
                     self.backward_solver.problem.namespace[var]['g'] = self.hotel[var][-t_ind - 1]
                 self.backward_solver.step(-self.dt)
