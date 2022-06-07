@@ -41,6 +41,9 @@ class OptimizationContext:
 
         self.loop_index = 0
         self.opt_iters = np.inf
+        self.opt_scales = 1
+        self.opt_layout = 'g'
+
         self.step_performance = np.nan
         self.metricsT = {}
         self.metricsT_norms = {}

@@ -187,11 +187,17 @@ def euler_descent(fun, x0, args, **kwargs):
     # maxiter = kwargs['maxiter']
     maxiter = opt_iters
     jac = kwargs['jac']
+    f = 0.0
+    gamma = 0.0
     for i in range(maxiter):
+        old_f = f
         f, gradf = opt.loop(x0)
-        # gradf = jac(x0)
-        # gamma = opt.compute_gamma(0.8)
+        old_gamma = gamma
         gamma = 1e0
+        if i > 0:
+            step_p = (old_f - f) / old_gamma / opt.old_grad_sqrd
+            opt.metricsT_norms['step_p'] = step_p
+        opt.metricsT_norms['gamma'] = gamma
         x0 -= gamma * gradf
     logger.info('success')
     logger.info('maxiter = {}'.format(maxiter))
