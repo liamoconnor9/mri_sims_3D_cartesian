@@ -54,7 +54,7 @@ Nz = config.getint('parameters', 'Nz')
 
 Reynolds = config.getfloat('parameters', 'Re')
 stop_sim_time = config.getfloat('parameters', 'T')
-max_timestep = config.getfloat('parameters', 'dt') / 2.0
+max_timestep = config.getfloat('parameters', 'dt') 
 add_handlers = config.getboolean('parameters', 'add_handlers')
 
 Schmidt = 1

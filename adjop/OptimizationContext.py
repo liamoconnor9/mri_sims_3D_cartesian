@@ -41,9 +41,6 @@ class OptimizationContext:
 
         self.loop_index = 0
         self.opt_iters = np.inf
-        self.opt_scales = 1
-        self.opt_layout = 'g'
-
         self.step_performance = np.nan
         self.metricsT = {}
         self.metricsT_norms = {}
@@ -213,7 +210,8 @@ class OptimizationContext:
         self.after_backward_solve()
         self.loop_index += 1
 
-        return self.gamma_init * self.backward_solver.state[0].allgather_data(layout=layout).flatten().copy()
+        return self.backward_solver.state[0].allgather_data(layout=layout).flatten().copy() / 1e4
+        # return self.gamma_init * self.backward_solver.state[0].allgather_data(layout=layout).flatten().copy()
         
     # Set starting point for loop
     def set_forward_ic(self):
@@ -346,6 +344,8 @@ class OptimizationContext:
 
         if self.do_track_metrics:
             for metricT_name in self.metricsT_norms.keys():
+                if not metricT_name in self.metricsT_norms_lists.keys():
+                    self.metricsT_norms_lists[metricT_name] = []
                 self.metricsT_norms_lists[metricT_name].append(self.metricsT_norms[metricT_name])
 
         return

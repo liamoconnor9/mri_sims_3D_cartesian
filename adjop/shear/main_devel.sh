@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
-#PBS -l select=2:ncpus=40:mpiprocs=40:model=sky_ele
-#PBS -l walltime=6:00:00
+#PBS -l select=3:ncpus=28:mpiprocs=28:model=bro
+#PBS -l walltime=10:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -25,11 +25,9 @@ CONFIG="shear_options_devel.cfg"
 # SUFFIX="T1_coeff0ic_negbic_re1e4_N256"
 
 # If target simulation was previously run in OLDSUFFIX, just copy its contents over
-# SUFFIX="T3_N512_vorticity"
 SUFFIX="T5_N512_Re8e4"
-# OLDSUFFIX="T3_N256_coeff0p90_Re2e4"
-# OLDSUFFIX=$SUFFIX
 MPIPROC=64
+# OLDSUFFIX=$SUFFIX
 
 if [ ! -d "$SUFFIX" ]; then
 
@@ -58,10 +56,10 @@ if [ ! -d "$SUFFIX" ]; then
 fi
 
 mpiexec_mpt -np $MPIPROC python3 shear_cg.py $CONFIG $SUFFIX
+exit 1
 # MPIPROC=10
 # mpiexec_mpt -np $MPIPROC python3 plot_snapshots_error.py $SUFFIX snapshots_target snapshots_forward frames_error
 # mpiexec_mpt -np 1 python3 plot_errors.py $SUFFIX snapshots_target snapshots_forward frames_error
-exit 1
 
 
 # MPIPROC=40

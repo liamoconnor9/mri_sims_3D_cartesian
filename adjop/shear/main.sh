@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
-#PBS -l select=2:ncpus=40:mpiprocs=40:model=sky_ele
-#PBS -l walltime=6:00:00
+#PBS -l select=3:ncpus=28:mpiprocs=28:model=bro
+#PBS -l walltime=4:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -25,8 +25,8 @@ CONFIG="shear_options.cfg"
 # SUFFIX="T1_coeff0ic_negbic_re1e4_N256"
 
 # If target simulation was previously run in OLDSUFFIX, just copy its contents over
-SUFFIX="T5_N256_Re8e4"
-MPIPROC=16
+SUFFIX="T3_N512_Re8e4"
+MPIPROC=64
 # OLDSUFFIX=$SUFFIX
 
 if [ ! -d "$SUFFIX" ]; then

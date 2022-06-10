@@ -57,6 +57,7 @@ basinhopping_iters = config.getint('parameters', 'basinhopping_iters')
 opt_cycles = config.getint('parameters', 'opt_cycles')
 opt_iters = config.getint('parameters', 'opt_iters')
 method = str(config.get('parameters', 'scipy_method'))
+euler_safety = config.getfloat('parameters', 'euler_safety')
 opt_scales = config.getfloat('parameters', 'opt_scales')
 opt_layout = str(config.get('parameters', 'opt_layout'))
 
@@ -187,18 +188,20 @@ def euler_descent(fun, x0, args, **kwargs):
     # maxiter = kwargs['maxiter']
     maxiter = opt_iters
     jac = kwargs['jac']
-    f = 0.0
-    gamma = 0.0
+    f = np.nan
+    gamma = np.nan
     for i in range(maxiter):
         old_f = f
         f, gradf = opt.loop(x0)
         old_gamma = gamma
-        gamma = 1e0
         if i > 0:
-            step_p = (old_f - f) / old_gamma / opt.old_grad_sqrd
+            gamma = opt.compute_gamma(euler_safety)
+            step_p = (old_f - f) / old_gamma / (opt.old_grad_sqrd)
             opt.metricsT_norms['step_p'] = step_p
+        else:
+            gamma = 3e-4
         opt.metricsT_norms['gamma'] = gamma
-        x0 -= gamma * gradf
+        x0 -= 1e4 * gamma * gradf
     logger.info('success')
     logger.info('maxiter = {}'.format(maxiter))
     return OptimizeResult(x=x0, success=True, message='beep boop')
