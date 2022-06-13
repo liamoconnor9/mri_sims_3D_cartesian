@@ -36,7 +36,7 @@ class OptimizationContext:
 
         self.ic = OrderedDict()
         for var in lagrangian_dict.keys():
-            self.ic[var.name] = self.domain.dist.VectorField(coords, bases=domain.bases)
+            self.ic[var.name] = var.copy()
         self.backward_ic = OrderedDict()
 
         self.loop_index = 0
