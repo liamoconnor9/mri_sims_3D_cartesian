@@ -7,6 +7,7 @@ Usage:
 
 from distutils.command.bdist import show_formats
 import os
+import pickle
 path = os.path.dirname(os.path.abspath(__file__))
 from ast import For
 from contextlib import nullcontext
@@ -58,6 +59,8 @@ opt_cycles = config.getint('parameters', 'opt_cycles')
 opt_iters = config.getint('parameters', 'opt_iters')
 method = str(config.get('parameters', 'scipy_method'))
 euler_safety = config.getfloat('parameters', 'euler_safety')
+gamma_init = config.getfloat('parameters', 'gamma_init')
+
 opt_scales = config.getfloat('parameters', 'opt_scales')
 opt_layout = str(config.get('parameters', 'opt_layout'))
 
@@ -124,18 +127,27 @@ with h5py.File(end_state_path) as f:
     S['g'] = f['tasks/s'][-1, :, :][slices[0], slices[1]]
     logger.info('loading target {}: t = {}'.format(end_state_path, f['scales/sim_time'][-1]))
 
+restart_dir = path + '/' + write_suffix + '/checkpoints'
+if (load_state and len(os.listdir(restart_dir)) <= 1):
+    logger.info('No checkpoints found in {}! Restarting... '.format(restart_dir))
+    load_state = False
+
 if (load_state):
-    restart_dir = path + '/' + write_suffix + '/checkpoints'
     checkpoint_names = [name for name in os.listdir(restart_dir) if 'loop' in name]
-    last_checkpoint = natsorted(checkpoint_names)[-2]
+    last_checkpoint = natsorted(checkpoint_names)[-1]
     restart_file = restart_dir + '/' + last_checkpoint + '/' + last_checkpoint + '_s1.h5'
     with h5py.File(restart_file) as f:
         opt.ic['u']['g'] = f['tasks/u'][-1, :, :][:, slices[0], slices[1]]
         S['g'] = f['tasks/s'][-1, :, :][slices[0], slices[1]]
         logger.info('loading loop {}'.format(restart_file))
         loop_str_index = restart_file.rfind('loop') + 4
-        old_loop_index = int(restart_file[loop_str_index:-6])
-        opt.loop_index = old_loop_index + 1
+        opt.loop_index = int(restart_file[loop_str_index:-6])
+        with open(path + '/' + write_suffix + '/metrics.pick', 'rb') as f:
+            opt.metricsT_norms_lists = pickle.load(f)
+            truncate = max([len(metric_list) for metric_list in opt.metricsT_norms_lists.values()]) - opt.loop_index
+            for metric_list in opt.metricsT_norms_lists.values():
+                del metric_list[-truncate:]
+
 else:
     # opt.ic['u'].fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
 
@@ -190,7 +202,7 @@ def euler_descent(fun, x0, args, **kwargs):
     jac = kwargs['jac']
     f = np.nan
     gamma = np.nan
-    for i in range(maxiter):
+    for i in range(opt.loop_index, maxiter):
         old_f = f
         f, gradf = opt.loop(x0)
         old_gamma = gamma
@@ -199,7 +211,7 @@ def euler_descent(fun, x0, args, **kwargs):
             step_p = (old_f - f) / old_gamma / (opt.old_grad_sqrd)
             opt.metricsT_norms['step_p'] = step_p
         else:
-            gamma = 3e-4
+            gamma = gamma_init
         opt.metricsT_norms['gamma'] = gamma
         x0 -= 1e4 * gamma * gradf
     logger.info('success')
