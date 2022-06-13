@@ -352,8 +352,8 @@ class OptimizationContext:
 
     def track_metrics(self):
         self.do_track_metrics = True
-        for metricT_name in self.metricsT.keys():
-            self.metricsT_norms_lists[metricT_name] = []
+        # for metricT_name in self.metricsT.keys():
+        #     self.metricsT_norms_lists[metricT_name] = []
 
 #     def evaluate_initial_state(self):
 

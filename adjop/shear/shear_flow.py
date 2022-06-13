@@ -98,8 +98,26 @@ u['g'][0] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 # Match tracer to shear
 s['g'] = u['g'][0]
 # Add small vertical velocity perturbations localized to the shear layers
-u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01)
-u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01)
+
+
+omega = 1.0
+sigmax = 0.15
+sigmaz = 0.15
+
+u['g'][0] -= omega * -(z - 0.5) * np.exp(-0.5 * ( (x - 0.5)**2 / sigmax**2 + (z - 0.5)**2 / sigmaz**2) )
+u['g'][1] -= omega *  (x - 0.5) * np.exp(-0.5 * ( (x - 0.5)**2 / sigmax**2 + (z - 0.5)**2 / sigmaz**2) )
+u['g'][0] += omega * -(z + 0.5) * np.exp(-0.5 * ( (x - 0.5)**2 / sigmax**2 + (z + 0.5)**2 / sigmaz**2) )
+u['g'][1] += omega *  (x - 0.5) * np.exp(-0.5 * ( (x - 0.5)**2 / sigmax**2 + (z + 0.5)**2 / sigmaz**2) )
+
+# alpha = 0.001
+# u['g'][0] += alpha * -(z - 0.5) / (x**2 + (z - 0.5)**2 + 0.0001)
+# u['g'][1] += alpha *          x / (x**2 + (z - 0.5)**2 + 0.0001)
+
+# u['g'][0] += -alpha * -(z + 0.5) / (x**2 + (z + 0.5)**2 + 0.0001)
+# u['g'][1] += -alpha *          x / (x**2 + (z + 0.5)**2 + 0.0001)
+
+# u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01)
+# u['g'][1] += 0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01)
 
 # Analysis
 if (add_handlers):

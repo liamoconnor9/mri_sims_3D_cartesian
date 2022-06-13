@@ -7,6 +7,7 @@ Usage:
 
 from distutils.command.bdist import show_formats
 import os
+import pickle
 path = os.path.dirname(os.path.abspath(__file__))
 from ast import For
 from contextlib import nullcontext
@@ -71,6 +72,10 @@ class ShearOptimization(OptimizationContext):
         for metric_name in self.metricsT_norms.keys():
             loop_message += '{} = {}; '.format(metric_name, self.metricsT_norms[metric_name])
         logger.info(loop_message)
+        if self.add_handlers and self.loop_index % self.handler_loop_cadence == 0:
+            with open(self.run_dir + '/' + self.write_suffix + '/metrics.pick', 'wb') as f:
+                pickle.dump(self.metricsT_norms_lists, f)
+        
 
     def before_backward_solve(self):
         if self.add_handlers and self.loop_index % self.handler_loop_cadence == 0:
