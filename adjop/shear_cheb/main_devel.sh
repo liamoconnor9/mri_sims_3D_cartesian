@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
 #PBS -l select=3:ncpus=28:mpiprocs=28:model=bro
-#PBS -l walltime=4:00:00
+#PBS -l walltime=8:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -17,15 +17,16 @@ conda activate dedalus3
 export MPI_UNBUFFERED_STDIO=true
 
 source ~/png2mp4.sh
-cd ~/scratch/dedalus/mri/adjop/shear
 
 FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"
-CONFIG="shear_options_T10_re1e6.cfg"
+CONFIG="shear_options_devel.cfg"
+
+cd ~/mri/adjop/shear_cheb
 # SUFFIX="T1_coeff0ic_negbic_re1e4_N256"
 
 # If target simulation was previously run in OLDSUFFIX, just copy its contents over
-SUFFIX="T10_re1e6"
+SUFFIX="T3_N512_re1e5"
 MPIPROC=64
 # OLDSUFFIX=$SUFFIX
 

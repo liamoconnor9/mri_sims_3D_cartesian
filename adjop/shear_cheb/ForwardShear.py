@@ -27,7 +27,9 @@ def build_problem(domain, coords, Reynolds):
 
     # Substitutions
     nu = 1 / Reynolds
-    S = 1
+    Schmidt = 10
+    D = nu / Schmidt
+    S = 0
     x, z = dist.local_grids(xbasis, zbasis)
     ex, ez = coords.unit_vector_fields(dist)
     integ = lambda A: d3.Integrate(d3.Integrate(A, 'z'), 'x')
@@ -51,8 +53,10 @@ def build_problem(domain, coords, Reynolds):
     problem.add_equation("dt(s) - D*div(grad_s) + lift(tau2s, -1) = - u@grad(s)")
 
     problem.add_equation("integ(p) = 0") # Pressure gauge
-    problem.add_equation("u(z='left') = 0")
-    problem.add_equation("u(z='right') = 0")
+    problem.add_equation("(u @ ez)(z='left') = 0")
+    problem.add_equation("(u @ ez)(z='right') = 0")
+    problem.add_equation("(div(skew(u)))(z='left') = 0")
+    problem.add_equation("(div(skew(u)))(z='right') = 0")
     problem.add_equation("(grad_s @ ez)(z='left') = 0")
     problem.add_equation("(grad_s @ ez)(z='right') = 0")
 

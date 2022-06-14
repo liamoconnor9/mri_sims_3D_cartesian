@@ -21,11 +21,11 @@ cd ~/scratch/dedalus/mri/adjop/shear
 
 FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"
-CONFIG="shear_options_T10_re1e6.cfg"
+CONFIG="shear_options_T10_re1e5.cfg"
 # SUFFIX="T1_coeff0ic_negbic_re1e4_N256"
 
 # If target simulation was previously run in OLDSUFFIX, just copy its contents over
-SUFFIX="T10_re1e6"
+SUFFIX="T10_re1e5"
 MPIPROC=64
 # OLDSUFFIX=$SUFFIX
 
