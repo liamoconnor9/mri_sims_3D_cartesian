@@ -7,6 +7,7 @@ Usage:
 
 from distutils.command.bdist import show_formats
 import os
+import pickle
 path = os.path.dirname(os.path.abspath(__file__))
 from ast import For
 from contextlib import nullcontext
@@ -54,14 +55,21 @@ logger.info(config.items('parameters'))
 # Parameters
 load_state = config.getboolean('parameters', 'load_state')
 basinhopping_iters = config.getint('parameters', 'basinhopping_iters')
+opt_cycles = config.getint('parameters', 'opt_cycles')
 opt_iters = config.getint('parameters', 'opt_iters')
 method = str(config.get('parameters', 'scipy_method'))
+euler_safety = config.getfloat('parameters', 'euler_safety')
+gamma_init = config.getfloat('parameters', 'gamma_init')
+
+opt_scales = config.getfloat('parameters', 'opt_scales')
+opt_layout = str(config.get('parameters', 'opt_layout'))
 
 num_cp = config.getint('parameters', 'num_cp')
 handler_loop_cadence = config.getint('parameters', 'handler_loop_cadence')
 add_handlers = config.getboolean('parameters', 'add_handlers')
 guide_coeff = config.getfloat('parameters', 'guide_coeff')
 omega_weight = config.getfloat('parameters', 'omega_weight')
+s_weight = config.getfloat('parameters', 's_weight')
 
 Lx = config.getfloat('parameters', 'Lx')
 Lz = config.getfloat('parameters', 'Lz')
@@ -91,10 +99,14 @@ backward_problem = BackwardShear.build_problem(domain, coords, Reynolds)
 
 # forward, and corresponding adjoint variables (fields)
 u = forward_problem.variables[0]
-u_t = backward_problem.variables[0]
-lagrangian_dict = {u : u_t}
+s = forward_problem.variables[1]
 
-forward_solver = forward_problem.build_solver(d3.RK222)
+u_t = backward_problem.variables[0]
+s_t = backward_problem.variables[1]
+
+lagrangian_dict = {u : u_t, s : s_t}
+
+forward_solver = forward_problem.build_solver(d3.RK443)
 backward_solver = backward_problem.build_solver(d3.RK222)
 
 opt = ShearOptimization(domain, coords, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
@@ -115,8 +127,12 @@ with h5py.File(end_state_path) as f:
     S['g'] = f['tasks/s'][-1, :, :][slices[0], slices[1]]
     logger.info('loading target {}: t = {}'.format(end_state_path, f['scales/sim_time'][-1]))
 
+restart_dir = path + '/' + write_suffix + '/checkpoints'
+if (load_state and len(os.listdir(restart_dir)) <= 1):
+    logger.info('No checkpoints found in {}! Restarting... '.format(restart_dir))
+    load_state = False
+
 if (load_state):
-    restart_dir = path + '/' + write_suffix + '/checkpoints'
     checkpoint_names = [name for name in os.listdir(restart_dir) if 'loop' in name]
     last_checkpoint = natsorted(checkpoint_names)[-1]
     restart_file = restart_dir + '/' + last_checkpoint + '/' + last_checkpoint + '_s1.h5'
@@ -125,8 +141,13 @@ if (load_state):
         S['g'] = f['tasks/s'][-1, :, :][slices[0], slices[1]]
         logger.info('loading loop {}'.format(restart_file))
         loop_str_index = restart_file.rfind('loop') + 4
-        old_loop_index = int(restart_file[loop_str_index:-6])
-        opt.loop_index = old_loop_index + 1
+        opt.loop_index = int(restart_file[loop_str_index:-6])
+        with open(path + '/' + write_suffix + '/metrics.pick', 'rb') as f:
+            opt.metricsT_norms_lists = pickle.load(f)
+            truncate = max([len(metric_list) for metric_list in opt.metricsT_norms_lists.values()]) - opt.loop_index
+            for metric_list in opt.metricsT_norms_lists.values():
+                del metric_list[-truncate:]
+
 else:
     # opt.ic['u'].fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise
 
@@ -142,8 +163,8 @@ else:
 # set tracer initial condition
 opt.ic['s'] = dist.Field(name='s', bases=bases)
 opt.ic['s']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
-opt.backward_ic['s_t'] = dist.Field(name='s_t', bases=bases)
-opt.backward_ic['s_t']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
+# opt.backward_ic['s_t'] = dist.Field(name='s_t', bases=bases)
+# opt.backward_ic['s_t']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 
 # Late time objective: objectiveT is minimized at t = T
 # w2 = d3.div(d3.skew(u))
@@ -157,15 +178,17 @@ Uz = U @ ez
 W = dx(Uz) - dz(Ux)
 # W2 = d3.div(d3.skew(U))
 
-# objectiveT = (w - W)**2
-objectiveT = d3.dot(u - U, u - U) + omega_weight * (w - W)**2
+objectiveT = d3.dot(u - U, u - U)
 opt.set_objectiveT(objectiveT)
+opt.objectiveT += omega_weight*(w - W)**2
+opt.objectiveT += s_weight*(s - S) * (s - S)
 
-# opt.backward_ic['u_t'] = -2.0*d3.skew(d3.grad((w - W)))
-opt.backward_ic['u_t'] += 2*omega_weight * (ex * dz(w - W) - ez * dx(w - W))
+opt.backward_ic['s_t']= 2*s_weight*(s - S)
+opt.backward_ic['u_t'] += -2.0*omega_weight*d3.skew(d3.grad((w - W)))
 
 opt.metricsT['u_error'] = d3.dot(u - U, u - U)
 opt.metricsT['omega_error'] = (w - W)**2
+opt.metricsT['s_error'] = (s - S)**2
 opt.track_metrics()
 
 def check_status(x, f, accept):
@@ -175,13 +198,22 @@ def check_status(x, f, accept):
 def euler_descent(fun, x0, args, **kwargs):
     # gamma = 0.001
     # maxiter = kwargs['maxiter']
-    maxiter = 10
+    maxiter = opt_iters
     jac = kwargs['jac']
-    for i in range(maxiter):
+    f = np.nan
+    gamma = np.nan
+    for i in range(opt.loop_index, maxiter):
+        old_f = f
         f, gradf = opt.loop(x0)
-        # gradf = jac(x0)
-        gamma = opt.compute_gamma(0.8)
-        x0 -= gamma * gradf
+        old_gamma = gamma
+        if i > 0:
+            gamma = opt.compute_gamma(euler_safety)
+            step_p = (old_f - f) / old_gamma / (opt.old_grad_sqrd)
+            opt.metricsT_norms['step_p'] = step_p
+        else:
+            gamma = gamma_init
+        opt.metricsT_norms['gamma'] = gamma
+        x0 -= 1e4 * gamma * gradf
     logger.info('success')
     logger.info('maxiter = {}'.format(maxiter))
     return OptimizeResult(x=x0, success=True, message='beep boop')
@@ -195,34 +227,49 @@ if (method == "euler"):
 from datetime import datetime
 startTime = datetime.now()
 
-opt.ic['u'].change_scales(1)
-opt.ic['u']['g']
-x0 = opt.ic['u'].allgather_data().flatten().copy()  # Initial guess.
+# Parameters to choose how in what dedalus layout scipy will optimize: e.g. optimize in grid space or coeff with some scale
+opt.opt_scales = opt_scales
+opt.opt_layout = opt_layout
+opt.dist_layout = dist.layout_references[opt_layout]
+opt.opt_slices = opt.dist_layout.slices(domain, scales=opt_scales)
+
+opt.ic['u'].change_scales(opt_scales)
+opt.ic['u'][opt_layout]
+
 
 options = {'maxiter' : opt_iters}
 minimizer_kwargs = {"method":method, "jac":True}
-try:
-    res1 = basinhopping(opt.loop, x0, T=1e-2, callback=check_status, minimizer_kwargs=minimizer_kwargs)
-    # res1 = basinhopping(opt.loop, x0, T=0.1, niter=basinhopping_iters, callback=check_status, minimizer_kwargs=minimizer_kwargs)
-    logger.info(res1)
-except opt.LoopIndexException as e:
-    details = e.args[0]
-    logger.info(details["message"])
-except opt.NanNormException as e:
-    details = e.args[0]
-    logger.info(details["message"])
-
-# try:
-#     res1 = minimize(opt.loop_forward, x0, jac=opt.loop_backward, options=options, callback=check_status, tol=1e-8, method=method)
-#     logger.info(res1)
-# except opt.LoopIndexException as e:
-#     details = e.args[0]
-#     logger.info(details["message"])
-# except opt.NanNormException as e:
-#     details = e.args[0]
-#     logger.info(details["message"])
-# except Exception as e:
-#     logger.info('Unknown exception occured: {}'.format(e))
+if (basinhopping_iters > 0):
+    try:
+        x0 = opt.ic['u'].allgather_data(layout=opt.dist_layout).flatten().copy()  # Initial guess.
+        res1 = basinhopping(opt.loop, x0, T=1e-2, callback=check_status, minimizer_kwargs=minimizer_kwargs)
+        # res1 = basinhopping(opt.loop, x0, T=0.1, niter=basinhopping_iters, callback=check_status, minimizer_kwargs=minimizer_kwargs)
+        logger.info(res1)
+    except opt.LoopIndexException as e:
+        details = e.args[0]
+        logger.info(details["message"])
+    except opt.NanNormException as e:
+        details = e.args[0]
+        logger.info(details["message"])
+else:
+    for cycle_ind in range(opt_cycles):
+        logger.info('Initiating optimization cycle {}'.format(cycle_ind))
+        try:
+            x0 = opt.ic['u'].allgather_data(layout=opt.dist_layout).flatten().copy()  # Initial guess.
+            res1 = minimize(opt.loop_forward, x0, jac=opt.loop_backward, options=options, tol=1e-8, method=method)
+            logger.info(res1)
+        except opt.LoopIndexException as e:
+            details = e.args[0]
+            logger.info(details["message"])
+        except opt.NanNormException as e:
+            details = e.args[0]
+            logger.info(details["message"])
+        except Exception as e:
+            logger.info('Unknown exception occured: {}'.format(e))
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            logger.info(exc_type, fname, exc_tb.tb_lineno)
+        opt.opt_iters += opt_iters
 
 logger.info('####################################################')
 logger.info('COMPLETED OPTIMIZATION RUN')

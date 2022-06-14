@@ -15,11 +15,15 @@ def build_problem(domain, coords, Reynolds):
     xbasis, zbasis = bases[0], bases[1]
 
     # Fields
-    p = dist.Field(name='p', bases=bases)
-    u = dist.VectorField(coords, name='u', bases=bases)
+    p = dist.Field(name='p', bases=(xbasis, zbasis))
+    u = dist.VectorField(coords, name='u', bases=(xbasis, zbasis))
+    s = dist.Field(name='s', bases=(xbasis, zbasis))
+
     tau_p = dist.Field(name='tau_p')
     tau1u = dist.VectorField(coords, name='tau1u', bases=(xbasis))
     tau2u = dist.VectorField(coords, name='tau2u', bases=(xbasis))
+    tau1s = dist.Field(name='tau1s', bases=(xbasis))
+    tau2s = dist.Field(name='tau2s', bases=(xbasis))
 
     # Substitutions
     nu = 1 / Reynolds
@@ -32,17 +36,24 @@ def build_problem(domain, coords, Reynolds):
     U0 = dist.VectorField(coords, name='U0', bases=zbasis)
     U0['g'][0] = S * z
 
-    lift_basis = zbasis.clone_with(a=1/2, b=1/2) # First derivative basis
+    lift_basis = zbasis.derivative_basis(1) # First derivative basis
     lift = lambda A, n: d3.Lift(A, lift_basis, n)
     grad_u = d3.grad(u) + ez*lift(tau1u,-1) # First-order reduction
-
+    grad_s = d3.grad(s) + ez*lift(tau1s,-1) # First-order reduction
+    u_tot = u + U0
     # Problem
-    problem = d3.IVP([u, p, tau_p, tau1u, tau2u], namespace=locals())
+    problem = d3.IVP([u, s, p, tau_p, tau1u, tau2u, tau1s, tau2s], namespace=locals())
 
+
+    # problem.add_equation("u = u_tot - U0")
     problem.add_equation("trace(grad_u) + tau_p = 0")
     problem.add_equation("dt(u) + dot(u,grad(U0)) + dot(U0,grad(u)) + grad(p) - nu*div(grad_u) + lift(tau2u,-1) = - u @ grad(u)")
+    problem.add_equation("dt(s) - D*div(grad_s) + lift(tau2s, -1) = - u@grad(s)")
 
     problem.add_equation("integ(p) = 0") # Pressure gauge
     problem.add_equation("u(z='left') = 0")
     problem.add_equation("u(z='right') = 0")
+    problem.add_equation("(grad_s @ ez)(z='left') = 0")
+    problem.add_equation("(grad_s @ ez)(z='right') = 0")
+
     return problem

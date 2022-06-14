@@ -7,6 +7,7 @@ Usage:
 
 from distutils.command.bdist import show_formats
 import os
+import pickle
 path = os.path.dirname(os.path.abspath(__file__))
 from ast import For
 from contextlib import nullcontext
@@ -38,8 +39,11 @@ from natsort import natsorted
 
 class ShearOptimization(OptimizationContext):
     def reshape_soln(self, x):
-        slices = self.slices
-        return x.reshape((2,) + self.domain.grid_shape(scales=1))[:, slices[0], slices[1]]
+        slices = self.opt_slices
+        if self.opt_layout == 'c':
+            return x.reshape((2,) + self.domain.coeff_shape)[:, slices[0], slices[1]]
+        else:
+            return x.reshape((2,) + self.domain.grid_shape(scales=self.opt_scales))[:, slices[0], slices[1]]
 
     def before_fullforward_solve(self):
         if self.add_handlers and self.loop_index % self.handler_loop_cadence == 0:
@@ -68,6 +72,10 @@ class ShearOptimization(OptimizationContext):
         for metric_name in self.metricsT_norms.keys():
             loop_message += '{} = {}; '.format(metric_name, self.metricsT_norms[metric_name])
         logger.info(loop_message)
+        if self.add_handlers and self.loop_index % self.handler_loop_cadence == 0:
+            with open(self.run_dir + '/' + self.write_suffix + '/metrics.pick', 'wb') as f:
+                pickle.dump(self.metricsT_norms_lists, f)
+        
 
     def before_backward_solve(self):
         if self.add_handlers and self.loop_index % self.handler_loop_cadence == 0:
