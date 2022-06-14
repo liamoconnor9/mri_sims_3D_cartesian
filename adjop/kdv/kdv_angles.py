@@ -224,38 +224,36 @@ def compute_objective(guess):
     angles.append(angle * 180 / np.pi)
 
 n = 20
-mu = 5.5
+mu = 5
 sig = 1.5
 soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-delta = -eps*np.exp(-np.power(x - 4.0, 2.) / (2 * np.power(sig, 2.)))
-# delta = eps*np.sin((2 - 1) * x*np.pi / Lx)
-guess = soln + delta
 
+sigs = np.linspace(0.01, 1.5, 10)
 
-L_guess, grad = compute_objective(guess)
-delL_ap = []
-delL_diff = []
+angles = np.zeros_like(sigs)
+for i, sig in enumerate(sigs):
+    delta = -eps*np.exp(-np.power(x, 2.) / (2 * np.power(sig, 2.)))
+    # delta = eps*np.sin((8) * x*np.pi / Lx)
+    guess = soln.copy() + delta
+    L_guess, grad = compute_objective(guess)
+    
+    apgrad = delta / eps
+    numgrad = grad / eps
 
-# delta /= np.max(np.abs(delta))
-# grad /= np.max(np.abs(grad))
+    # plt.plot(apgrad, label='ap')
+    # plt.plot(numgrad, label='diff')
+    # plt.show()
 
-delta /= np.linalg.norm(delta)
-grad /= np.linalg.norm(grad)
-
-varepss = np.linspace(0.0, 1000*eps, 4)
-for vareps in varepss:
-    logger.info('VAREPS = {}'.format(vareps))
-    delL_ap.append(compute_objective(guess  - vareps * delta)[0])
-    delL_diff.append(compute_objective(guess  - vareps * grad)[0])
-
-plt.scatter(varepss, np.array(delL_ap), label = 'Apriori Gradient')
-plt.scatter(varepss, np.array(delL_diff), label = 'Diffused Gradient')
+    angle = np.arccos(np.inner(apgrad, numgrad) / (norm(apgrad, ord=2) * norm(numgrad, ord=2)))
+    angles[i] = angle * 180 / np.pi
+    
+plt.scatter(sigs, (angles))
 plt.legend()
-plt.ylabel(r'$\delta \mathcal{L}$')
+plt.ylabel(r'$\theta$')
 # plt.ylabel(r'$\delta \mathcal{L}_{diff} - \delta \mathcal{L}_{apriori}$')
-plt.xlabel(r'$\varepsilon$')
+plt.xlabel(r'$\sigma$')
 plt.title(r'$\epsilon = $' + str(eps) + r'; $L2$ Normalization')
-plt.savefig(path + '/deltaL_L2_comp.png')
+plt.savefig(path + '/angles_gaussian.png')
 plt.show()
 
 # print(angles)

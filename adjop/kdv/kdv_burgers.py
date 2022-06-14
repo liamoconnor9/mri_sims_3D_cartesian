@@ -86,7 +86,7 @@ else:
 
 # Initial conditions
 x = dist.local_grid(xbasis)
-mu = 5.5
+mu = 5
 # sig = 1.5
 u['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 

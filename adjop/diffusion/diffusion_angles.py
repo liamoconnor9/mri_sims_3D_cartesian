@@ -84,9 +84,9 @@ backward_problem = BackwardDiffusion.build_problem(domain, xcoord, a)
 lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 grads = []
 
-eps = 1e0
+eps = 0.001
 # timesteppers = [(d3.RK443, d3.SBDF2), (d3.RK443, d3.SBDF4)]
-timesteppers = [(d3.RK443, d3.SBDF2)]
+timesteppers = [(d3.RK443, d3.RK443)]
 angles = []
 # wavenumbers = [1]
 # timesteppers += [(d3.RK443, d3.RK222), (d3.RK443, d3.RK443)]
@@ -134,8 +134,8 @@ def compute_objective(guess, obj_exp=2):
     objectiveT = (U - u)**obj_exp / obj_exp
     opt.set_objectiveT(objectiveT)
 
-    opt.objectiveT = (d3.Differentiate(d3.Differentiate(U - u, xcoord), xcoord))**obj_exp / obj_exp
-    opt.backward_ic['u_t'] = -(d3.Differentiate(d3.Differentiate(d3.Differentiate(d3.Differentiate(U - u, xcoord), xcoord), xcoord), xcoord))**(obj_exp - 1)
+    # opt.objectiveT = (d3.Differentiate(d3.Differentiate(U - u, xcoord), xcoord))**obj_exp / obj_exp
+    # opt.backward_ic['u_t'] = -(d3.Differentiate(d3.Differentiate(d3.Differentiate(d3.Differentiate(U - u, xcoord), xcoord), xcoord), xcoord))**(obj_exp - 1)
 
     # opt.backward_ic = backward_ic
     opt.U_data = U_data
@@ -219,8 +219,8 @@ mu = 5.5
 sig = 0.5
 soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
-sigs = np.linspace(0.01, 1.5, 30)
-exps = [2, 4, 6, 8, 20]
+sigs = np.linspace(0.1, 0.5, 5)
+exps = [2]
 anglesss = []
 for exp in exps:
     angles = np.zeros_like(sigs)
@@ -238,7 +238,7 @@ for exp in exps:
         # plt.show()
 
         angle = np.arccos(np.inner(apgrad, numgrad) / (norm(apgrad, ord=2) * norm(numgrad, ord=2)))
-        angles[i] = angle * 180 / np.pi
+        angles[i] = np.inner(apgrad, numgrad) / (norm(apgrad, ord=2) * norm(numgrad, ord=2)) / sig
     anglesss.append(angles)
     # print(angles.tolist())
 
