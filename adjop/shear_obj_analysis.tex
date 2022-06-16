@@ -1,0 +1,108 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx,amsmath,amsfonts,amssymb,mathtools}
+\usepackage{enumitem}
+\usepackage{empheq}
+\usepackage{xcolor}
+
+\newcommand\Ra{\mathrm{Ra}}
+\newcommand\Pran{\mathrm{Pr}}
+\newcommand\Rac{\mathrm{Ra}_{\mathrm{c}}}
+\newcommand\Ek{\mathrm{Ek}}
+\newcommand\Ro{\mathrm{Ro}}
+\newcommand\Nu{\mathrm{Nu}}
+\newcommand\Sc{\mathrm{Sc}}
+
+\newcommand\eps{\varepsilon}
+\renewcommand\L {\mathcal{L}}
+
+\newcommand{\n}{\\ \nonumber \\ }
+\newcommand{\nn}{\nonumber}
+\newcommand{\nnn}{\\ \nonumber \\ \nonumber}
+
+\newcommand\ie{\textit{i.e.},~}
+\newcommand\eg{\textit{e.g.},~}
+\newcommand{\omicron}{o}
+\newcommand*\widefbox[1]{\fbox{\hspace{2em}#1\hspace{2em}}}
+
+\newcommand{\pd}[1]{\partial_{#1}}
+\newcommand{\vhat}[1]{\hat{\boldsymbol{#1}}}
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\M}[1]{\mathbf{#1}}
+\newcommand{\grad}{\vec{\nabla}}
+\renewcommand{\skew}{\vec{\nabla}^{\perp}}
+\newcommand{\cross}{\vec{\times}}
+\newcommand{\curl}{\grad \vec{\times}}
+\newcommand{\divergence}{\grad \cdot}
+\newcommand{\laplacian}{\nabla^2}
+\newcommand{\veclaplacian}{\grad^2}
+
+\newcommand{\sump}[2]{\sideset{}{'}\sum_{{#1}=0}^{#2}}
+
+\newcommand{\eq}[1]{(\ref{#1})}
+\newcommand{\eqs}[2]{(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\eqss}[2]{(\ref{#1})--(\ref{#2})}
+
+\newcommand{\Eq}[1]{Eq.~(\ref{#1})}
+\newcommand{\Eqs}[2]{Eqs.~(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\Eqss}[2]{Eqs.~(\ref{#1})--(\ref{#2})}
+
+\newcommand{\fig}[1]{Fig.~(\ref{#1})}
+\newcommand{\figs}[2]{Figs.~(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\T}{{\cal T}}
+\newcommand{\Z}{{\cal Z}}
+\newcommand{\px}{\partial_x}
+\newcommand{\py}{\partial_y}
+\newcommand{\pz}{\partial_z}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+\section*{2D Shear: Analyses of Least-Squares Objective Functions}
+
+\vfill
+\subsection*{Velocity Objective}
+Given a target simulation's end state $\vec{U}(T)$, consider an objective functional given by
+
+\begin{align*}
+    H[\vec{u}(T)] &= (\vec{u}(T) - \vec{U}(T)) \cdot (\vec{u}(T) - \vec{U}(T)) = (\vec{u}(T) - \vec{U}(T))^2
+    \intertext{To determine the adjoint problem's initial $(t=T)$ state, we take}
+    \frac{\delta H}{\delta \vec{u}(T)} &= \lim_{\delta\vec{u}(T) \to 0} \Big[ \frac{H[\vec{u}(T) + \delta\vec{u}(T)] - H[\vec{u}(T)]}{\delta\vec{u}(T)} \Big] \\
+    &= \lim_{\delta\vec{u}(T) \to 0} \Big[ \frac{ (\vec{u}(T) + \delta\vec{u}(T) - \vec{U}(T))^2 - (\vec{u}(T) - \vec{U}(T))^2}{\delta\vec{u}(T)} \Big] \\
+    &= \lim_{\delta\vec{u}(T) \to 0} \Big[ \frac{  2\delta\vec{u}(T)(\vec{u}(T) - \vec{U}(T))}{\delta\vec{u}(T)} \Big] \\
+    &= 2(\vec{u}(T) - \vec{U}(T))
+    \intertext{\textbf{Note:} as we take $T \to 0$, we have that $\vec{u}(0) \to \vec{u}(T)$ and $\vec{U}(0) \to \vec{U}(T)$. From this, it follows that the adjoint system is initialized as}
+    \vec{\mu}(T) &= 2(\vec{u}(0) - \vec{U}(0)) \quad \to \quad \vec{\mu}(0) 
+    \intertext{Therefore}
+    \frac{\delta H}{\delta \vec{u}(0)} &\to 2(\vec{u}(0) - \vec{U}(0))
+    \intertext{Which is the shortest direction to the optimized state in $L_2$ space.}
+\end{align*}
+\vfill
+
+\newpage
+\subsection*{Vorticity Objective}
+Next, we define
+\begin{align*}
+    \omega &= -\curl \vec{u} \cdot \vec{\hat{k}} \equiv \skew \cdot \vec{u} = \px v - \py u  \\
+    W &= -\curl \vec{U} \cdot \vec{\hat{k}} \equiv \skew \cdot \vec{U} = \px V - \py U \\
+    \intertext{and consider an objective functional given by}
+    H[\vec{u}(T)] &= (\omega(T) - W(T))^2 \\
+    &= (\px v(T) - \py u(T) - W(T))^2
+    \intertext{\textbf{Note:} if we take}
+    \frac{\delta H}{\omega(T)} &= 2(\omega(T) - W(T)),
+    \intertext{we recover the same result as before. It's more interesting to consider}
+    \frac{\delta H}{\delta u(T)} &= \lim_{\delta{u}(T) \to 0} \Big[ \frac{(\px v(T) - \py u(T) - \py \delta{u}(T) - W(T))^2 - (\px v(T) - \py u(T) - W(T))^2}{\delta{u}(T)} \Big] \\
+    &= \lim_{\delta{u}(T) \to 0} \Big[ \frac{ - \py \delta{u}(T) \big(\px v(T) - \py u(T) - W(T)\big)}{\delta{u}(T)} \Big] \\
+    \intertext{integrating by parts gives}
+    &= \lim_{\delta{u}(T) \to 0} \Big[ \frac{ - \py \Big[\delta{u}(T) \big(\px v(T) - \py u(T) - W(T)\big) \Big]  + \delta{u}(T)\py \Big[ \px v(T) - \py u(T) - W(T) \Big]}{\delta{u}(T)} \Big] \\
+    \intertext{The first term in the numerator cancels when imprenetrable boundary conditions are employed, leaving}
+    &= \lim_{\delta{u}(T) \to 0} \Big[ \frac{ \delta{u}(T)\py \Big[ \px v(T) - \py u(T) - W(T) \Big]}{\delta{u}(T)} \Big] \\[0.4cm]
+    &= \py \Big[ \omega(T) - W(T) \Big] \\
+    \intertext{Applying the same process to $\frac{\delta H}{\delta v(T)}$, we find }
+    \frac{\delta H}{\delta \vec{u}(T)} &=  \skew \Big[ \omega(T) - W(T) \Big] \\
+\end{align*}
+
+
+
+\end{document}
+ 
