@@ -32,13 +32,8 @@ def build_problem(domain, coords, Reynolds):
     nu = 1 / Reynolds
     Schmidt = 10
     D = nu / Schmidt
-    S = 0
     x, z = dist.local_grids(bases[0], bases[1])
-    ex, ez = coords.unit_vector_fields(dist)
-
-    # nccs
-    U0 = dist.VectorField(coords, name='U0', bases=zbasis)
-    U0['g'][0] = S * z        
+    ex, ez = coords.unit_vector_fields(dist)   
 
     lift_basis = zbasis.derivative_basis(1) # First derivative basis
     lift = lambda A, n: d3.Lift(A, lift_basis, n)
@@ -49,7 +44,7 @@ def build_problem(domain, coords, Reynolds):
     problem = d3.IVP([u_t, s_t, p_t, tau_p_t, tau1u_t, tau2u_t, tau1s_t, tau2s_t], namespace=locals())
 
     problem.add_equation("trace(grad_u_t) + tau_p_t = 0")
-    problem.add_equation("dt(u_t) + grad(p_t) + nu*div(grad_u_t) + lift(tau2u_t,-1) = (dot(u_t, transpose(grad(u + U0))) - dot(u + U0, grad(u_t))) + s_t*grad(s)")
+    problem.add_equation("dt(u_t) + grad(p_t) + nu*div(grad_u_t) + lift(tau2u_t,-1) = (dot(u_t, transpose(grad(u))) - dot(u, grad(u_t))) + s_t*grad(s)")
     problem.add_equation("dt(s_t) - D*div(grad_s_t) + lift(tau2s_t, -1) = - u@grad(s_t)")
 
     problem.add_equation("integ(p_t) = 0") # Pressure gauge
