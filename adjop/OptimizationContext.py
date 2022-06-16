@@ -166,7 +166,7 @@ class OptimizationContext:
         self.forward_solver.evaluator.handlers.clear()
         
         # self.solve_forward()
-        self.evaluate_objectiveT()
+        self.evaluate_stateT()
         self.objectiveT_norms.append(self.objectiveT_norm)
         self.indices.append(self.loop_index)
         self.after_fullforward_solve()
@@ -207,6 +207,7 @@ class OptimizationContext:
         self.old_grad[layout] = self.new_grad[layout].copy()
         self.new_grad[layout] = self.backward_solver.state[0][layout].copy()
 
+        self.evaluate_state0()
         self.after_backward_solve()
         self.loop_index += 1
 
@@ -318,7 +319,7 @@ class OptimizationContext:
             for field in self.backward_solver.state:
                 field.change_scales(1)
 
-    def evaluate_objectiveT(self):
+    def evaluate_stateT(self):
 
         objectiveT_norm = d3.Integrate(self.objectiveT).evaluate()
 
@@ -349,6 +350,16 @@ class OptimizationContext:
                 self.metricsT_norms_lists[metricT_name].append(self.metricsT_norms[metricT_name])
 
         return
+
+    def evaluate_state0(self):
+        new_grad_sqrd_integ = d3.Integrate(self.new_grad * self.new_grad).evaluate()
+        if (CW.rank == 0):
+            new_grad_sqrd = new_grad_sqrd_integ['g'].flat[0]
+        else:
+            new_grad_sqrd = 0.0
+        self.new_grad_sqrd = CW.bcast(new_grad_sqrd, root=0)
+        return
+
 
     def track_metrics(self):
         self.do_track_metrics = True
@@ -392,7 +403,6 @@ class OptimizationContext:
                 old_grad_sqrd = 0.0
             gamma = CW.bcast(gamma, root=0)
             self.old_grad_sqrd = CW.bcast(old_grad_sqrd, root=0)
-
             return gamma
 
 #     def descend(self, gamma, **kwargs):

@@ -73,7 +73,7 @@ class ShearOptimization(OptimizationContext):
             loop_message += '{} = {}; '.format(metric_name, self.metricsT_norms[metric_name])
         logger.info(loop_message)
         if self.add_handlers and self.loop_index % self.handler_loop_cadence == 0:
-            with open(self.run_dir + '/' + self.write_suffix + '/metrics.pick', 'wb') as f:
+            with open(self.run_dir + '/' + self.write_suffix + '/' + self.metrics_fn, 'wb') as f:
                 pickle.dump(self.metricsT_norms_lists, f)
         
 

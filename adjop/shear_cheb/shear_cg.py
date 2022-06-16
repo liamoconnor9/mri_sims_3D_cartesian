@@ -34,6 +34,7 @@ from OptimizationContext import OptimizationContext
 from ShearOptimization import ShearOptimization
 import ForwardShear
 import BackwardShear
+import PressureBVP
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize, basinhopping, OptimizeResult
 from natsort import natsorted
@@ -54,6 +55,7 @@ logger.info(config.items('parameters'))
 
 # Parameters
 load_state = config.getboolean('parameters', 'load_state')
+metrics_fn = str(config.get('parameters', 'metric_fn'))
 basinhopping_iters = config.getint('parameters', 'basinhopping_iters')
 opt_cycles = config.getint('parameters', 'opt_cycles')
 opt_iters = config.getint('parameters', 'opt_iters')
@@ -68,8 +70,12 @@ num_cp = config.getint('parameters', 'num_cp')
 handler_loop_cadence = config.getint('parameters', 'handler_loop_cadence')
 add_handlers = config.getboolean('parameters', 'add_handlers')
 guide_coeff = config.getfloat('parameters', 'guide_coeff')
+
+u_weight = config.getfloat('parameters', 'u_weight')
 omega_weight = config.getfloat('parameters', 'omega_weight')
 s_weight = config.getfloat('parameters', 's_weight')
+psi_weight = config.getfloat('parameters', 'psi_weight')
+cc_weight = config.getfloat('parameters', 'cc_weight')
 
 Lx = config.getfloat('parameters', 'Lx')
 Lz = config.getfloat('parameters', 'Lz')
@@ -100,6 +106,8 @@ backward_problem = BackwardShear.build_problem(domain, coords, Reynolds)
 # forward, and corresponding adjoint variables (fields)
 u = forward_problem.variables[0]
 s = forward_problem.variables[1]
+p = forward_problem.variables[2]
+psi = forward_problem.variables[3]
 
 u_t = backward_problem.variables[0]
 s_t = backward_problem.variables[1]
@@ -117,14 +125,25 @@ opt.handler_loop_cadence = handler_loop_cadence
 
 U = dist.VectorField(coords, name='U', bases=bases)
 S = dist.Field(name='S', bases=bases)
+P = dist.Field(name='P', bases=bases)
+Psi = dist.Field(name='Psi', bases=bases)
+
+X = dist.Field(name='X', bases=bases)
+Z = dist.Field(name='Z', bases=bases)
+X['g'] = x - Lx/2.0
+Z['g'] = z
+
 slices = dist.grid_layout.slices(domain, scales=1)
 opt.slices = slices
+opt.metrics_fn = metrics_fn
 
 # Populate U with end state of known initial condition
 end_state_path = path + '/' + write_suffix + '/checkpoint_target/checkpoint_target_s1.h5'
 with h5py.File(end_state_path) as f:
     U['g'] = f['tasks/u'][-1, :, :][:, slices[0], slices[1]]
     S['g'] = f['tasks/s'][-1, :, :][slices[0], slices[1]]
+    P['g'] = f['tasks/p'][-1, :, :][slices[0], slices[1]]
+    Psi['g'] = f['tasks/psi'][-1, :, :][slices[0], slices[1]]
     logger.info('loading target {}: t = {}'.format(end_state_path, f['scales/sim_time'][-1]))
 
 restart_dir = path + '/' + write_suffix + '/checkpoints'
@@ -142,7 +161,7 @@ if (load_state):
         logger.info('loading loop {}'.format(restart_file))
         loop_str_index = restart_file.rfind('loop') + 4
         opt.loop_index = int(restart_file[loop_str_index:-6])
-        with open(path + '/' + write_suffix + '/metrics.pick', 'rb') as f:
+        with open(path + '/' + write_suffix + '/' + metrics_fn, 'rb') as f:
             opt.metricsT_norms_lists = pickle.load(f)
             truncate = max([len(metric_list) for metric_list in opt.metricsT_norms_lists.values()]) - opt.loop_index
             for metric_list in opt.metricsT_norms_lists.values():
@@ -156,13 +175,18 @@ else:
     # opt.ic['u']['g'][1] += guide_coeff * 0.1 * np.sin(2*np.pi*x/Lx)
 
     #old ic
-    opt.ic['u']['g'][0] = guide_coeff * (1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1)))
-    opt.ic['u']['g'][1] += guide_coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z-0.5)**2/0.01))
-    opt.ic['u']['g'][1] += guide_coeff * (0.1 * np.sin(2*np.pi*x/Lx) * np.exp(-(z+0.5)**2/0.01))
+    sigma = 0.15
+    opt.ic['u']['g'][0] = guide_coeff * 1/2 * np.tanh((z)/0.1)
+    opt.ic['u']['g'][0] += guide_coeff * (z) * np.exp(-0.5 * ( (x - 0.5)**2 / sigma**2 + (z)**2 / sigma**2) )
+    opt.ic['u']['g'][1] += guide_coeff * -(x - 0.5) * np.exp(-0.5 * ( (x - 0.5)**2 / sigma**2 + (z)**2 / sigma**2) )
+
+# PressureBVP.build_problem(domain, coords, P)
+# sys.exit()
 
 # set tracer initial condition
 opt.ic['s'] = dist.Field(name='s', bases=bases)
-opt.ic['s']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
+opt.ic['s']['g'] = 1/2 * np.tanh((z)/0.1)
+
 # opt.backward_ic['s_t'] = dist.Field(name='s_t', bases=bases)
 # opt.backward_ic['s_t']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 
@@ -170,25 +194,41 @@ opt.ic['s']['g'] = 1/2 + 1/2 * (np.tanh((z-0.5)/0.1) - np.tanh((z+0.5)/0.1))
 # w2 = d3.div(d3.skew(u))
 dx = lambda A: d3.Differentiate(A, coords['x'])
 dz = lambda A: d3.Differentiate(A, coords['z'])
+curl = lambda A: d3.skew(d3.grad(A))
+lap  = lambda A: d3.div(d3.grad(A))
+integ = lambda A: d3.Integrate(d3.Integrate(A, 'z'), 'x')
+
 ux = u @ ex
 uz = u @ ez
 w = dx(uz) - dz(ux)
+
 Ux = U @ ex
 Uz = U @ ez
 W = dx(Uz) - dz(Ux)
-# W2 = d3.div(d3.skew(U))
 
 objectiveT = d3.dot(u - U, u - U)
 opt.set_objectiveT(objectiveT)
-opt.objectiveT += omega_weight*(w - W)**2
-opt.objectiveT += s_weight*(s - S) * (s - S)
+opt.objectiveT *= (u_weight + cc_weight)
+opt.backward_ic['u_t'] *= u_weight
 
-opt.backward_ic['s_t']= 2*s_weight*(s - S)
+opt.objectiveT += omega_weight * (w - W)**2
+opt.objectiveT += s_weight     * (s - S)**2
+opt.objectiveT += psi_weight   * (psi - Psi)**2
+
+opt.backward_ic['s_t']  =  2*s_weight*(s - S)
 opt.backward_ic['u_t'] += -2.0*omega_weight*d3.skew(d3.grad((w - W)))
+opt.backward_ic['u_t'] +=  2.0*psi_weight* ( (psi - Psi).evaluate().antidifferentiate(zbasis, ('left', 0)) )
+# opt.backward_ic['u_t'] +=  2.0*psi_weight* ( (psi - Psi) * (Z*ex - X*ez) - integ((psi - Psi) * (Z*ex - X*ez)) )
+opt.backward_ic['u_t'] +=  2.0*cc_weight*curl(lap(w - W))
+
+# opt.backward_ic['u_t'] += 2.0*psi_weight*d3.skew(d3.grad((psi - Psi)))
 
 opt.metricsT['u_error'] = d3.dot(u - U, u - U)
 opt.metricsT['omega_error'] = (w - W)**2
 opt.metricsT['s_error'] = (s - S)**2
+opt.metricsT['p_error'] = (p - P)**2
+opt.metricsT['psi_error'] = (psi - Psi)**2
+
 opt.track_metrics()
 
 def check_status(x, f, accept):
@@ -201,17 +241,20 @@ def euler_descent(fun, x0, args, **kwargs):
     maxiter = opt_iters
     jac = kwargs['jac']
     f = np.nan
-    gamma = np.nan
+    gamma = 0.0000000025
     for i in range(opt.loop_index, maxiter):
         old_f = f
         f, gradf = opt.loop(x0)
+        # gradf /= opt.new_grad_sqrd**(0.5)
+        # gamma = 0.1 * f
+
         old_gamma = gamma
         if i > 0:
-            gamma = opt.compute_gamma(euler_safety)
+            opt.compute_gamma(euler_safety)
             step_p = (old_f - f) / old_gamma / (opt.old_grad_sqrd)
             opt.metricsT_norms['step_p'] = step_p
-        else:
-            gamma = gamma_init
+        # else:
+        #     gamma = gamma_init
         opt.metricsT_norms['gamma'] = gamma
         x0 -= 1e4 * gamma * gradf
     logger.info('success')
