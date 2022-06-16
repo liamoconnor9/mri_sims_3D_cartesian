@@ -130,7 +130,7 @@ Psi = dist.Field(name='Psi', bases=bases)
 
 X = dist.Field(name='X', bases=bases)
 Z = dist.Field(name='Z', bases=bases)
-X['g'] = x
+X['g'] = x - Lx/2.0
 Z['g'] = z
 
 slices = dist.grid_layout.slices(domain, scales=1)
@@ -196,6 +196,7 @@ dx = lambda A: d3.Differentiate(A, coords['x'])
 dz = lambda A: d3.Differentiate(A, coords['z'])
 curl = lambda A: d3.skew(d3.grad(A))
 lap  = lambda A: d3.div(d3.grad(A))
+integ = lambda A: d3.Integrate(d3.Integrate(A, 'z'), 'x')
 
 ux = u @ ex
 uz = u @ ez
@@ -216,7 +217,8 @@ opt.objectiveT += psi_weight   * (psi - Psi)**2
 
 opt.backward_ic['s_t']  =  2*s_weight*(s - S)
 opt.backward_ic['u_t'] += -2.0*omega_weight*d3.skew(d3.grad((w - W)))
-opt.backward_ic['u_t'] +=  2.0*psi_weight*(psi - Psi) * (Z*ex - X*ez)
+opt.backward_ic['u_t'] +=  2.0*psi_weight* ( (psi - Psi).evaluate().antidifferentiate(zbasis, ('left', 0)) )
+# opt.backward_ic['u_t'] +=  2.0*psi_weight* ( (psi - Psi) * (Z*ex - X*ez) - integ((psi - Psi) * (Z*ex - X*ez)) )
 opt.backward_ic['u_t'] +=  2.0*cc_weight*curl(lap(w - W))
 
 # opt.backward_ic['u_t'] += 2.0*psi_weight*d3.skew(d3.grad((psi - Psi)))
@@ -239,18 +241,18 @@ def euler_descent(fun, x0, args, **kwargs):
     maxiter = opt_iters
     jac = kwargs['jac']
     f = np.nan
-    gamma = 0.005
+    gamma = 0.0000000025
     for i in range(opt.loop_index, maxiter):
         old_f = f
         f, gradf = opt.loop(x0)
-        gradf /= opt.new_grad_sqrd**(0.5)
+        # gradf /= opt.new_grad_sqrd**(0.5)
         # gamma = 0.1 * f
 
-        # old_gamma = gamma
-        # if i > 0:
-        #     gamma = opt.compute_gamma(euler_safety)
-        #     step_p = (old_f - f) / old_gamma / (opt.old_grad_sqrd)
-        #     opt.metricsT_norms['step_p'] = step_p
+        old_gamma = gamma
+        if i > 0:
+            opt.compute_gamma(euler_safety)
+            step_p = (old_f - f) / old_gamma / (opt.old_grad_sqrd)
+            opt.metricsT_norms['step_p'] = step_p
         # else:
         #     gamma = gamma_init
         opt.metricsT_norms['gamma'] = gamma
