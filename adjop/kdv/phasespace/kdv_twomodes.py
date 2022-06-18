@@ -51,7 +51,7 @@ epsilon_safety = default_gamma = 0.6
 
 # Bases
 xcoord = d3.Coordinate('x')
-dist = d3.Distributor(xcoord, dtype=np.float64)
+dist = d3.Distributor(xcoord, dtype=np.float64, comm=MPI.COMM_SELF)
 
 if periodic:
     xbasis = d3.RealFourier(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
@@ -68,14 +68,12 @@ both = True
 write_objectives = False
 k1 = 1
 k2 = 6
-Nmodes = 11
+Nmodes = 20
 
 mode1 = np.sin(k1 * 2*np.pi * x / Lx)
 mode2 = np.sin(k2 * 2*np.pi * x / Lx)
-mode1_f = forward_solver.state[0].copy()
-mode1_f.name = 'mode1_f'
-mode2_f = forward_solver.state[0].copy()
-mode2_f.name = 'mode2_f'
+mode1_f = dist.Field(name='mode1_f', bases=xbasis)
+mode2_f = dist.Field(name='mode2_f', bases=xbasis)
 mode1_f['g'] = mode1.copy()
 mode2_f['g'] = mode2.copy()
 
@@ -97,13 +95,16 @@ def evolve(ic, forward_solver, T, dt):
     forward_solver.state[0].change_scales(1)
     return forward_solver.state[0]
 
-U0 = (mode1_f + mode2_f).evaluate()
-UT = evolve(U0['g'].copy(), forward_solver, T, dt)
+U0 = dist.Field(name='U0', bases=xbasis)
+UT = dist.Field(name='UT', bases=xbasis)
+U0.change_scales(1)
+UT.change_scales(1)
+U0['g'] = mode1 + mode2
+
+UT['g'] = evolve(U0['g'].copy(), forward_solver, T, dt)['g'].copy()
+
 
 def evaluate_objective(u, U):
-    ux = d3.Differentiate(u, xcoord)
-    uxx = d3.Differentiate(ux, xcoord)
-    fac1 = d3.Integrate(np.exp(a*np.abs(ux))).evaluate()['g'].flat[0]
     fac2 = d3.Integrate((u - U)**2).evaluate()['g'].flat[0]
     return fac2
     # return fac1 + fac2
@@ -111,44 +112,67 @@ def evaluate_objective(u, U):
 if (write_objectives or both):
     objectives = np.zeros((Nmodes, Nmodes))
 
+    # ks = []
+    # for k1_coeff in k1_coeffs:
+    #     for k2_coeff in k2_coeffs:
+    #         ks.append((k1_coeff, k2_coeff))
+
+    inds = []
     for jrow in range(Nmodes):
         for jcol in range(Nmodes):
-            ic =  mode1 * k1_coeffs[jrow]
-            ic += mode2 * k2_coeffs[jcol]
-            u = evolve(ic, forward_solver, T, dt)
-            objectives[jrow, jcol] = evaluate_objective(u, UT)
+            inds.append((jrow, jcol))
 
-    np.savetxt(path + '/objectives.txt', objectives)
-    logger.info('saved final state')
+
+    for indy in range(CW.rank, len(inds), CW.size):
+        jrow, jcol = inds[indy]
+        # k1, k2 = ks[indy]
+        ic =  mode1 * k1_coeffs[jrow]
+        ic += mode2 * k2_coeffs[jcol]
+        u = evolve(ic, forward_solver, T, dt)
+        UT['g'] = 0.0
+        objectives[jrow, jcol] = evaluate_objective(u, UT)
+        # print(objectives[jrow, jcol])
+
+    CW.Barrier()
+    if CW.rank == 0:
+        CW.Reduce(MPI.IN_PLACE, objectives, op=MPI.SUM, root=0)
+    else:
+        CW.Reduce(objectives, objectives, op=MPI.SUM, root=0)
+
+    if CW.rank == 0:
+        np.savetxt(path + '/objectives2.txt', objectives)
+        logger.info('saved final state')
 
 if (not write_objectives or both):
-    objectives = np.loadtxt(path + '/objectives.txt')
-    # print(objectives)
-    plt.pcolormesh(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, cmap='seismic')
-    epsilon = 1.0
-    if False:
-        for j in range(1):
-            g1 = -0.9
-            g2 = -0.9
-            # g1 = 2*np.random.rand() - 1
-            # g2 = 2*np.random.rand() - 1
-            g = (g1 * mode1_f + g2 * mode2_f).evaluate()
-            coeffs = []
-            coeffs.append(compute_coeffs(g, mode1_f, mode2_f))
-            for i in range(1000):
-                print(i)
-                g.change_scales(1)
-                dg = diffuse(g['g'].copy(), forward_solver, 2*T, dt)
-                g = (g - epsilon * dg).evaluate()
+    if CW.rank == 0:
+        objectives = np.loadtxt(path + '/objectives2.txt')
+        # print(objectives)
+        pc = plt.pcolormesh(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, cmap='seismic')
+        plt.colorbar(pc)
+        epsilon = 1.0
+        if False:
+            for j in range(1):
+                g1 = -0.9
+                g2 = -0.9
+                # g1 = 2*np.random.rand() - 1
+                # g2 = 2*np.random.rand() - 1
+                g = (g1 * mode1_f + g2 * mode2_f).evaluate()
+                coeffs = []
                 coeffs.append(compute_coeffs(g, mode1_f, mode2_f))
+                for i in range(1000):
+                    print(i)
+                    g.change_scales(1)
+                    dg = diffuse(g['g'].copy(), forward_solver, 2*T, dt)
+                    g = (g - epsilon * dg).evaluate()
+                    coeffs.append(compute_coeffs(g, mode1_f, mode2_f))
 
-            cs = list(zip(*coeffs))
-            c1s = cs[0]
-            c2s = cs[1]
-            plt.plot(c1s, c2s, color='lime', linewidth=3)
-    plt.xlabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k1))
-    plt.ylabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k2))
-    plt.title(r'$\langle u^2 \rangle$')
-    plt.savefig(path + '/objtest_k' + str(k1) + 'k' + str(k2) + '.png')
-    plt.show()
+                cs = list(zip(*coeffs))
+                c1s = cs[0]
+                c2s = cs[1]
+                plt.plot(c1s, c2s, color='lime', linewidth=3)
+        plt.xlabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k1))
+        plt.ylabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k2))
+        plt.title(r'$\langle u^2 \rangle$')
+        plt.savefig(path + '/objtest_k' + str(k1) + 'k' + str(k2) + '.png')
+        plt.show()
 
