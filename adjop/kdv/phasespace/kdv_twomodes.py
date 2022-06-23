@@ -85,8 +85,8 @@ mode2_f = dist.Field(name='mode2_f', bases=xbasis)
 mode1_f['g'] = mode1.copy()
 mode2_f['g'] = mode2.copy()
 
-k1_coeffs = np.linspace(0, 2, Nmodes)
-k2_coeffs = np.linspace(0, 2, Nmodes)
+k1_coeffs = np.linspace(0, 8, Nmodes)
+k2_coeffs = np.linspace(0, 8, Nmodes)
 
 def compute_coeffs(u, mode1_f, mode2_f):
     c1 = 2.0 / Lx * d3.Integrate(u*mode1_f).evaluate()['g'].flat[0]
@@ -110,7 +110,7 @@ U0 = dist.Field(name='U0', bases=xbasis)
 UT = dist.Field(name='UT', bases=xbasis)
 U0.change_scales(1)
 UT.change_scales(1)
-U0['g'] = mode1 + mode2
+U0['g'] = 4*mode1 + 4*mode2
 
 utg = UT['g'].copy() * 0.0
 if (CW.rank == 0):
