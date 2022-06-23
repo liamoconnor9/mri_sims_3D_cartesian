@@ -36,8 +36,12 @@ logger.info(config.items('parameters'))
 Lx = config.getfloat('parameters', 'Lx')
 N = config.getint('parameters', 'Nx')
 
-a = config.getfloat('parameters', 'a')
-b = config.getfloat('parameters', 'b')
+if (len(sys.argv) == 3):
+    a = float(sys.argv[1])
+    b = float(sys.argv[2])
+else:
+    a = config.getfloat('parameters', 'a')
+    b = config.getfloat('parameters', 'b')
 T = config.getfloat('parameters', 'T')
 dt = config.getfloat('parameters', 'dt')
 num_cp = config.getint('parameters', 'num_cp')
@@ -62,13 +66,17 @@ domain = Domain(dist, [xbasis])
 dist = domain.dist
 
 x = dist.local_grid(xbasis)
+CW.Barrier()
 forward_problem = ForwardKDV.build_problem(domain, xcoord, a, b)
+CW.Barrier()
 forward_solver = forward_problem.build_solver(d3.RK443)
+CW.Barrier()
+
 both = True
 write_objectives = False
 k1 = 1
-k2 = 6
-Nmodes = 20
+k2 = 2
+Nmodes = 100
 
 mode1 = np.sin(k1 * 2*np.pi * x / Lx)
 mode2 = np.sin(k2 * 2*np.pi * x / Lx)
@@ -85,27 +93,47 @@ def compute_coeffs(u, mode1_f, mode2_f):
     c2 = 2.0 / Lx * d3.Integrate(u*mode2_f).evaluate()['g'].flat[0]
     return (c1, c2)
 
-def evolve(ic, forward_solver, T, dt):
-    forward_solver.sim_time = 0.0
-    forward_solver.stop_sim_time = T
-    forward_solver.state[0].change_scales(1)
-    forward_solver.state[0]['g'] = ic.copy()
-    while forward_solver.proceed:
-        forward_solver.step(dt)
-    forward_solver.state[0].change_scales(1)
-    return forward_solver.state[0]
+def evolve(ic, fsolve, T, dt):
+    fsolve.sim_time = 0.0
+    fsolve.stop_sim_time = T
+    fsolve.state[0].change_scales(1)
+    fsolve.state[0]['g'] = ic.copy()
 
+    while fsolve.proceed:
+        fsolve.step(dt)
+    fsolve.state[0].change_scales(1)
+    # CW.barrier()
+    return fsolve.state[0]['g'].copy()
+
+u2 = dist.Field(name='u2', bases=xbasis)
 U0 = dist.Field(name='U0', bases=xbasis)
 UT = dist.Field(name='UT', bases=xbasis)
 U0.change_scales(1)
 UT.change_scales(1)
 U0['g'] = mode1 + mode2
 
-UT['g'] = evolve(U0['g'].copy(), forward_solver, T, dt)['g'].copy()
+utg = UT['g'].copy() * 0.0
+if (CW.rank == 0):
+    utg = evolve(U0['g'].copy(), forward_solver, T, dt)
+    CW.Reduce(MPI.IN_PLACE, utg, op=MPI.SUM, root=0)
+else:
+    CW.Reduce(utg, utg, op=MPI.SUM, root=0)
+# logger.info(UT['g'])
 
+CW.Bcast([utg, MPI.DOUBLE], root=0)
+UT['g'] = utg.copy()
+
+CW.Barrier()
+CW.barrier()
+# print(np.sum(UT['g']**2))
+
+logger.info('target state computed')
+# sys.exit()
 
 def evaluate_objective(u, U):
-    fac2 = d3.Integrate((u - U)**2).evaluate()['g'].flat[0]
+    # fac2 = np.sum((u['g'])**2)
+    fac2 = d3.Integrate((u - U)**2).evaluate()['g'].flat[0] / Lx
+    # print('obj = {}, rank = {}'.format(fac2, CW.rank))
     return fac2
     # return fac1 + fac2
 
@@ -122,15 +150,27 @@ if (write_objectives or both):
         for jcol in range(Nmodes):
             inds.append((jrow, jcol))
 
+    CW.Barrier()
+
 
     for indy in range(CW.rank, len(inds), CW.size):
         jrow, jcol = inds[indy]
-        # k1, k2 = ks[indy]
-        ic =  mode1 * k1_coeffs[jrow]
-        ic += mode2 * k2_coeffs[jcol]
-        u = evolve(ic, forward_solver, T, dt)
-        UT['g'] = 0.0
-        objectives[jrow, jcol] = evaluate_objective(u, UT)
+        mode1 = np.sin(k1 * 2*np.pi * x / Lx)
+        mode2 = np.sin(k2 * 2*np.pi * x / Lx)
+        # ic =  mode1 * k1_coeffs[jrow]
+        # ic += mode2 * k2_coeffs[jcol]
+        # ic = mode1 + mode2
+        ic = k1_coeffs[jrow] * mode1 + k2_coeffs[jcol] * mode2
+        u2.change_scales(1)
+        UT.change_scales(1)
+        CW.barrier()
+        u2['g'] = evolve(ic, forward_solver, T, dt)
+        CW.barrier()
+        
+        objectives[jrow, jcol] = evaluate_objective(u2, UT)
+        CW.Barrier()
+        CW.barrier()
+        # sys.exit()
         # print(objectives[jrow, jcol])
 
     CW.Barrier()
@@ -172,7 +212,10 @@ if (not write_objectives or both):
                 plt.plot(c1s, c2s, color='lime', linewidth=3)
         plt.xlabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k1))
         plt.ylabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k2))
-        plt.title(r'$\langle u^2 \rangle$')
-        plt.savefig(path + '/objtest_k' + str(k1) + 'k' + str(k2) + '.png')
+        plt.title(r'$\langle (u - U)^2 \rangle$; a = {}, b = {}'.format(a, b))
+        a_str = str(a).replace('.', 'p')
+        b_str = str(b).replace('.', 'p')
+        plt.savefig(path + '/objtest_a' + a_str + 'b' + b_str + '.png')
+        logger.info('image saved to file: ' + path + '/objtest_a' + a_str + 'b' + b_str + '.png')
         plt.show()
 
