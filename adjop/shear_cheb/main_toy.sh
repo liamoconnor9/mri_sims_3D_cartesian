@@ -35,8 +35,8 @@ SUFFIX="test"
 MPIPROC=4
 # OLDSUFFIX=$SUFFIX
 
-# if [ false ] || [ ! -d "$SUFFIX" ]; then
-if [ ! -d "$SUFFIX" ]; then
+if [ true ]; then
+# if [ ! -d "$SUFFIX" ]; then
 
     mkdir $SUFFIX
     mkdir $SUFFIX/checkpoints

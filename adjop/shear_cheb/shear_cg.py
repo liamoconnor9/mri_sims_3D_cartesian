@@ -34,14 +34,17 @@ from OptimizationContext import OptimizationContext
 from ShearOptimization import ShearOptimization
 import ForwardShear
 import BackwardShear
-import PressureBVP
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize, basinhopping, OptimizeResult
 from natsort import natsorted
 
-args = docopt(__doc__)
-filename = Path(args['<config_file>'])
-write_suffix = args['<run_suffix>']
+try:
+    args = docopt(__doc__)
+    filename = Path(args['<config_file>'])
+    write_suffix = args['<run_suffix>']
+except:
+    filename = path + '/shear_options_toy.cfg'
+    write_suffix = 'test'
 
 config = ConfigParser()
 config.read(str(filename))
@@ -217,8 +220,8 @@ opt.objectiveT += psi_weight   * (psi - Psi)**2
 
 opt.backward_ic['s_t']  =  2*s_weight*(s - S)
 opt.backward_ic['u_t'] += -2.0*omega_weight*d3.skew(d3.grad((w - W)))
-opt.backward_ic['u_t'] +=  2.0*psi_weight* ( (psi - Psi).evaluate().antidifferentiate(zbasis, ('left', 0)) )
-# opt.backward_ic['u_t'] +=  2.0*psi_weight* ( (psi - Psi) * (Z*ex - X*ez) - integ((psi - Psi) * (Z*ex - X*ez)) )
+# opt.backward_ic['u_t'] +=  2.0*psi_weight* ( (psi - Psi).evaluate().antidifferentiate(zbasis, ('left', 0)) )
+opt.backward_ic['u_t'] +=  2.0*psi_weight* ( psi - Psi )
 opt.backward_ic['u_t'] +=  2.0*cc_weight*curl(lap(w - W))
 
 # opt.backward_ic['u_t'] += 2.0*psi_weight*d3.skew(d3.grad((psi - Psi)))
