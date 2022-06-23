@@ -297,9 +297,18 @@ class OptimizationContext:
         for backward_field in self.backward_solver.state:
             if (backward_field.name in self.backward_ic.keys() and isinstance(self.backward_ic[backward_field.name], FutureField)):
                 backward_ic_field = self.backward_ic[backward_field.name].evaluate()
+                bases = self.domain.bases
                 backward_field.change_scales(1)
                 backward_ic_field.change_scales(1)
-                backward_field['g'] = backward_ic_field['g'].copy()
+                if (backward_field.name == 'u_t'):
+                    icx = backward_ic_field.antidifferentiate(bases[1].coord, ('left', 0))
+                    icy = backward_ic_field.antidifferentiate(bases[0].coord, ('left', 0))
+                    icx.change_scales(1)
+                    icy.change_scales(1)
+                    backward_field['g'][0] = icx['g'].copy()
+                    backward_field['g'][1] = icy['g'].copy()
+                else:
+                    backward_field['g'] = backward_ic_field['g'].copy()
         return
 
     def solve_backward(self):
