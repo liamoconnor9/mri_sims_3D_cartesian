@@ -38,11 +38,12 @@ N = config.getint('parameters', 'Nx')
 
 if (len(sys.argv) == 3):
     a = float(sys.argv[1])
-    b = float(sys.argv[2])
+    T = float(sys.argv[2])
 else:
     a = config.getfloat('parameters', 'a')
-    b = config.getfloat('parameters', 'b')
-T = config.getfloat('parameters', 'T')
+    T = config.getfloat('parameters', 'T')
+
+b = config.getfloat('parameters', 'b')
 dt = config.getfloat('parameters', 'dt')
 num_cp = config.getint('parameters', 'num_cp')
 
@@ -76,7 +77,7 @@ both = True
 write_objectives = False
 k1 = 1
 k2 = 2
-Nmodes = 100
+Nmodes = 500
 
 mode1 = np.sin(k1 * 2*np.pi * x / Lx)
 mode2 = np.sin(k2 * 2*np.pi * x / Lx)
@@ -85,8 +86,8 @@ mode2_f = dist.Field(name='mode2_f', bases=xbasis)
 mode1_f['g'] = mode1.copy()
 mode2_f['g'] = mode2.copy()
 
-k1_coeffs = np.linspace(0, 8, Nmodes)
-k2_coeffs = np.linspace(0, 8, Nmodes)
+k1_coeffs = np.linspace(-4, 12, Nmodes)
+k2_coeffs = np.linspace(-4, 12, Nmodes)
 
 def compute_coeffs(u, mode1_f, mode2_f):
     c1 = 2.0 / Lx * d3.Integrate(u*mode1_f).evaluate()['g'].flat[0]
@@ -163,13 +164,8 @@ if (write_objectives or both):
         ic = k1_coeffs[jrow] * mode1 + k2_coeffs[jcol] * mode2
         u2.change_scales(1)
         UT.change_scales(1)
-        CW.barrier()
         u2['g'] = evolve(ic, forward_solver, T, dt)
-        CW.barrier()
-        
         objectives[jrow, jcol] = evaluate_objective(u2, UT)
-        CW.Barrier()
-        CW.barrier()
         # sys.exit()
         # print(objectives[jrow, jcol])
 
@@ -212,10 +208,10 @@ if (not write_objectives or both):
                 plt.plot(c1s, c2s, color='lime', linewidth=3)
         plt.xlabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k1))
         plt.ylabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k2))
-        plt.title(r'$\langle (u - U)^2 \rangle$; a = {}, b = {}'.format(a, b))
+        plt.title(r'$\langle (u - U)^2 \rangle$; a = {}, T = {}'.format(a, T))
         a_str = str(a).replace('.', 'p')
-        b_str = str(b).replace('.', 'p')
-        plt.savefig(path + '/objtest_a' + a_str + 'b' + b_str + '.png')
-        logger.info('image saved to file: ' + path + '/objtest_a' + a_str + 'b' + b_str + '.png')
+        T_str = str(T).replace('.', 'p')
+        plt.savefig(path + '/objtest_a' + a_str + 'T' + T_str + '.png')
+        logger.info('image saved to file: ' + path + '/objtest_a' + a_str + 'T' + T_str + '.png')
         plt.show()
 
