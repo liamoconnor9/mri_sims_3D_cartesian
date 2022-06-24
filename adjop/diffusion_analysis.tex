@@ -1,0 +1,137 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx,amsmath,amsfonts,amssymb,mathtools}
+\usepackage{enumitem}
+\usepackage{empheq}
+\usepackage{xcolor}
+
+\newcommand\Ra{\mathrm{Ra}}
+\newcommand\Pran{\mathrm{Pr}}
+\newcommand\Rac{\mathrm{Ra}_{\mathrm{c}}}
+\newcommand\Ek{\mathrm{Ek}}
+\newcommand\Ro{\mathrm{Ro}}
+\newcommand\Nu{\mathrm{Nu}}
+\newcommand\Sc{\mathrm{Sc}}
+
+\newcommand\eps{\varepsilon}
+\renewcommand\L {\mathcal{L}}
+
+\newcommand{\n}{\\ \nonumber \\ }
+\newcommand{\nn}{\nonumber}
+\newcommand{\nnn}{\\ \nonumber \\ \nonumber}
+
+\newcommand\ie{\textit{i.e.},~}
+\newcommand\eg{\textit{e.g.},~}
+\newcommand{\omicron}{o}
+\newcommand*\widefbox[1]{\fbox{\hspace{2em}#1\hspace{2em}}}
+
+\newcommand{\pd}[1]{\partial_{#1}}
+\newcommand{\vhat}[1]{\hat{\boldsymbol{#1}}}
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\M}[1]{\mathbf{#1}}
+\newcommand{\grad}{\vec{\nabla}}
+\renewcommand{\skew}{\vec{\nabla}^{\perp}}
+\newcommand{\cross}{\vec{\times}}
+\newcommand{\curl}{\grad \vec{\times}}
+\newcommand{\divergence}{\grad \cdot}
+\newcommand{\laplacian}{\nabla^2}
+\newcommand{\veclaplacian}{\grad^2}
+
+\newcommand{\sump}[2]{\sideset{}{'}\sum_{{#1}=0}^{#2}}
+
+\newcommand{\eq}[1]{(\ref{#1})}
+\newcommand{\eqs}[2]{(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\eqss}[2]{(\ref{#1})--(\ref{#2})}
+
+\newcommand{\Eq}[1]{Eq.~(\ref{#1})}
+\newcommand{\Eqs}[2]{Eqs.~(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\Eqss}[2]{Eqs.~(\ref{#1})--(\ref{#2})}
+
+\newcommand{\fig}[1]{Fig.~(\ref{#1})}
+\newcommand{\figs}[2]{Figs.~(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\T}{{\cal T}}
+\newcommand{\Z}{{\cal Z}}
+\newcommand{\px}{\partial_x}
+\newcommand{\py}{\partial_y}
+\newcommand{\pz}{\partial_z}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+\section*{1D: Diffusion Inversion}
+\subsection*{Preliminaries}
+\begin{align*}
+    \intertext{We begin by defining the Lagrangian}
+    \L &= \int_0^T \langle \mu \cdot [\partial_t u - \nu \partial^2_x u] \rangle dt + \frac{1}{2}\langle (u(T) - U(T))^2 \rangle
+    \intertext{where $U(T)$ is the target end state, whose initial condition $U(0)$ we wish to recover. We continue by deriving the forward and adjoint problems}
+    0 = \frac{\delta\L}{\delta\mu} &= \int_0^T \langle \partial_t u - \nu \partial^2_x u \rangle dt \quad \longrightarrow \quad \partial_t u = \nu \partial^2_x u 
+    \intertext{Before deriving the adjoint system, we note that}
+    \L &= \int_0^T \langle \mu \partial_t u - \nu \mu\partial^2_x u \rangle dt + \frac{1}{2}\langle (u(T) - U(T))^2 \rangle\\
+    &= \int_0^T \langle  \partial_t (u\mu) - u\partial_t \mu - \nu \mu\partial^2_x u \rangle dt + \frac{1}{2}\langle (u(T) - U(T))^2 \rangle\\
+    &= \Big\langle\int_0^T   \partial_t (u\mu) dt\Big\rangle + \int_0^T \langle- u\partial_t \mu - \nu \mu\partial^2_x u \rangle dt + \frac{1}{2}\langle (u(T) - U(T))^2 \rangle\\
+    &= \langle   u(T)\mu(T) - u(0)\mu(0) \rangle + \int_0^T \langle- u\partial_t \mu - \nu \mu\partial^2_x u \rangle dt + \frac{1}{2}\langle (u(T) - U(T))^2 \rangle\\
+    \intertext{We continue by deriving the adjoint system. For periodic (among other) boundary conditions}
+    0 = \frac{\delta\L}{\delta u} &= -\int_0^T \langle \partial_t\mu + \nu\partial^2_x \mu \rangle dt \quad \longrightarrow \quad \partial_t \mu = -\nu\partial^2_x \mu
+    \intertext{To initialize the adjoint system at $t=T$, we require}
+    0 = \frac{\delta\L}{\delta u(T)} &= \langle \mu(T) + u(T) - U(T) \rangle \quad \longrightarrow \quad \mu(T) = U(T) - u(T)
+    \intertext{To determine a trajectory which is coincident with $U(0)$, we take}
+    \frac{\delta\L}{\delta u(0)} &= -\mu(0) 
+\end{align*}
+
+\newpage
+\subsection*{Linearity Cancellation}
+\begin{align*}
+    \intertext{Here we demonstrate that the target state $U(0)$ manifests itself as a constant shift in the objective function wrt $u(0)$. Let $\tilde{f}$ represent a function $f$ which has undergone diffusion with diffusivity $\nu$ over a time period $T$, i.e.}
+    u(0) &= f \quad \longrightarrow \quad u(T) = \tilde{f}
+    \intertext{Suppose our guess's deviation from the target initial state is given by $-w$, i.e.}
+    u(0) &= U(0) - w
+    \intertext{Then}
+    u(T) &= U(T) - \tilde{w} \quad \longrightarrow \quad \frac{1}{2}\langle (u(T) - U(T))^2\rangle = \frac{1}{2}\langle w^2 \rangle
+    \intertext{which is independent of the target state. So the objective only depends on our deviation from the target state, rather than the target state itself.}
+\end{align*}
+
+\subsection*{Objective Level Sets}
+\begin{align*}
+    \intertext{Given that the target state doesn't matter for the following analysis, we take $U(0) = U(T) = 0$ for all $x$}
+    \intertext{Suppose}
+    u(0) &= a_1 e^{i k_1 x} + a_2 e^{i k_2 x} + ...
+    \intertext{We wish to characterize the objective's dependence on the initial guess in this $n$-dimensional phase space $\vec{a} = (a_1, a_2, ..., a_n) \in \mathbb{C}^n$. We can solve for $u(T)$ analytically}
+    u(T) &= a_1 e^{i k_1 x - \nu k_1^2 T} + a_2 e^{i k_2 x - \nu k_2^2 T} + ...\\
+    &= a_1 e^{- \nu k_1^2 T}e^{i k_1 x } + a_2 e^{- \nu k_2^2 T}e^{i k_2 x } + ...
+    \intertext{The objective }
+    \frac{1}{2}\langle |u(T)|^2 \rangle &= \frac{1}{2}\langle \big( a_1 e^{- \nu k_1^2 T}e^{i k_1 x } + a_2 e^{- \nu k_2^2 T}e^{i k_2 x } + ...\big)^2 \rangle \\
+    &= \frac{1}{2}\Big[a_1^2 e^{- 2\nu k_1^2 T} \langle \cos^2(k_1 x) + \sin^2(k_1 x) \rangle + a_2^2 e^{- 2\nu k_2^2 T} \langle \cos^2(k_2 x) + \sin^2(k_2 x)  \rangle  + ... \Big]\\
+    &= \big(\pi e^{- 2\nu k_1^2 T}\big)\; a_1^2 + \big(\pi e^{- 2\nu k_2^2 T}\big) \; a_2^2 + ... + \big(\pi e^{- 2\nu k_n^2 T}\big) \; a_n^2  \\
+    \intertext{Therefore the objective's level sets are given by infinite-dimensional hyperellipses in $\vec{a}$ space.}
+\end{align*}
+
+\subsection*{Preconditioner}
+\begin{align*}
+    \intertext{The appropriate preconditioner should be obvious: we need to undiffuse the adjoint initial condition twice! Doing so remaps the levelsets of hyperellipses into hyperspheres, thereby ensuring that the gradient is always in the direction of $u(0) - U(0)$}
+    \intertext{Suppose the fourier coefficients of the adjoint initial condition are given by $\vec{b} = (b_1, b_2, b_3, ..., b_n) \in \mathbb{C}^n$. Then it would be advantageous to initialize the adjoint system with fourier coefficients $\tilde{\vec{b}}$ where}
+    \begin{bmatrix}
+        \tilde{b_1}\\
+        \tilde{b_2}\\
+        \tilde{b_3}\\
+        \vdots \\
+        \tilde{b_n}\\
+    \end{bmatrix}
+    &= 
+    \begin{bmatrix}
+        e^{2\nu k_1^2T} & 0 & 0 & \hdots & 0\\
+        0 & e^{2\nu k_2^2T} & 0 & \hdots & 0\\
+        0 & 0 & e^{2\nu k_3^2T} & \hdots & 0\\
+        \vdots & \vdots & \vdots & \ddots & \vdots \\
+        0 & 0 & 0 & \hdots & e^{2\nu k_n^2T}\\
+    \end{bmatrix}
+    \begin{bmatrix}
+        {b_1}\\
+        {b_2}\\
+        {b_3}\\
+        \vdots \\
+        {b_n}\\
+    \end{bmatrix}
+\end{align*}
+
+\end{document}
+ 
