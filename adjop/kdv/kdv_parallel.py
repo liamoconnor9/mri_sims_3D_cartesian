@@ -9,20 +9,18 @@ path = os.path.dirname(os.path.abspath(__file__))
 import sys
 sys.path.append(path + "/..")
 from OptimizationContext import OptimizationContext
-import h5py
-import gc
 import dedalus.public as d3
 from dedalus.core.domain import Domain
 from mpi4py import MPI
 CW = MPI.COMM_WORLD
 import logging
-import pathlib
 logger = logging.getLogger(__name__)
 import ForwardKDV
 import BackwardKDV
 import matplotlib.pyplot as plt
 from docopt import docopt
 from pathlib import Path
+import pickle
 from configparser import ConfigParser
 from scipy import optimize
 from datetime import datetime
@@ -61,7 +59,7 @@ show_loop_cadence = config.getint('parameters', 'show_loop_cadence')
 
 # Bases
 xcoord = d3.Coordinate('x')
-dist = d3.Distributor(xcoord, dtype=np.float64)
+dist = d3.Distributor(xcoord, dtype=np.float64, comm=MPI.COMM_SELF)
 
 if periodic:
     xbasis = d3.RealFourier(xcoord, size=N, bounds=(0, Lx), dealias=3/2)
@@ -101,7 +99,10 @@ soln_f['g'] = soln.reshape((1, N))
 
 guess = 0.0
 
-
+tracker_name = path + '/' + write_suffix + '/tracker_rank' + str(CW.rank) + '.pick'
+opt.descent_tracker = {}
+opt.descent_tracker['objectiveT'] = []
+opt.descent_tracker['x'] = []
 
 path = os.path.dirname(os.path.abspath(__file__))
 U_data = np.loadtxt(path + '/kdv_U.txt')
@@ -119,7 +120,17 @@ mode1['g'] = np.sin(2*np.pi*x / Lx)
 mode2 = dist.Field(name='mode2', bases=xbasis)
 mode2['g'] = np.sin(4*np.pi*x / Lx)
 
-# opt.ic['u']['g'] = 1.8*mode1['g'] + 1.8*mode2['g']
+Nics = 20
+if (CW.size != Nics):
+    raise
+
+theta = np.linspace(0, 2*np.pi)[CW.rank]
+
+mode1_coeff = 2 + np.cos(theta)
+mode2_coeff = 2 + np.sin(theta)
+
+opt.ic['u']['g'] = mode1_coeff*mode1['g'] + mode2_coeff*mode2['g']
+
 # opt.ic['u']['g'] = 2.987*mode1['g'] + 7.3*mode2['g']
 
 opt.metrics0['A1'] = opt.ic['u']*mode1 / Lx * 2.0
@@ -146,6 +157,12 @@ def euler_descent(fun, x0, args, **kwargs):
         else:
             gamma = gamma_init
         opt.metricsT_norms['gamma'] = gamma
+
+        opt.descent_tracker['objectiveT'].append(f)
+        opt.descent_tracker['x'].append(x0)
+        with open(tracker_name, 'wb') as file:
+            pickle.dump(opt.descent_tracker, file)
+
         x0 -= 1e4 * gamma * gradf
     logger.info('success')
     logger.info('maxiter = {}'.format(maxiter))

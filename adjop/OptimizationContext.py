@@ -45,12 +45,16 @@ class OptimizationContext:
         self.metricsT = {}
         self.metricsT_norms = {}
         self.objectiveT_norms = []
+        self.metrics0 = {}
+        self.metrics0_norms = {}
         self.indices = []
 
         self.do_track_metrics = False
         self.metricsT_norms_lists = {}
 
         # self.add_handlers = False
+        self.opt_scales = 1.0
+        self.opt_layout = 'g'
         self.show = False
         self.show_backward = False
         self.gamma_init = 0.01
@@ -151,6 +155,7 @@ class OptimizationContext:
         
         self.ic['u'][layout] = self.reshape_soln(x)
         self.new_x[layout] = self.ic['u'][layout].copy()
+        self.evaluate_state0()
 
         self.before_fullforward_solve()
         
@@ -207,7 +212,6 @@ class OptimizationContext:
         self.old_grad[layout] = self.new_grad[layout].copy()
         self.new_grad[layout] = self.backward_solver.state[0][layout].copy()
 
-        self.evaluate_state0()
         self.after_backward_solve()
         self.loop_index += 1
 
@@ -300,15 +304,7 @@ class OptimizationContext:
                 bases = self.domain.bases
                 backward_field.change_scales(1)
                 backward_ic_field.change_scales(1)
-                if (backward_field.name == 'u_t'):
-                    icx = backward_ic_field.antidifferentiate(bases[1].coord, ('left', 0))
-                    icy = backward_ic_field.antidifferentiate(bases[0].coord, ('left', 0))
-                    icx.change_scales(1)
-                    icy.change_scales(1)
-                    backward_field['g'][0] = icx['g'].copy()
-                    backward_field['g'][1] = icy['g'].copy()
-                else:
-                    backward_field['g'] = backward_ic_field['g'].copy()
+                backward_field['g'] = backward_ic_field['g'].copy()
         return
 
     def solve_backward(self):
@@ -332,7 +328,7 @@ class OptimizationContext:
 
         objectiveT_norm = d3.Integrate(self.objectiveT).evaluate()
 
-        if (CW.rank == 0):
+        if (CW.rank == 0 or self.dist.comm == MPI.COMM_SELF):
             self.objectiveT_norm = objectiveT_norm['g'].flat[0]
         else:
             self.objectiveT_norm = 0.0
@@ -345,7 +341,7 @@ class OptimizationContext:
         for metric_name in self.metricsT.keys():
             metricT_norm = d3.Integrate(self.metricsT[metric_name]).evaluate()
 
-            if (CW.rank == 0):
+            if (CW.rank == 0 or self.dist.comm == MPI.COMM_SELF):
                 self.metricsT_norms[metric_name] = metricT_norm['g'].flat[0]
             else:
                 self.metricsT_norms[metric_name] = 0.0
@@ -362,11 +358,22 @@ class OptimizationContext:
 
     def evaluate_state0(self):
         new_grad_sqrd_integ = d3.Integrate(self.new_grad * self.new_grad).evaluate()
-        if (CW.rank == 0):
+        if (CW.rank == 0 or self.dist.comm == MPI.COMM_SELF):
             new_grad_sqrd = new_grad_sqrd_integ['g'].flat[0]
         else:
             new_grad_sqrd = 0.0
         self.new_grad_sqrd = CW.bcast(new_grad_sqrd, root=0)
+
+        for metric_name in self.metrics0.keys():
+            metricT_norm = d3.Integrate(self.metrics0[metric_name]).evaluate()
+
+            if (CW.rank == 0 or self.dist.comm == MPI.COMM_SELF):
+                self.metrics0_norms[metric_name] = metricT_norm['g'].flat[0]
+            else:
+                self.metrics0_norms[metric_name] = 0.0
+
+            self.metrics0_norms[metric_name] = CW.bcast(self.metrics0_norms[metric_name], root=0)
+
         return
 
 
@@ -380,7 +387,7 @@ class OptimizationContext:
 #         grad_mag = (d3.Integrate((self.new_grad**2))**(0.5)).evaluate()
 #         graddiff_mag = (d3.Integrate((self.old_grad*self.new_grad))**(0.5)).evaluate()
 
-#         if (CW.rank == 0):
+#         if (CW.rank == 0 or self.dist.comm == MPI.COMM_SELF):
 #             self.grad_norm = grad_mag['g'].flat[0]
 #             self.graddiff_norm = graddiff_mag['g'].flat[0]
 #         else:
@@ -404,7 +411,7 @@ class OptimizationContext:
             integ2 = d3.Integrate(grad_diff * grad_diff).evaluate()
 
             old_grad_sqrd_integ = d3.Integrate(self.old_grad * self.old_grad).evaluate()
-            if (CW.rank == 0):
+            if (CW.rank == 0 or self.dist.comm == MPI.COMM_SELF):
                 gamma = epsilon_safety * np.abs(integ1['g'].flat[0]) / (integ2['g'].flat[0])
                 old_grad_sqrd = old_grad_sqrd_integ['g'].flat[0]
             else:

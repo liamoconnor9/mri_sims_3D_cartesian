@@ -26,7 +26,7 @@ CONFIG="kdv_options.cfg"
 # SUFFIX="T5_N256_reverse"
 # OLDSUFFIX=$SUFFIX
 
-python3 kdv_burgers.py
+# python3 kdv_burgers.py
 python3 kdv_cg.py
 # python3 kdv_angles.py
 # python3 kdv_ts.py

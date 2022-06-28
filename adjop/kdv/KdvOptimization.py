@@ -55,6 +55,8 @@ class KdvOptimization(OptimizationContext):
         loop_message += 'objectiveT = {}; '.format(self.objectiveT_norm)
         for metric_name in self.metricsT_norms.keys():
             loop_message += '{} = {}; '.format(metric_name, self.metricsT_norms[metric_name])
+        for metric_name in self.metrics0_norms.keys():
+            loop_message += '{} = {}; '.format(metric_name, self.metrics0_norms[metric_name])
         logger.info(loop_message)
         plt.pause(3e-1)
         plt.close()

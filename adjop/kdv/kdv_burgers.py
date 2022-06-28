@@ -31,9 +31,10 @@ Nx = config.getint('parameters', 'Nx')
 a = config.getfloat('parameters', 'a')
 b = config.getfloat('parameters', 'b')
 sig = config.getfloat('parameters', 'sig_ic')
+mu = config.getfloat('parameters', 'mu_ic')
 ic_scale = config.getfloat('parameters', 'ic_scale')
 stop_sim_time = config.getfloat('parameters', 'T')
-timestep = config.getfloat('parameters', 'dt') / 4.0
+timestep = config.getfloat('parameters', 'dt')
 
 # Simulation Parameters
 dealias = 3/2
@@ -41,7 +42,7 @@ dtype = np.float64
 
 periodic = config.getboolean('parameters', 'periodic')
 show = config.getboolean('parameters', 'show')
-show_iter_cadence = config.getint('parameters', 'show_iter_cadence') * 4
+show_iter_cadence = config.getint('parameters', 'show_iter_cadence')
 
 timestepper = d3.RK443
 epsilon_safety = 1
@@ -86,9 +87,8 @@ else:
 
 # Initial conditions
 x = dist.local_grid(xbasis)
-mu = 5
-# sig = 1.5
-u['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+# u['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+u['g'] = 2*np.sin(2*np.pi*x / Lx) + 2*np.sin(4*np.pi*x / Lx)
 
 # Solver
 solver = problem.build_solver(timestepper)
