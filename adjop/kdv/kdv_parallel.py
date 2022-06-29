@@ -34,6 +34,7 @@ logger.info('Running kdv_burgers.py with the following parameters:')
 logger.info(config.items('parameters'))
 
 # Parameters
+write_suffix = str(config.get('parameters', 'suffix'))
 Lx = config.getfloat('parameters', 'Lx')
 N = config.getint('parameters', 'Nx')
 
@@ -79,8 +80,6 @@ lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 forward_solver = forward_problem.build_solver(d3.RK443)
 backward_solver = backward_problem.build_solver(d3.RK443)
 
-write_suffix = 'kdv0'
-
 opt = KdvOptimization(domain, xcoord, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
 opt.beta_calc = 'euler'
 opt.set_time_domain(T, num_cp, dt)
@@ -100,6 +99,7 @@ soln_f['g'] = soln.reshape((1, N))
 guess = 0.0
 
 tracker_name = path + '/' + write_suffix + '/tracker_rank' + str(CW.rank) + '.pick'
+opt.cp_internal_names = 'cp' + str(CW.rank)
 opt.descent_tracker = {}
 opt.descent_tracker['objectiveT'] = []
 opt.descent_tracker['x'] = []
@@ -124,11 +124,10 @@ Nics = 20
 if (CW.size != Nics):
     raise
 
-theta = np.linspace(0, 2*np.pi)[CW.rank]
+theta = np.linspace(0, 2*np.pi, CW.size)[CW.rank]
 
 mode1_coeff = 2 + np.cos(theta)
 mode2_coeff = 2 + np.sin(theta)
-
 opt.ic['u']['g'] = mode1_coeff*mode1['g'] + mode2_coeff*mode2['g']
 
 # opt.ic['u']['g'] = 2.987*mode1['g'] + 7.3*mode2['g']
@@ -158,10 +157,11 @@ def euler_descent(fun, x0, args, **kwargs):
             gamma = gamma_init
         opt.metricsT_norms['gamma'] = gamma
 
-        opt.descent_tracker['objectiveT'].append(f)
-        opt.descent_tracker['x'].append(x0)
-        with open(tracker_name, 'wb') as file:
-            pickle.dump(opt.descent_tracker, file)
+        if i % 1 == 0:
+            opt.descent_tracker['objectiveT'].append(f)
+            opt.descent_tracker['x'].append(x0.copy())
+            with open(tracker_name, 'wb') as file:
+                pickle.dump(opt.descent_tracker, file)
 
         x0 -= 1e4 * gamma * gradf
     logger.info('success')

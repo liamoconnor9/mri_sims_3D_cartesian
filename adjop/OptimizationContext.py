@@ -30,7 +30,7 @@ class OptimizationContext:
         
         self.path = os.path.dirname(os.path.abspath(__file__))
         self.run_dir = os.path.dirname(os.path.abspath(inspect.getmodule(inspect.stack()[1][0]).__file__))
-        if not os.path.isdir(self.run_dir + '/' + self.write_suffix):
+        if CW.rank == 0 and (not os.path.isdir(self.run_dir + '/' + self.write_suffix)):
             logger.info('Creating run directory {}'.format(self.run_dir + '/' + self.write_suffix))
             os.makedirs(self.run_dir + '/' + self.write_suffix)
 
@@ -55,6 +55,7 @@ class OptimizationContext:
         # self.add_handlers = False
         self.opt_scales = 1.0
         self.opt_layout = 'g'
+        self.cp_internal_names = 'checkpoints_internal'
         self.show = False
         self.show_backward = False
         self.gamma_init = 0.01
@@ -194,7 +195,7 @@ class OptimizationContext:
         self.solve_backward()
 
         for i in range(1, self.num_cp):
-            self.forward_solver.load_state(self.run_dir + '/' + self.write_suffix + '/checkpoints_internal/checkpoints_internal_s1.h5', -i)
+            self.forward_solver.load_state(self.run_dir + '/' + self.write_suffix + '/' + self.cp_internal_names + '/' + self.cp_internal_names + '_s1.h5', -i)
             self.solve_forward()
             self.solve_backward()
 
@@ -235,7 +236,7 @@ class OptimizationContext:
         solver.iteration = 0
         solver.stop_sim_time = self.T
 
-        checkpoints = solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/checkpoints_internal', max_writes=self.num_cp - 1, iter=self.dt_per_cp, mode='overwrite')
+        checkpoints = solver.evaluator.add_file_handler(self.run_dir + '/' + self.write_suffix + '/' + self.cp_internal_names, max_writes=self.num_cp - 1, iter=self.dt_per_cp, mode='overwrite')
         checkpoints.add_tasks(solver.state, layout='g')
 
         # Main loop
@@ -328,7 +329,7 @@ class OptimizationContext:
 
         objectiveT_norm = d3.Integrate(self.objectiveT).evaluate()
 
-        if (CW.rank == 0 or self.dist.comm == MPI.COMM_SELF):
+        if (CW.rank == 0 or self.domain.dist.comm == MPI.COMM_SELF):
             self.objectiveT_norm = objectiveT_norm['g'].flat[0]
         else:
             self.objectiveT_norm = 0.0
@@ -341,7 +342,7 @@ class OptimizationContext:
         for metric_name in self.metricsT.keys():
             metricT_norm = d3.Integrate(self.metricsT[metric_name]).evaluate()
 
-            if (CW.rank == 0 or self.dist.comm == MPI.COMM_SELF):
+            if (CW.rank == 0 or self.domain.dist.comm == MPI.COMM_SELF):
                 self.metricsT_norms[metric_name] = metricT_norm['g'].flat[0]
             else:
                 self.metricsT_norms[metric_name] = 0.0
@@ -358,7 +359,7 @@ class OptimizationContext:
 
     def evaluate_state0(self):
         new_grad_sqrd_integ = d3.Integrate(self.new_grad * self.new_grad).evaluate()
-        if (CW.rank == 0 or self.dist.comm == MPI.COMM_SELF):
+        if (CW.rank == 0 or self.domain.dist.comm == MPI.COMM_SELF):
             new_grad_sqrd = new_grad_sqrd_integ['g'].flat[0]
         else:
             new_grad_sqrd = 0.0
@@ -367,7 +368,7 @@ class OptimizationContext:
         for metric_name in self.metrics0.keys():
             metricT_norm = d3.Integrate(self.metrics0[metric_name]).evaluate()
 
-            if (CW.rank == 0 or self.dist.comm == MPI.COMM_SELF):
+            if (CW.rank == 0 or self.domain.dist.comm == MPI.COMM_SELF):
                 self.metrics0_norms[metric_name] = metricT_norm['g'].flat[0]
             else:
                 self.metrics0_norms[metric_name] = 0.0
@@ -387,7 +388,7 @@ class OptimizationContext:
 #         grad_mag = (d3.Integrate((self.new_grad**2))**(0.5)).evaluate()
 #         graddiff_mag = (d3.Integrate((self.old_grad*self.new_grad))**(0.5)).evaluate()
 
-#         if (CW.rank == 0 or self.dist.comm == MPI.COMM_SELF):
+#         if (CW.rank == 0 or self.domain.dist.comm == MPI.COMM_SELF):
 #             self.grad_norm = grad_mag['g'].flat[0]
 #             self.graddiff_norm = graddiff_mag['g'].flat[0]
 #         else:
@@ -411,7 +412,7 @@ class OptimizationContext:
             integ2 = d3.Integrate(grad_diff * grad_diff).evaluate()
 
             old_grad_sqrd_integ = d3.Integrate(self.old_grad * self.old_grad).evaluate()
-            if (CW.rank == 0 or self.dist.comm == MPI.COMM_SELF):
+            if (CW.rank == 0 or self.domain.dist.comm == MPI.COMM_SELF):
                 gamma = epsilon_safety * np.abs(integ1['g'].flat[0]) / (integ2['g'].flat[0])
                 old_grad_sqrd = old_grad_sqrd_integ['g'].flat[0]
             else:

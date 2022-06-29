@@ -81,7 +81,7 @@ lagrangian_dict = {forward_problem.variables[0] : backward_problem.variables[0]}
 forward_solver = forward_problem.build_solver(d3.RK443)
 backward_solver = backward_problem.build_solver(d3.RK443)
 
-write_suffix = 'kdv0'
+write_suffix = str(config.get('parameters', 'suffix'))
 
 opt = KdvOptimization(domain, xcoord, forward_solver, backward_solver, lagrangian_dict, None, write_suffix)
 opt.beta_calc = 'euler'

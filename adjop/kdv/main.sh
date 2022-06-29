@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
-#PBS -l select=2:ncpus=40:mpiprocs=40:model=sky_ele
-#PBS -l walltime=2:00:00
+#PBS -l select=1:ncpus=28:mpiprocs=28:model=bro
+#PBS -l walltime=6:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -27,6 +27,7 @@ CONFIG="kdv_options.cfg"
 # OLDSUFFIX=$SUFFIX
 
 # python3 kdv_burgers.py
-python3 kdv_cg.py
+mpiexec_mpt -np 20 python3 kdv_parallel.py
+# python3 kdv_cg.py
 # python3 kdv_angles.py
 # python3 kdv_ts.py

@@ -42,3 +42,4 @@ restart.h5
 *.gz
 *.synctex
 core.*
+*.pick
