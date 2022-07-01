@@ -25,6 +25,7 @@ from configparser import ConfigParser
 from scipy import optimize
 from datetime import datetime
 from KdvOptimization import KdvOptimization
+from sklearn.decomposition import PCA
 
 filename = path + '/kdv_options.cfg'
 config = ConfigParser()
@@ -102,35 +103,38 @@ mode2['g'] = np.sin(4*np.pi*x / Lx)
 Nics = 20
 from mpl_toolkits.mplot3d import Axes3D
 xs, ys, zs = 1, 1, 0.1
-fig = plt.figure()
-ax = Axes3D(fig)
-# ax = Axes3D(fig, aspect=0.3)
-ax.view_init(20, 65)
 # ax.set_box_aspect((np.ptp(xs), np.ptp(ys), np.ptp(zs)))  # aspect ratio is 1:1:1 in data space
 
-for i in range(0, 5, 1):
+data = []
+for i in range(0, 20, 1):
     tracker_name = path + '/' + write_suffix + '/tracker_rank' + str(i) + '.pick'
     with open(tracker_name, 'rb') as file:
         tracker = pickle.load(file)
-    x = tracker['x']
+    x0 = tracker['x']
     objs = tracker['objectiveT']
-    c1 = []
-    c2 = []
-    crem = []
-    logger.info('plotting {}/{}'.format(i, Nics))
-    for ptind in range(0, len(x)):
-        x0 = x[ptind]
-        u.change_scales(1)
-        u['g'] = x0.copy()
-        c1.append(d3.Integrate(u*mode1).evaluate()['g'].flat[0] / Lx * 2.0)
-        c2.append(d3.Integrate(u*mode2).evaluate()['g'].flat[0] / Lx * 2.0)
-        crem.append(d3.Integrate(u*u).evaluate()['g'].flat[0] / Lx * 2.0 - (c1[-1]**2 + c2[-1]**2))
-        # crem.append(d3.Integrate(u*u - (u*mode1)**2 - (u*mode1)**2).evaluate()['g'].flat[0])
-        # crem.append(d3.Integrate(u*u).evaluate()['g'].flat[0] - 2.0*Lx*(c1[-1]**2 + c2[-1]**2))
-    pc = ax.scatter(c1, c2, crem, c=objs, cmap='seismic')
-plt.colorbar(pc)
-plt.xlabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(1))
-plt.ylabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(2))
-plt.title(r'$\langle (u - U)^2 \rangle$; a = {}, b = {}, T = {}'.format(a, b, T))
-plt.savefig(path + '/paths_3d_long.png')
+    logger.info('appending {}/{}'.format(i, Nics))
+    for ptind in range(0, len(x0)):
+        data.append(x0[ptind])
 
+data = np.array(data)
+pca = PCA(n_components=10)
+pca.fit(data)
+print(pca.singular_values_)
+# print(pca.components_[0].shape)
+
+mode1 = np.sin(2*np.pi*x / Lx) 
+mode2 = np.sin(4*np.pi*x / Lx) 
+
+mode1 /= sum(np.abs(mode1)**2) / np.sqrt(N / 2.0)
+mode2 /= sum(np.abs(mode2)**2) / np.sqrt(N / 2.0)
+
+plt.plot(x, mode1, linestyle='--', linewidth=3, color='black', label='mode 0')
+plt.plot(x, mode2, linestyle='--', linewidth=3, color='gray', label='mode 1')
+
+for i, comp in enumerate(pca.components_[:3]):
+    plt.plot(x, -comp, label='SV = {:.2f}'.format(pca.singular_values_[i]))
+
+
+plt.title('Descent Path PCA Components')
+plt.legend()
+plt.savefig(path + '/' + write_suffix + '/pca_comps.png')
