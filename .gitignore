@@ -32,7 +32,10 @@ restart.h5
 *.tar.gz*
 *examples*
 *profs*
-*.png
+*mid*.png
+*ke_*.png
+*be_*.png
+*kebe_*.png
 *.aux
 *.log
 *.fls
