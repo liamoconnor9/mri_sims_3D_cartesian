@@ -43,5 +43,6 @@ def build_problem(domain, xcoord, a):
 
     # Problem
     problem = d3.IVP([u], namespace=locals())
-    problem.add_equation("dt(u) - a*dx(dx(u)) = 0")
+    # problem.add_equation("dt(u) = u*dx(u)")
+    problem.add_equation("dt(u) - 2000*a*dx(dx(u)) - a*dx(dx(dx(u))) = 0")
     return problem

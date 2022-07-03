@@ -66,8 +66,8 @@ forward_solver = forward_problem.build_solver(d3.RK443)
 both = True
 write_objectives = False
 k1 = 1
-k2 = 6
-Nmodes = 11
+k2 = 2
+Nmodes = 31
 
 mode1 = np.sin(k1 * 2*np.pi * x / Lx)
 mode2 = np.sin(k2 * 2*np.pi * x / Lx)
@@ -97,10 +97,10 @@ def diffuse(ic, forward_solver, T, dt):
     return forward_solver.state[0]
 
 def evaluate_objective(u):
-    ux = d3.Differentiate(u, xcoord)
-    uxx = d3.Differentiate(ux, xcoord)
-    fac1 = d3.Integrate(np.exp(a*np.abs(ux))).evaluate()['g'].flat[0]
-    fac2 = d3.Integrate(ux * ux).evaluate()['g'].flat[0]
+    # ux = d3.Differentiate(u, xcoord)
+    # uxx = d3.Differentiate(ux, xcoord)
+    # fac1 = d3.Integrate(np.exp(a*np.abs(ux))).evaluate()['g'].flat[0]
+    fac2 = d3.Integrate(u * u).evaluate()['g'].flat[0]
     return fac2
     # return fac1 + fac2
 
@@ -145,6 +145,6 @@ if (not write_objectives or both):
     plt.xlabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k1))
     plt.ylabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k2))
     plt.title(r'$\langle u^2 \rangle$')
-    plt.savefig(path + '/objtest_k' + str(k1) + 'k' + str(k2) + '.png')
+    plt.savefig(path + '/burgobjtest_k' + str(k1) + 'k' + str(k2) + '.png')
     plt.show()
 

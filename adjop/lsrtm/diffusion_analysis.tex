@@ -133,5 +133,19 @@
     \end{bmatrix}
 \end{align*}
 
+\section*{With Dispertion}
+Consider the PDE
+\begin{align*}
+    \partial_t u &= a\partial_x^2 u + b\partial_x^3u
+    \intertext{We assume seperable solutions exist}
+    u(x, t) &= X(x)\theta(t)
+    \intertext{substitution gives}
+    X(x)\theta'(t) &= a X''(x)\theta(t) + b X'''(x)\theta(t)
+    \intertext{implies}
+    \frac{\theta'}{\theta} &= \frac{aX'' + bX'''}{X} = \lambda
+    \intertext{therefore}
+    \theta(t) &= e^{\lambda t}
+\end{align*}
+
 \end{document}
  
