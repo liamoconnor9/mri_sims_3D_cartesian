@@ -1,9 +1,20 @@
-\documentclass{article}
-\usepackage[utf8]{inputenc}
-\usepackage{graphicx,amsmath,amsfonts,amssymb,mathtools}
-\usepackage{enumitem}
-\usepackage{empheq}
-\usepackage{xcolor}
+\documentclass[longbibliography,twocolumn,amsmath,amssymb,aps,nofootinbib]{revtex4-2}
+
+\usepackage{graphicx}
+\usepackage{natbib}
+\usepackage{amsmath}
+\usepackage{longtable}
+\usepackage{gensymb}
+\usepackage{enumerate}
+\usepackage{varwidth}
+\usepackage{float}
+\usepackage{nonfloat}
+\usepackage{soul}
+\usepackage{ulem}
+% \usepackage{multicol}
+% \usepackage{afterpage}
+\usepackage[usenames, dvipsnames]{color}
+\newcommand{\note}[1]{\noindent \textbf{\textit{\textcolor{Red}{#1}}}}
 
 \newcommand\Ra{\mathrm{Ra}}
 \newcommand\Pran{\mathrm{Pr}}
@@ -15,7 +26,11 @@
 
 \newcommand\eps{\varepsilon}
 \renewcommand\L {\mathcal{L}}
-
+\renewcommand{\citet}[1]{ref.~\cite{#1}}
+\renewcommand{\Citet}[1]{Ref.~\cite{#1}}
+\newcommand{\citets}[1]{refs.~\cite{#1}}
+\newcommand{\Citets}[1]{Refs.~\cite{#1}}
+\newcommand{\davg}[1]{\langle {#1} \rangle}
 \newcommand{\n}{\\ \nonumber \\ }
 \newcommand{\nn}{\nonumber}
 \newcommand{\nnn}{\\ \nonumber \\ \nonumber}
@@ -23,19 +38,13 @@
 \newcommand\ie{\textit{i.e.},~}
 \newcommand\eg{\textit{e.g.},~}
 \newcommand{\omicron}{o}
-\newcommand*\widefbox[1]{\fbox{\hspace{2em}#1\hspace{2em}}}
 
 \newcommand{\pd}[1]{\partial_{#1}}
-\newcommand{\vhat}[1]{\hat{\boldsymbol{#1}}}
 \renewcommand{\vec}[1]{\boldsymbol{#1}}
 \newcommand{\M}[1]{\mathbf{#1}}
 \newcommand{\grad}{\vec{\nabla}}
-\renewcommand{\skew}{\vec{\nabla}^{\perp}}
 \newcommand{\cross}{\vec{\times}}
-\newcommand{\curl}{\grad \vec{\times}}
-\newcommand{\divergence}{\grad \cdot}
 \newcommand{\laplacian}{\nabla^2}
-\newcommand{\veclaplacian}{\grad^2}
 
 \newcommand{\sump}[2]{\sideset{}{'}\sum_{{#1}=0}^{#2}}
 
@@ -51,13 +60,97 @@
 \newcommand{\figs}[2]{Figs.~(\ref{#1})~\&~(\ref{#2})}
 \newcommand{\T}{{\cal T}}
 \newcommand{\Z}{{\cal Z}}
-\newcommand{\px}{\partial_x}
-\newcommand{\py}{\partial_y}
-\newcommand{\pz}{\partial_z}
-\setlength{\parindent}{0pt}
+
+
+\makeatletter
+\let\Hy@backout\@gobble
+\makeatother
+
+\newcommand*{\GtrSim}{\smallrel\gtrsim}
+
+\makeatletter
+\newcommand*{\smallrel}[2][.8]{%
+  \mathrel{\mathpalette{\smallrel@{#1}}{#2}}%
+}
+\newcommand*{\smallrel@}[3]{%
+  % #1: scale factor
+  % #2: math style
+  % #3: symbol
+  \sbox0{$#2\vcenter{}$}%
+  \dimen@=\ht0 %
+  \raise\dimen@\hbox{%
+    \scalebox{#1}{%
+      \raise-\dimen@\hbox{$#2#3\m@th$}%
+    }%
+  }%
+}
+\makeatother
+
 
 \begin{document}
-\title{Reverse Time Migration (RTM) Least-Squares Objectives}
+
+\title{Least-Squares Time Reversal of PDEs}
+
+\author{Liam O'Connor$^{1,2}$}
+\affiliation{%
+$^1$Department of Engineering Sciences and Applied Mathematics, Northwestern University, Evanston, IL 60208 USA}
+\affiliation{%
+$^2$Center for Interdisciplinary Exploration and Research in Astrophysics, Northwestern University, Evanston, IL, 60201 USA}
+
+\begin{abstract}
+    abstract
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+Rayleigh-B\'enard convection plays a foundational role in astrophysical and geophysical settings.
+The resulting buoyancy-driven flows regulate heat transfer and generate large-scale vortices \cite{Couston}.
+Turbulent convection, which is associated with large Rayleigh numbers $\Ra$, is difficult to simulate. 
+State of the art simulations performed by \cite{Zhu_2018} have reached $\Ra \sim 10^{14}$ but estimates for the sun's convective zone and earth's interior are $\Ra \sim 10^{16}-10^{20}$ and $\Ra \sim 10^{20}-10^{30}$ respectively \cite{Ossendrijver,Gubbins_2001}. 
+
+\clearpage
+\section{Generalized Problem Setup}
+Here I'll present a generalized PDE which we want to invert along with a bunch of notation. We'll define our target simulation, least-squares objective, and cite examples where the adjoint looping method has been successfully applied to inverse problems. We'll conclude this discussion by stressing the important of the objective function's shape in ``initial condition space'', because ultimately this is what curtails our gradient-based inversion technique.
+
+\section{Analytic Analysis}
+\subsection{Linearity and Reversiblity}
+Reversible linear problems are trivial cases of the problems we intend to study. 
+Linear systems' objective functions' shapes do not depend on the target--the target manifests itself as a constant shift in ic space. 
+Thus we might as well consider problems with $U(0) = U(T) = 0$ for all $x$.
+Reversible wave equations, which conserve energy yield objective functions whose levelsets in ic space are spherical, so the gradient at any given guess always provides the shortest path to the target. 
+In contrast, irreversible diffusive terms distort the spherical levelsets into hyperellipses, whose semi-minimum (maximum) axis is oriented in the direction of the lowest (highest) wavenumber fourier mode's coefficient.
+Thus, when traversing an arbitrary path of steepest descent toward the target IC, low wavenumber modes are matched with the target first, followed by increasingly higher wavenumber modes.
+
+\subsection{Nonlinear Reversible Problems}
+Here the target matters. We consider burger's equation
+\begin{align*}
+  \partial_t u + u\partial_x u &= 0
+  \intertext{where energy is conserved}
+  0 &= \partial_t \langle \frac{1}{2}u^2 \rangle + \langle u^2\partial_x u\rangle \\
+  &= \partial_t \langle \frac{1}{2}u^2 \rangle + \langle  \frac{1}{3}\partial_x u^3\rangle \\
+  &= \partial_t \langle \frac{1}{2}u^2 \rangle \\
+\end{align*}
+Next we consider a guess with a known deviation from the target $u(x, 0) = U(x, 0) + u'(x, 0)$. Our objective function is given by $\langle (u(T) - U(T))^2 \rangle = \langle u'(T)^2 \rangle$. The forward evolution equation for the perturbation is given by
+
+\begin{align*}
+  0 &= \partial_t u' + u'\partial_x U + U\partial_x u' + u'\partial_x u' \\
+  \intertext{then we have that}
+  \intertext{the evolution of the target is given by}
+  0 &= \frac{1}{2}\partial_t \davg{u'^2} + \davg{u' \partial_x (u'U)} + \davg{\frac{1}{3}\partial_x u'^3} \\
+  &= \frac{1}{2}\partial_t \davg{u'^2} + \davg{u' \partial_x (u'U)} \\
+  &= \frac{1}{2}\partial_t \davg{u'^2} + \davg{U \partial_x (u'^2)} \\
+  \intertext{Suppose $u' = \alpha U$. In this case $u = U + u' = (1+\alpha)U$ evolves identically to $U$ but at a rate which is $(1 + \alpha)^2$ faster. Thus the objective is given by $\davg{(U((1+\alpha)^2 T) - U(T))^2}$}.
+  % \intertext{Suppose the perturbation is small enough that its nonlinear term can be neglected. In this case we find that}
+  u'(T) &= u'(0) + \int_0^T \partial_tu'dt \\
+  &= u'(0)-\int_0^T \partial_x (u'U) + \frac{1}{2}\partial_x (u'^2) dt
+  \intertext{Therefore $\davg{u'(T)} = \davg{u'(0)}$. The objective function}
+  \davg{u'(T)^2}&= \davg{u'(0)^2}- \davg{u'(0)\int_0^T \partial_x (u'U) + \frac{1}{2}\partial_x (u'^2) dt} \\
+  &\;\; + \davg{\Big[\int_0^T \partial_x (u'U) + \frac{1}{2}\partial_x (u'^2) dt\Big]^2} \\
+\end{align*}
+
+
+\clearpage
+\bibliography{lsrtm.bib}
 
 \end{document}
- 
