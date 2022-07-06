@@ -78,8 +78,10 @@ mode2_f.name = 'mode2_f'
 mode1_f['g'] = mode1.copy()
 mode2_f['g'] = mode2.copy()
 
-k1_coeffs = np.linspace(-1, 1, Nmodes)
-k2_coeffs = np.linspace(-1, 1, Nmodes)
+k1_coeffs = np.linspace(-0.01, 0.01, Nmodes)
+k2_coeffs = np.linspace(-0.01, 0.01, Nmodes)
+
+targetic = 3.0*mode1.copy()
 
 def compute_coeffs(u, mode1_f, mode2_f):
     c1 = 2.0 / Lx * d3.Integrate(u*mode1_f).evaluate()['g'].flat[0]
@@ -96,11 +98,16 @@ def diffuse(ic, forward_solver, T, dt):
     forward_solver.state[0].change_scales(1)
     return forward_solver.state[0]
 
-def evaluate_objective(u):
+targetU = forward_solver.state[0].copy()
+targetU.name = 'targetU'
+targetU['g'] = diffuse(targetic, forward_solver, T, dt)['g'].copy()
+
+def evaluate_objective(u, U):
     # ux = d3.Differentiate(u, xcoord)
     # uxx = d3.Differentiate(ux, xcoord)
     # fac1 = d3.Integrate(np.exp(a*np.abs(ux))).evaluate()['g'].flat[0]
-    fac2 = d3.Integrate(u * u).evaluate()['g'].flat[0]
+    fac2 = d3.Integrate((u - U) * (u - U)).evaluate()['g'].flat[0]
+    # fac2 = d3.Integrate((u) * (u)).evaluate()['g'].flat[0]
     return fac2
     # return fac1 + fac2
 
@@ -109,10 +116,11 @@ if (write_objectives or both):
 
     for jrow in range(Nmodes):
         for jcol in range(Nmodes):
-            ic =  mode1 * k1_coeffs[jrow]
+            ic = targetic.copy()
+            ic +=  mode1 * k1_coeffs[jrow]
             ic += mode2 * k2_coeffs[jcol]
             u = diffuse(ic, forward_solver, T, dt)
-            objectives[jrow, jcol] = evaluate_objective(u)
+            objectives[jrow, jcol] = evaluate_objective(u, targetU)
 
     np.savetxt(path + '/objectives.txt', objectives)
     logger.info('saved final state')
