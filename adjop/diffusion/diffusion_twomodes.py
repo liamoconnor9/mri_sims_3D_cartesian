@@ -67,7 +67,7 @@ both = True
 write_objectives = False
 k1 = 1
 k2 = 2
-Nmodes = 31
+Nmodes = 51
 
 mode1 = np.sin(k1 * 2*np.pi * x / Lx)
 mode2 = np.sin(k2 * 2*np.pi * x / Lx)
@@ -81,7 +81,7 @@ mode2_f['g'] = mode2.copy()
 k1_coeffs = np.linspace(-0.01, 0.01, Nmodes)
 k2_coeffs = np.linspace(-0.01, 0.01, Nmodes)
 
-targetic = 3.0*mode1.copy()
+targetic = -5.0*mode1.copy()
 
 def compute_coeffs(u, mode1_f, mode2_f):
     c1 = 2.0 / Lx * d3.Integrate(u*mode1_f).evaluate()['g'].flat[0]
@@ -153,6 +153,6 @@ if (not write_objectives or both):
     plt.xlabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k1))
     plt.ylabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k2))
     plt.title(r'$\langle u^2 \rangle$')
-    plt.savefig(path + '/burgobjtest_k' + str(k1) + 'k' + str(k2) + '.png')
+    plt.savefig(path + '/burgobjtest_k' + str(k1) + 'k' + str(k2) + '_Un5m1.png')
     plt.show()
 
