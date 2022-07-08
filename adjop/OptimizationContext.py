@@ -403,7 +403,7 @@ class OptimizationContext:
    # This works really well for periodic kdv
     def compute_gamma(self, epsilon_safety):
         if (self.loop_index == 1):
-            return 1e-3
+            return self.gamma_init
         else:
             # https://en.wikipedia.org/wiki/Gradient_descent
             grad_diff = self.new_grad - self.old_grad
@@ -420,7 +420,9 @@ class OptimizationContext:
                 old_grad_sqrd = 0.0
             gamma = CW.bcast(gamma, root=0)
             self.old_grad_sqrd = CW.bcast(old_grad_sqrd, root=0)
-            return gamma
+        if (epsilon_safety == 0.0):
+            return self.gamma_init
+        return gamma
 
 #     def descend(self, gamma, **kwargs):
 
