@@ -54,6 +54,7 @@ euler_safety = config.getfloat('parameters', 'euler_safety')
 gamma_init = config.getfloat('parameters', 'gamma_init')
 
 periodic = config.getboolean('parameters', 'periodic')
+restart = config.getboolean('parameters', 'restart')
 show_forward = config.getboolean('parameters', 'show')
 show_iter_cadence = config.getint('parameters', 'show_iter_cadence')
 show_loop_cadence = config.getint('parameters', 'show_loop_cadence')
@@ -84,7 +85,7 @@ opt = KdvOptimization(domain, xcoord, forward_solver, backward_solver, lagrangia
 opt.beta_calc = 'euler'
 opt.set_time_domain(T, num_cp, dt)
 opt.opt_iters = opt_iters
-
+opt.gamma_init = gamma_init
 
 opt.x_grid = x
 opt.show_iter_cadence = show_iter_cadence
@@ -100,11 +101,18 @@ guess = 0.0
 
 tracker_name = path + '/' + write_suffix + '/tracker_rank' + str(CW.rank) + '.pick'
 opt.cp_internal_names = 'cp' + str(CW.rank)
-opt.descent_tracker = {}
-opt.descent_tracker['objectiveT'] = []
-opt.descent_tracker['x'] = []
 
-path = os.path.dirname(os.path.abspath(__file__))
+if restart:
+    opt.descent_tracker = {}
+    opt.descent_tracker['objectiveT'] = []
+    opt.descent_tracker['x'] = []
+    load_ind = 0
+else:
+    with open(tracker_name, 'rb') as file:
+        opt.descent_tracker = pickle.load(file)
+    opt.loop_index = len(opt.descent_tracker['x'])
+    load_ind = opt.loop_index
+
 U_data = np.loadtxt(path + '/kdv_U.txt')
 u = next(field for field in forward_solver.state if field.name == 'u')
 U = dist.Field(name='U', bases=xbasis)
@@ -126,9 +134,10 @@ if (CW.size != Nics):
 
 theta = np.linspace(0, 2*np.pi, CW.size)[CW.rank]
 
-mode1_coeff = 2 + np.cos(theta)
-mode2_coeff = 2 + np.sin(theta)
-opt.ic['u']['g'] = mode1_coeff*mode1['g'] + mode2_coeff*mode2['g']
+if restart:
+    mode1_coeff = 2 + np.cos(theta)
+    mode2_coeff = 2 + np.sin(theta)
+    opt.ic['u']['g'] = mode1_coeff*mode1['g'] + mode2_coeff*mode2['g']
 
 # opt.ic['u']['g'] = 2.987*mode1['g'] + 7.3*mode2['g']
 
@@ -149,9 +158,9 @@ def euler_descent(fun, x0, args, **kwargs):
         old_f = f
         f, gradf = opt.loop(x0)
         old_gamma = gamma
-        if i > 0 and euler_safety != 0:
+        if (load_ind + 2 <= opt.loop_index):
             gamma = opt.compute_gamma(euler_safety)
-            step_p = (old_f - f) / old_gamma / (opt.old_grad_sqrd)
+            step_p = (old_f - f) / old_gamma / (opt.old_grad_sqrd) * np.sum(gradf**2)
             opt.metricsT_norms['step_p'] = step_p
         else:
             gamma = gamma_init
@@ -163,7 +172,7 @@ def euler_descent(fun, x0, args, **kwargs):
             with open(tracker_name, 'wb') as file:
                 pickle.dump(opt.descent_tracker, file)
 
-        x0 -= 1e4 * gamma * gradf
+        x0 -= 1e4 * gamma * gradf / np.sum(gradf**2)
     logger.info('success')
     logger.info('maxiter = {}'.format(maxiter))
     return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
@@ -175,7 +184,10 @@ startTime = datetime.now()
 try:
     tol = 1e-10
     options = {'maxiter' : opt_iters, 'ftol' : tol, 'gtol' : tol}
-    x0 = opt.ic['u']['g'].flatten().copy()  # Initial guess.
+    if restart:
+        x0 = opt.ic['u']['g'].flatten().copy()  # Initial guess.
+    else:
+        x0 = opt.descent_tracker['x'][-1].copy()
     res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method=method, tol=tol, options=options)
     # res1 = optimize.minimize(opt.loop_forward, x0, jac=opt.loop_backward, method='L-BFGS-B', tol=tol, options=options)
     # res1 = optimize.minimize(opt.loop_forwaoh rd, x0, jac=opt.loop_backward, method=euler_descent, options=options)

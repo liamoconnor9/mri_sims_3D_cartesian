@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
 #PBS -l select=1:ncpus=28:mpiprocs=28:model=bro
-#PBS -l walltime=6:00:00
+#PBS -l walltime=10:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -28,6 +28,7 @@ CONFIG="kdv_options.cfg"
 
 # python3 kdv_burgers.py
 mpiexec_mpt -np 20 python3 kdv_parallel.py
+mpiexec_mpt -np 1 python3 paths_pod.py
 # python3 kdv_cg.py
 # python3 kdv_angles.py
 # python3 kdv_ts.py

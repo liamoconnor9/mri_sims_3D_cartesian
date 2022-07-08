@@ -112,7 +112,7 @@ for i in range(0, 20, 1):
     tracker_name = path + '/' + write_suffix + '/tracker_rank' + str(i) + '.pick'
     with open(tracker_name, 'rb') as file:
         tracker = pickle.load(file)
-    x0 = tracker['x']
+    x0 = tracker['x'][:130]
     iters = len(x0)
     objs = tracker['objectiveT']
     logger.info('appending {}/{}'.format(i, Nics))
@@ -121,7 +121,7 @@ for i in range(0, 20, 1):
 
 data = np.array(data)
 
-comps = 3
+comps = 5
 pca = PCA(n_components=comps)
 pca.fit(data)
 print(pca.singular_values_)
