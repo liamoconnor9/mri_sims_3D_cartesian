@@ -59,6 +59,10 @@ show_forward = config.getboolean('parameters', 'show')
 show_iter_cadence = config.getint('parameters', 'show_iter_cadence')
 show_loop_cadence = config.getint('parameters', 'show_loop_cadence')
 
+sig = config.getfloat('parameters', 'sig_ic')
+mu = config.getfloat('parameters', 'mu_ic')
+ic_scale = config.getfloat('parameters', 'ic_scale')
+
 # Bases
 xcoord = d3.Coordinate('x')
 dist = d3.Distributor(xcoord, dtype=np.float64, comm=MPI.COMM_SELF)
@@ -132,20 +136,23 @@ Nics = 20
 if (CW.size != Nics):
     raise
 
-theta = np.linspace(0, 2*np.pi, CW.size)[CW.rank]
+opt.ic['u']['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
-if restart:
-    mode1_coeff = 2 + np.cos(theta)
-    mode2_coeff = 2 + np.sin(theta)
-    opt.ic['u']['g'] = mode1_coeff*mode1['g'] + mode2_coeff*mode2['g']
+R = 1.0
+modes_dim = 5
+np.random.seed(CW.rank)
+coeffs = 2*np.random.rand(5) - 1.0
+coeffs *= R / np.sqrt(np.sum(coeffs**2))
+for kx, coeff in enumerate(coeffs):
+    opt.ic['u']['g'] += coeff*np.cos((kx + 1)*2*np.pi*x / Lx)
 
 # opt.ic['u']['g'] = 2.987*mode1['g'] + 7.3*mode2['g']
 
-opt.metrics0['A1'] = opt.ic['u']*mode1 / Lx * 2.0
-opt.metrics0['A2'] = opt.ic['u']*mode2 / Lx * 2.0
-opt.metrics0['Arem'] = opt.ic['u']*opt.ic['u'] - (opt.metrics0['A1']**2 + opt.metrics0['A2']**2) * Lx * 2.0
+# # opt.metrics0['A1'] = opt.ic['u']*mode1 / Lx * 2.0
+# # opt.metrics0['A2'] = opt.ic['u']*mode2 / Lx * 2.0
+# # opt.metrics0['Arem'] = opt.ic['u']*opt.ic['u'] - (opt.metrics0['A1']**2 + opt.metrics0['A2']**2) * Lx * 2.0
 
-opt.track_metrics()
+# opt.track_metrics()
 
 def euler_descent(fun, x0, args, **kwargs):
     # gamma = 0.001
