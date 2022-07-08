@@ -116,7 +116,7 @@ Given a generalized initial value problem
   \mathcal{F}[U] &\equiv \partial_t U + L[U] + N[U, U] = 0 \label{genpde}
   \intertext{and a target end state $U(x, T)$, our aim is to recover the associated initial condition $U(x, 0)$.  
   This is realized by performing gradient-based minimization of the functional}
-  H[u, U] &= \frac{1}{2}\davg{(u(x, T) - U(x, T))^2} = \frac{1}{2}\davg{u'(x, T)^2} \label{Hdef}, 
+  H[u, U] &= \frac{1}{2}\davg{(u(x, T) - U(x, T))^2} = \frac{1}{2}\davg{u'^2(x, T)} \label{Hdef}, 
 \end{align}
 where the operator $\davg{\cdot}$ denotes the domain-integrated average and the quantity $u'(x, t)$ refers to $u(x, t)$'s the deviation from the target solution. For the remainder of this paper, capital symbols (such as $U(x, t)$) will be used to denote the target solution, while their corresponding lowercase symbols (such as $u(x, t)$) play the role of optimization parameters.
 
@@ -140,15 +140,31 @@ In doing so, we highlight the challenges and deficits associated with using the 
 
 % Here I'll present a generalized PDE which we want to invert along with a bunch of notation. We'll define our target simulation, least-squares objective, and cite examples where the adjoint looping method has been successfully applied to inverse problems. We'll conclude this discussion by stressing the important of the objective function's shape in ``initial condition space'', because ultimately this is what curtails our gradient-based inversion technique.
 
-\section{Analytic Analysis}
+\section{Preliminary Analytic Analysis}
 \subsection{Linearity and Reversiblity}
 In this section, we study linear initial value problems which obey (\ref{genpde}) along with the property $\mathcal{F}[u'] = \mathcal{F}[u] - \mathcal{F}[U]$. 
 In these special cases, the objective functional (\ref{Hdef}) depends only on the deviation's initial condition $u'(x, 0)$ about any arbitrary target $U$.
+For convenience when dealing with linear problems, we take $U(0) = U(T) = 0$ for all $x$.
 In the following section, we demonstrate that the objective functionals of nonlinear systems with nonzero targets are directory influenced by one's choice of $U$.
 
-time-reversible initial value problems are trivial cases of this optimization problem. 
-Linear systems' objective functions' shapes do not depend on the target--the target manifests itself as a constant shift in ic space. 
-Thus we might as well consider problems with $U(0) = U(T) = 0$ for all $x$.
+Time-reversible wave equations of the form
+\begin{align}
+  \partial_t u &= \sum_{n \geq 1} c_n \partial^{2n - 1}_x u \label{waveeq}
+  \intertext{are trivial cases of this optimization problem, because the quantity $\davg{u^2(x, t)}$ is conserved. 
+  This implies that the objective functional's levelsets form sphere's in $u'$-space, because its value is given by $\davg{u'^2(T)} = \davg{u'^2(0)}$.
+  The spatial derivatives in (\ref{waveeq}) are anti-self-adjoint (i.e. $L[u] = -L^{\dagger}[u]$), so the path of steepest descent is always in the radial derivation }
+  \frac{\delta H}{\delta u(x, 0)} &= -u'(x, 0) \nonumber
+  \intertext{In contrast, diffusive equations of the form}
+  \partial_t u &= \sum_{n \geq 1} b_n \partial^{2n}_x u \label{waveeq}
+  \intertext{do not conserve $\davg{u^2(x, t)}$, and consequently their objective functionals depend on $u'(x, 0)$'s \textit{direction} along with its magnitude. Suppose initial deviation can be written as}
+  u'(x, 0) &= \sum_{k \geq 0} a_k e^{ikx}.
+  \intertext{then}
+  \davg{u'(x, T)} &= \pi \sum_{k \geq 0} \Big[\exp\Big({-2T\sum_{n \geq 1} k^{2n}  }\Big)a_k^2\Big].
+\end{align}
+When the initial deviation $u'(x, 0)$ is described using a basis of fourier coefficients, its levelsets form hyperellipses, whose semi-major (semi-minor) axes are aligned with $u'(x, 0)$'s largest (smallest) fourier coefficient.
+Accordingly, the path of steepest descent is only aligned with $u'(x, 0)$ when $u'(x, 0)$ is composed of a single fourier mode. Such systems are self-adjoint, meaning $L[u] = L^{\dagger}[u]$
+
+\textbf{summary: }Linear systems' objective functions' shapes do not depend on the target--the target manifests itself as a constant shift in ic space. 
 Reversible wave equations, which conserve energy yield objective functions whose levelsets in ic space are spherical, so the gradient at any given guess always provides the shortest path to the target. 
 In contrast, irreversible diffusive terms distort the spherical levelsets into hyperellipses, whose semi-minimum (maximum) axis is oriented in the direction of the lowest (highest) wavenumber fourier mode's coefficient.
 Thus, when traversing an arbitrary path of steepest descent toward the target IC, low wavenumber modes are matched with the target first, followed by increasingly higher wavenumber modes.
@@ -162,7 +178,7 @@ Here the target matters. We consider burger's equation
   &= \partial_t \langle \frac{1}{2}u^2 \rangle + \langle  \frac{1}{3}\partial_x u^3\rangle \\
   &= \partial_t \langle \frac{1}{2}u^2 \rangle \\
 \end{align*}
-Next we consider a guess with a known deviation from the target $u(x, 0) = U(x, 0) + u'(x, 0)$. Our objective function is given by $\langle (u(T) - U(T))^2 \rangle = \langle u'(T)^2 \rangle$. The forward evolution equation for the perturbation is given by
+Next we consider a guess with a known deviation from the target $u(x, 0) = U(x, 0) + u'(x, 0)$. Our objective function is given by $\langle (u(T) - U(T))^2 \rangle = \langle u'^2(T) \rangle$. The forward evolution equation for the perturbation is given by
 
 \begin{align*}
   0 &= \partial_t u' + u'\partial_x U + U\partial_x u' + u'\partial_x u' \\
