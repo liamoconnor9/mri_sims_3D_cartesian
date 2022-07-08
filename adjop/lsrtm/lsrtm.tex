@@ -111,11 +111,42 @@ State of the art simulations performed by \cite{Zhu_2018} have reached $\Ra \sim
 
 \clearpage
 \section{Generalized Problem Setup}
-Here I'll present a generalized PDE which we want to invert along with a bunch of notation. We'll define our target simulation, least-squares objective, and cite examples where the adjoint looping method has been successfully applied to inverse problems. We'll conclude this discussion by stressing the important of the objective function's shape in ``initial condition space'', because ultimately this is what curtails our gradient-based inversion technique.
+Given a generalized initial value problem
+\begin{align}
+  \mathcal{F}[U] &\equiv \partial_t U + L[U] + N[U, U] = 0 \label{genpde}
+  \intertext{and a target end state $U(x, T)$, our aim is to recover the associated initial condition $U(x, 0)$.  
+  This is realized by performing gradient-based minimization of the functional}
+  H[u, U] &= \frac{1}{2}\davg{(u(x, T) - U(x, T))^2} = \frac{1}{2}\davg{u'(x, T)^2} \label{Hdef}, 
+\end{align}
+where the operator $\davg{\cdot}$ denotes the domain-integrated average and the quantity $u'(x, t)$ refers to $u(x, t)$'s the deviation from the target solution. For the remainder of this paper, capital symbols (such as $U(x, t)$) will be used to denote the target solution, while their corresponding lowercase symbols (such as $u(x, t)$) play the role of optimization parameters.
+
+The Lagrangian associated with our initial value problem is given by
+\begin{align*}
+  \mathcal{L} &= \int_0^T \davg{\mu \cdot \mathcal{F}[u]} dt + H[u, U].
+  \intertext{Where $\mu(x, t)$ is the Lagrangian Multiplier corresponding to $u(x, t)$. Equating} \frac{\delta\L}{\delta u} &= 0 \quad \text{and} \quad \frac{\delta\L}{\delta \mu} = 0 
+  \intertext{yields the original and adjoint systems} 
+  \mathcal{F}[u] &= 0 \quad \text{and} \quad \mathcal{F}^{\dagger}[\mu, u] = 0 \intertext{respectively. At some particular guess $u^n(x, 0)$, we compute the functional derivative}
+  \frac{\delta\L}{\delta u^n(x, 0)} &= -\mu^n(x, 0)
+  \intertext{to determine the direction of steepest descent of our objective functional $H[u, U]$ with respect to the optimization parameter $u(x, 0)$. Naive gradient-descent can then be performed by computing an updated guess}
+  u^{n+1}(x, 0) &= u^n(x, 0) + \varepsilon \mu^n(x, 0)
+  \intertext{where $\varepsilon$ is the step size.}
+\end{align*}
+In addition to this algorithm, more advanced gradient-based optimization techniques such as conjugate gradient and BFGS have been employed in conjunction with adjoint-looping to improve performance and accelerate convergence.
+In the context of our time-inversion optimization problem, such techniques traverse the space of possible initial conditions $u(x, 0)$ by relying on local information pertaining to the objective functional $H$ and its functional derivative $\frac{\delta H}{\delta u(x, 0)}$. 
+For this reason, the focus of our investigation is largely centered around the objective functional's dependence on the initial condition.
+More specifically, we study the levelsets of the objective functional because these surfaces characterize the directions of steepest descent at any arbitrary point in the space of initial conditions.
+In doing so, we highlight the challenges and deficits associated with using the least squares functional to recover the initial condition $U(x, 0)$ belonging to a target end state $U(x, T)$.
+
+
+% Here I'll present a generalized PDE which we want to invert along with a bunch of notation. We'll define our target simulation, least-squares objective, and cite examples where the adjoint looping method has been successfully applied to inverse problems. We'll conclude this discussion by stressing the important of the objective function's shape in ``initial condition space'', because ultimately this is what curtails our gradient-based inversion technique.
 
 \section{Analytic Analysis}
 \subsection{Linearity and Reversiblity}
-Reversible linear problems are trivial cases of the problems we intend to study. 
+In this section, we study linear initial value problems which obey (\ref{genpde}) along with the property $\mathcal{F}[u'] = \mathcal{F}[u] - \mathcal{F}[U]$. 
+In these special cases, the objective functional (\ref{Hdef}) depends only on the deviation's initial condition $u'(x, 0)$ about any arbitrary target $U$.
+In the following section, we demonstrate that the objective functionals of nonlinear systems with nonzero targets are directory influenced by one's choice of $U$.
+
+time-reversible initial value problems are trivial cases of this optimization problem. 
 Linear systems' objective functions' shapes do not depend on the target--the target manifests itself as a constant shift in ic space. 
 Thus we might as well consider problems with $U(0) = U(T) = 0$ for all $x$.
 Reversible wave equations, which conserve energy yield objective functions whose levelsets in ic space are spherical, so the gradient at any given guess always provides the shortest path to the target. 
