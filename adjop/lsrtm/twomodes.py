@@ -82,16 +82,26 @@ dist = domain.dist
 x = dist.local_grid(xbasis)
 CW.Barrier()
 
-match problem:
-    case 'kdv':
-        forward_problem = ForwardKDV.build_problem(domain, xcoord, a, b)
+if problem == 'kdv':
+    forward_problem = ForwardKDV.build_problem(domain, xcoord, a, b)
 
-    case 'diffusion':
-        forward_problem = ForwardDiffusion.build_problem(domain, xcoord, a, b)
+elif problem == 'diffusion':
+    forward_problem = ForwardDiffusion.build_problem(domain, xcoord, a, b)
 
-    case _:
-        logger.error('problem not recognized')
-        raise
+else:
+    logger.error('problem not recognized')
+    raise
+
+# match problem:
+#     case 'kdv':
+#         forward_problem = ForwardKDV.build_problem(domain, xcoord, a, b)
+
+#     case 'diffusion':
+#         forward_problem = ForwardDiffusion.build_problem(domain, xcoord, a, b)
+
+#     case _:
+#         logger.error('problem not recognized')
+#         raise
 
 CW.Barrier()
 forward_solver = forward_problem.build_solver(d3.RK443)
@@ -132,6 +142,8 @@ UT.change_scales(1)
 U0['g'] = target_coeffs[0]*mode1 + target_coeffs[1]*mode2
 
 utg = UT['g'].copy() * 0.0
+
+logger.info('running target simulation')
 if (CW.rank == 0):
     utg = evolve(U0['g'].copy(), forward_solver, T, dt)
     CW.Reduce(MPI.IN_PLACE, utg, op=MPI.SUM, root=0)
@@ -187,7 +199,7 @@ if (write_objectives or both):
         CW.Reduce(objectives, objectives, op=MPI.SUM, root=0)
 
     if CW.rank == 0:
-        np.savetxt(path + '/objectives2.txt', objectives)
+        np.savetxt(path + '/objectives_' + problem + '.txt', objectives)
         logger.info('saved final state')
 
 
@@ -195,7 +207,7 @@ if (not write_objectives or both):
     if CW.rank == 0:
         objectives = np.loadtxt(path + '/objectives_' + problem + '.txt')
         # print(objectives)
-        pc = plt.pcolormesh(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, cmap='seismic')
+        pc = plt.pcolormesh(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, cmap='GnBu')
         plt.colorbar(pc)
         epsilon = 1.0
         if False:
@@ -222,8 +234,9 @@ if (not write_objectives or both):
         plt.ylabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k2))
         plt.title(r'$\langle (u - U)^2 \rangle$; a = {}, T = {}'.format(a, T))
         a_str = str(a).replace('.', 'p')
+        b_str = str(b).replace('.', 'p')
         T_str = str(T).replace('.', 'p')
         plt.savefig(path + '/' + problem + '_objtest_a' + a_str + 'T' + T_str + '.png')
-        logger.info('image saved to file: ' + path + '/objtest_a' + a_str + 'T' + T_str + '.png')
+        logger.info('image saved to file: ' + path + '/objtest_a' + a_str + 'b' + b_str + 'T' + T_str + '.png')
         plt.show()
 
