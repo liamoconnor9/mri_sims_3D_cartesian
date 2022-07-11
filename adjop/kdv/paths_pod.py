@@ -59,6 +59,10 @@ show_forward = config.getboolean('parameters', 'show')
 show_iter_cadence = config.getint('parameters', 'show_iter_cadence')
 show_loop_cadence = config.getint('parameters', 'show_loop_cadence')
 
+sig = config.getfloat('parameters', 'sig_ic')
+mu = config.getfloat('parameters', 'mu_ic')
+ic_scale = config.getfloat('parameters', 'ic_scale')
+
 # Bases
 xcoord = d3.Coordinate('x')
 dist = d3.Distributor(xcoord, dtype=np.float64, comm=MPI.COMM_SELF)
@@ -83,11 +87,7 @@ backward_solver = backward_problem.build_solver(d3.RK443)
 
 write_suffix = str(config.get('parameters', 'suffix'))
 
-soln = 2*np.sin(2*np.pi*x / Lx) + 2*np.sin(4*np.pi*x / Lx)
-# soln = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-soln_f = dist.Field(name='soln_f', bases=xbasis)
-soln_f['g'] = soln.reshape((1, N))
-
+U0 = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 guess = 0.0
 
 
@@ -101,6 +101,8 @@ mode1['g'] = np.sin(2*np.pi*x / Lx)
 mode2 = dist.Field(name='mode2', bases=xbasis)
 mode2['g'] = np.sin(4*np.pi*x / Lx)
 
+# U0 = mode1['g'].copy() + mode2['g'].copy()
+
 Nics = 20
 from mpl_toolkits.mplot3d import Axes3D
 xs, ys, zs = 1, 1, 0.1
@@ -112,7 +114,9 @@ for i in range(0, 20, 1):
     tracker_name = path + '/' + write_suffix + '/tracker_rank' + str(i) + '.pick'
     with open(tracker_name, 'rb') as file:
         tracker = pickle.load(file)
-    x0 = tracker['x'][:130]
+    x0 = tracker['x'][:]
+    for ind in range(len(x0)):
+        x0[ind] -= U0
     iters = len(x0)
     objs = tracker['objectiveT']
     logger.info('appending {}/{}'.format(i, Nics))
@@ -121,7 +125,7 @@ for i in range(0, 20, 1):
 
 data = np.array(data)
 
-comps = 5
+comps = 8
 pca = PCA(n_components=comps)
 pca.fit(data)
 print(pca.singular_values_)
