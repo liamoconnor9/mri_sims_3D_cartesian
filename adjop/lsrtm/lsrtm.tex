@@ -164,11 +164,16 @@ Time-reversible wave equations of the form
 When the initial deviation $u'(x, 0)$ is described using a basis of fourier coefficients, its levelsets form hyperellipses, whose semi-major (semi-minor) axes are aligned with $u'(x, 0)$'s largest (smallest) fourier coefficient.
 Accordingly, the path of steepest descent is only aligned with $u'(x, 0)$ when $u'(x, 0)$ is composed of a single fourier mode. Such systems are self-adjoint, meaning $L[u] = L^{\dagger}[u]$
 
+\begin{figure}
+  \includegraphics[width=9cm]{../diffusion/obj_k1k5.png}
+  \caption{Objective function and an example gradient descent path for the diffusion equation. The target simulation $U(t) = 0$ and the deviation is composed of two fourier modes, i.e. $u'(t) = a_1\sin x + a_5\sin 5x$. Because the system is linear self-adjoint, each subsequent guess in the gradient descent trajectory is constrained to lie in this 2D phase space.}
+\end{figure}
+
 \textbf{summary: }Linear systems' objective functions' shapes do not depend on the target--the target manifests itself as a constant shift in ic space. 
 Reversible wave equations, which conserve energy yield objective functions whose levelsets in ic space are spherical, so the gradient at any given guess always provides the shortest path to the target. 
 In contrast, irreversible diffusive terms distort the spherical levelsets into hyperellipses, whose semi-minimum (maximum) axis is oriented in the direction of the lowest (highest) wavenumber fourier mode's coefficient.
 Thus, when traversing an arbitrary path of steepest descent toward the target IC, low wavenumber modes are matched with the target first, followed by increasingly higher wavenumber modes.
-
+\clearpage
 \subsection{Nonlinear Reversible Problems}
 Here the target matters. We consider burger's equation
 \begin{align*}
@@ -180,21 +185,40 @@ Here the target matters. We consider burger's equation
 \end{align*}
 Next we consider a guess with a known deviation from the target $u(x, 0) = U(x, 0) + u'(x, 0)$. Our objective function is given by $\langle (u(T) - U(T))^2 \rangle = \langle u'^2(T) \rangle$. The forward evolution equation for the perturbation is given by
 
-\begin{align*}
-  0 &= \partial_t u' + u'\partial_x U + U\partial_x u' + u'\partial_x u' \\
+\begin{align}
+  0 &= \partial_t u' + u'\partial_x U + U\partial_x u' + u'\partial_x u' \label{pertbrg}\\
   \intertext{then we have that}
   \intertext{the evolution of the target is given by}
-  0 &= \frac{1}{2}\partial_t \davg{u'^2} + \davg{u' \partial_x (u'U)} + \davg{\frac{1}{3}\partial_x u'^3} \\
-  &= \frac{1}{2}\partial_t \davg{u'^2} + \davg{u' \partial_x (u'U)} \\
-  &= \frac{1}{2}\partial_t \davg{u'^2} + \davg{U \partial_x (u'^2)} \\
-  \intertext{Suppose $u' = \alpha U$. In this case $u = U + u' = (1+\alpha)U$ evolves identically to $U$ but at a rate which is $(1 + \alpha)^2$ faster. Thus the objective is given by $\davg{(U((1+\alpha)^2 T) - U(T))^2}$}.
-  % \intertext{Suppose the perturbation is small enough that its nonlinear term can be neglected. In this case we find that}
-  u'(T) &= u'(0) + \int_0^T \partial_tu'dt \\
-  &= u'(0)-\int_0^T \partial_x (u'U) + \frac{1}{2}\partial_x (u'^2) dt
-  \intertext{Therefore $\davg{u'(T)} = \davg{u'(0)}$. The objective function}
-  \davg{u'(T)^2}&= \davg{u'(0)^2}- \davg{u'(0)\int_0^T \partial_x (u'U) + \frac{1}{2}\partial_x (u'^2) dt} \\
-  &\;\; + \davg{\Big[\int_0^T \partial_x (u'U) + \frac{1}{2}\partial_x (u'^2) dt\Big]^2} \\
-\end{align*}
+  0 &= \frac{1}{2}\partial_t \davg{u'^2} + \davg{u' \partial_x (u'U)} + \davg{\frac{1}{3}\partial_x u'^3} \nonumber \\
+  &= \frac{1}{2}\partial_t \davg{u'^2} + \davg{u' \partial_x (u'U)} \nonumber \\
+  &= \frac{1}{2}\partial_t \davg{u'^2} - \frac{1}{2}\davg{U \partial_x (u'^2)} \nonumber \\
+  &\therefore\nonumber\\
+  \davg{u'^2(T)} &= \davg{u'^2(0)} + \int_0^T \davg{U \partial_x (u'^2)} dt \label{objburgeq}
+  % \intertext{Suppose $u' = \alpha U$. In this case $u = U + u' = (1+\alpha)U$ evolves identically to $U$ but at a rate which is $(1 + \alpha)^2$ faster. Thus the objective is given by $\davg{(U((1+\alpha)^2 T) - U(T))^2}$}.
+  % % \intertext{Suppose the perturbation is small enough that its nonlinear term can be neglected. In this case we find that}
+  % u'(T) &= u'(0) + \int_0^T \partial_tu'dt \\
+  % &= u'(0)-\int_0^T \partial_x (u'U) + \frac{1}{2}\partial_x (u'^2) dt
+  % \intertext{Therefore $\davg{u'(T)} = \davg{u'(0)}$. The objective function}
+  % \davg{u'(T)^2}&= \davg{u'(0)^2}- \davg{u'(0)\int_0^T \partial_x (u'U) + \frac{1}{2}\partial_x (u'^2) dt} \\
+  % &\;\; + \davg{\Big[\int_0^T \partial_x (u'U) + \frac{1}{2}\partial_x (u'^2) dt\Big]^2} \\
+\end{align}
+
+\subsection*{Numerical Examples}
+Suppose the target solution is $U(t) = 0$. Then the perturbation equation (\ref{pertbrg}) is linear in $u'$, and we revert back to the hyperspherical levelsets described for wave equations in the previous section, as shown in Fig \ref{brgU0}.
+
+\begin{figure}[H]
+  \includegraphics[width=9cm]{../diffusion/burgobjtest_k1k2_U0.png}
+  \caption{Objective functional the inviscid burger's equation. The target simulation $U(x, 0) = 0$ and the deviation is composed of two fourier modes, i.e. $u'(t) = a_1\sin x + a_5\sin 2x$. Gradient descent paths will not deviate from this 2D phase space because the path of steepest descent is always in the radial direction.}
+  \label{brgU0}
+\end{figure}
+
+Suppose instead that our target initial condition is given by $U(x, 0) = 5\sin(x)$ and we are interested in the 2D phase space of initial deviations $u'(x, 0) = a_1\sin x + a_2 \sin 2x$, as shown in Fig \ref{brgU5m1}.. 
+
+\begin{figure}[H]
+  \includegraphics[width=9cm]{../diffusion/burgobjtest_k1k2_U5m1.png}
+  \caption{Objective functional the inviscid burger's equation. The target simulation $U(x, 0) = 5\sin x$ and the deviation is composed of two fourier modes, i.e. $u'(t) = a_1\sin x + a_5\sin 2x$. Gradient descent paths will deviate from this 2D phase space because external fourier modes are populated by the nonlinearities in the forward and adjoint equations.}
+  \label{brgU5m1}
+\end{figure}
 
 
 \clearpage
