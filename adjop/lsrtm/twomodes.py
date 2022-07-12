@@ -1,23 +1,16 @@
-from distutils.command.bdist import show_formats
 import os
 path = os.path.dirname(os.path.abspath(__file__))
-from ast import For
-from contextlib import nullcontext
-from turtle import backward
 import numpy as np
 import pickle
 import sys
 sys.path.append(path + "/..")
 sys.path.append(path + "/../diffusion")
 sys.path.append(path + "/../kdv")
-import h5py
-import gc
 import dedalus.public as d3
 from dedalus.core.domain import Domain
 from mpi4py import MPI
 CW = MPI.COMM_WORLD
 import logging
-import pathlib
 logger = logging.getLogger(__name__)
 import ForwardKDV
 import ForwardDiffusion
@@ -67,6 +60,16 @@ T = config.getfloat('parameters', 'T')
 
 dt = config.getfloat('parameters', 'dt')
 num_cp = config.getint('parameters', 'num_cp')
+
+a_str = str(a).replace('.', 'p')
+b_str = str(b).replace('.', 'p')
+T_str = str(T).replace('.', 'p')
+kt1_str = str(target_coeffs[0]).replace('.', 'p')
+kt2_str = str(target_coeffs[1]).replace('.', 'p')
+R_str = str(R).replace('.', 'p')
+
+objectives_str = path + '/objectives_a' + a_str + 'b' + b_str + 'T' + T_str + 'R' + R_str + 'kt1' + kt1_str + 'kt2' + kt2_str + '.txt'
+save_dir = path + '/objtest_a' + a_str + 'b' + b_str + 'T' + T_str + 'R' + R_str + 'kt1' + kt1_str + 'kt2' + kt2_str + '.png'
 
 # Simulation Parameters
 dealias = 3/2
@@ -211,17 +214,24 @@ if (write_objectives or both):
         CW.Reduce(objectives, objectives, op=MPI.SUM, root=0)
 
     if CW.rank == 0:
-        np.savetxt(path + '/objectives_' + problem + '.txt', objectives)
+        np.savetxt(objectives_str, objectives)
         logger.info('saved final state')
 
 
 if (not write_objectives or both):
     if CW.rank == 0:
-        objectives = np.loadtxt(path + '/objectives_' + problem + '.txt')
+        def fmt(x):
+            print(str(x))
+            return '  ' + str(x) + '  '
+
+        objectives = np.loadtxt(objectives_str)
         # print(objectives)
         pc = plt.pcolormesh(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, cmap='GnBu')
-        plt.colorbar(pc, fraction=0.046, pad=0.04)
-        plt.scatter([target_coeffs[0]], [target_coeffs[1]], s=10, marker='*', color='k')
+        cb = plt.colorbar(pc, fraction=0.046, pad=0.15)
+        plt.scatter([target_coeffs[0]], [target_coeffs[1]], s=60, marker='*', color='k', label = 'target')
+        cont = plt.contour(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, levels=[0.00001, 0.00002, 0.00004], colors=['k', 'k'])
+        plt.clabel(cont, cont.levels, inline=True, fmt=fmt, fontsize=7)
+        plt.legend(loc='lower right')
         epsilon = 1.0
         if False:
             for j in range(1):
@@ -243,17 +253,25 @@ if (not write_objectives or both):
                 c1s = cs[0]
                 c2s = cs[1]
                 plt.plot(c1s, c2s, color='lime', linewidth=3)
-        plt.xlabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k1))
-        plt.ylabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k2))
-        plt.title(r'$\langle (u - U)^2 \rangle$; a = {}, B = {}, T = {}'.format(a, b, T))
-        a_str = str(a).replace('.', 'p')
-        b_str = str(b).replace('.', 'p')
-        T_str = str(T).replace('.', 'p')
+        plt.xlabel(r'$(2/L_x) \; \langle u(x, 0) \, \sin${}$x \rangle$'.format(k1))
+        plt.ylabel(r'$(2/L_x) \; \langle u(x, 0) \, \sin${}$x \rangle$'.format(k2))
+        plt.title(r'$\langle (u(T) - U(T))^2 \rangle$; a = {}, b = {}, T = {}'.format(a, b, T), pad=20)
+        import types
+        def bottom_offset(self, bboxes, bboxes2):
+            bottom = self.axes.bbox.ymin
+            self.offsetText.set(va="top", ha="left")
+            self.offsetText.set_position(
+                    (0, bottom - self.OFFSETTEXTPAD * self.figure.dpi / 72.0))
+        cb.formatter.set_scientific(True)
+        cb.formatter.set_powerlimits((0,0))
 
-        kt1_str = str(target_coeffs[0]).replace('.', 'p')
-        kt2_str = str(target_coeffs[1]).replace('.', 'p')
+        def register_bottom_offset(axis, func):
+            axis._update_offset_text_position = types.MethodType(func, axis)
+        register_bottom_offset(cb.ax.yaxis, bottom_offset)
+        plt.setp(plt.axes().get_xticklabels(), rotation=20, horizontalalignment='right')
+
+        cb.update_ticks()
         plt.axes().set_aspect('equal')
-        save_dir = path + '/objtest_kt1' + kt1_str + 'kt2' + kt2_str + '.png'
         plt.savefig(save_dir)
         logger.info('image saved to file: ' + save_dir)
         plt.show()
