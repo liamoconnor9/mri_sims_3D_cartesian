@@ -190,7 +190,7 @@ Next we consider a guess with a known deviation from the target $u(x, 0) = U(x, 
   \intertext{then we have that}
   \intertext{the evolution of the target is given by}
   0 &= \frac{1}{2}\partial_t \davg{u'^2} + \davg{u' \partial_x (u'U)} + \davg{\frac{1}{3}\partial_x u'^3} \nonumber \\
-  &= \frac{1}{2}\partial_t \davg{u'^2} + \davg{u' \partial_x (u'U)} \nonumber \\
+  &= \frac{1}{2}\partial_t \davg{u'^2} +  \davg{u' \partial_x (u'U)} \nonumber \\
   &= \frac{1}{2}\partial_t \davg{u'^2} - \frac{1}{2}\davg{U \partial_x (u'^2)} \nonumber \\
   &\therefore\nonumber\\
   \davg{u'^2(T)} &= \davg{u'^2(0)} + \int_0^T \davg{U \partial_x (u'^2)} dt \label{objburgeq}
@@ -207,7 +207,8 @@ Next we consider a guess with a known deviation from the target $u(x, 0) = U(x, 
 Suppose the target solution is $U(t) = 0$. Then the perturbation equation (\ref{pertbrg}) is linear in $u'$, and we revert back to the hyperspherical levelsets described for wave equations in the previous section, as shown in Fig \ref{brgU0}.
 
 \begin{figure}[H]
-  \includegraphics[width=9cm]{../diffusion/burgobjtest_k1k2_U0.png}
+  \includegraphics[width=9cm]{objtest_kt10kt20.png}
+  % \includegraphics[width=9cm]{../diffusion/burgobjtest_k1k2_U0.png}
   \caption{Objective functional the inviscid burger's equation. The target simulation $U(x, 0) = 0$ and the deviation is composed of two fourier modes, i.e. $u'(t) = a_1\sin x + a_5\sin 2x$. Gradient descent paths will not deviate from this 2D phase space because the path of steepest descent is always in the radial direction.}
   \label{brgU0}
 \end{figure}
