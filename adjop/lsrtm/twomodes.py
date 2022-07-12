@@ -28,6 +28,13 @@ from configparser import ConfigParser
 from scipy import optimize
 from datetime import datetime
 import ast
+import publication_settings
+import matplotlib
+matplotlib.rcParams.update(publication_settings.params)
+plt.rcParams.update({'figure.autolayout': True})
+golden_mean = (np.sqrt(5)-1.0)/2.0
+plt.rcParams.update({'figure.figsize': [3.4, 3.4]})
+colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 filename = path + '/twomodes_options.cfg'
 config = ConfigParser()
@@ -47,6 +54,7 @@ k1, k2 = ks[0], ks[1]
 target_coeffs = ast.literal_eval(config.get('parameters', 'target_coeffs'))
 k1_range = ast.literal_eval(config.get('parameters', 'k1_range'))
 k2_range = ast.literal_eval(config.get('parameters', 'k2_range'))
+R = config.getfloat('parameters', 'R')
 Nmodes = config.getint('parameters', 'Nmodes')
 
 # Parameters
@@ -114,8 +122,11 @@ mode2_f = dist.Field(name='mode2_f', bases=xbasis)
 mode1_f['g'] = mode1.copy()
 mode2_f['g'] = mode2.copy()
 
-k1_coeffs = np.linspace(k1_range[0], k1_range[1], Nmodes)
-k2_coeffs = np.linspace(k2_range[0], k2_range[1], Nmodes)
+k1_coeffs = np.linspace(target_coeffs[0] - R, target_coeffs[0] + R, Nmodes)
+k2_coeffs = np.linspace(target_coeffs[1] - R, target_coeffs[1] + R, Nmodes)
+
+# k1_coeffs = np.linspace(k1_range[0], k1_range[1], Nmodes)
+# k2_coeffs = np.linspace(k2_range[0], k2_range[1], Nmodes)
 
 def compute_coeffs(u, mode1_f, mode2_f):
     c1 = 2.0 / Lx * d3.Integrate(u*mode1_f).evaluate()['g'].flat[0]
@@ -143,32 +154,33 @@ U0['g'] = target_coeffs[0]*mode1 + target_coeffs[1]*mode2
 
 utg = UT['g'].copy() * 0.0
 
-logger.info('running target simulation')
-if (CW.rank == 0):
-    utg = evolve(U0['g'].copy(), forward_solver, T, dt)
-    CW.Reduce(MPI.IN_PLACE, utg, op=MPI.SUM, root=0)
-else:
-    CW.Reduce(utg, utg, op=MPI.SUM, root=0)
-# logger.info(UT['g'])
-
-CW.Bcast([utg, MPI.DOUBLE], root=0)
-UT['g'] = utg.copy()
-
-CW.Barrier()
-CW.barrier()
-# print(np.sum(UT['g']**2))
-
-logger.info('target state computed')
-# sys.exit()
-
-def evaluate_objective(u, U):
-    # fac2 = np.sum((u['g'])**2)
-    fac2 = d3.Integrate((u - U)**2).evaluate()['g'].flat[0] / Lx
-    # print('obj = {}, rank = {}'.format(fac2, CW.rank))
-    return fac2
-    # return fac1 + fac2
-
 if (write_objectives or both):
+
+    logger.info('running target simulation')
+    if (CW.rank == 0):
+        utg = evolve(U0['g'].copy(), forward_solver, T, dt)
+        CW.Reduce(MPI.IN_PLACE, utg, op=MPI.SUM, root=0)
+    else:
+        CW.Reduce(utg, utg, op=MPI.SUM, root=0)
+    # logger.info(UT['g'])
+
+    CW.Bcast([utg, MPI.DOUBLE], root=0)
+    UT['g'] = utg.copy()
+
+    CW.Barrier()
+    CW.barrier()
+    # print(np.sum(UT['g']**2))
+
+    logger.info('target state computed')
+    # sys.exit()
+
+    def evaluate_objective(u, U):
+        # fac2 = np.sum((u['g'])**2)
+        fac2 = d3.Integrate((u - U)**2).evaluate()['g'].flat[0] / Lx
+        # print('obj = {}, rank = {}'.format(fac2, CW.rank))
+        return fac2
+        # return fac1 + fac2
+
     objectives = np.zeros((Nmodes, Nmodes))
 
     inds = []
@@ -208,7 +220,8 @@ if (not write_objectives or both):
         objectives = np.loadtxt(path + '/objectives_' + problem + '.txt')
         # print(objectives)
         pc = plt.pcolormesh(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, cmap='GnBu')
-        plt.colorbar(pc)
+        plt.colorbar(pc, fraction=0.046, pad=0.04)
+        plt.scatter([target_coeffs[0]], [target_coeffs[1]], s=10, marker='*', color='k')
         epsilon = 1.0
         if False:
             for j in range(1):
@@ -232,11 +245,16 @@ if (not write_objectives or both):
                 plt.plot(c1s, c2s, color='lime', linewidth=3)
         plt.xlabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k1))
         plt.ylabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(k2))
-        plt.title(r'$\langle (u - U)^2 \rangle$; a = {}, T = {}'.format(a, T))
+        plt.title(r'$\langle (u - U)^2 \rangle$; a = {}, B = {}, T = {}'.format(a, b, T))
         a_str = str(a).replace('.', 'p')
         b_str = str(b).replace('.', 'p')
         T_str = str(T).replace('.', 'p')
-        plt.savefig(path + '/' + problem + '_objtest_a' + a_str + 'T' + T_str + '.png')
-        logger.info('image saved to file: ' + path + '/objtest_a' + a_str + 'b' + b_str + 'T' + T_str + '.png')
+
+        kt1_str = str(target_coeffs[0]).replace('.', 'p')
+        kt2_str = str(target_coeffs[1]).replace('.', 'p')
+        plt.axes().set_aspect('equal')
+        save_dir = path + '/objtest_kt1' + kt1_str + 'kt2' + kt2_str + '.png'
+        plt.savefig(save_dir)
+        logger.info('image saved to file: ' + save_dir)
         plt.show()
 
