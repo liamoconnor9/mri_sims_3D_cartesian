@@ -56,6 +56,7 @@ N = config.getint('parameters', 'Nx')
 
 a = config.getfloat('parameters', 'a')
 b = config.getfloat('parameters', 'b')
+c = config.getfloat('parameters', 'c')
 T = config.getfloat('parameters', 'T')
 
 dt = config.getfloat('parameters', 'dt')
@@ -63,13 +64,14 @@ num_cp = config.getint('parameters', 'num_cp')
 
 a_str = str(a).replace('.', 'p')
 b_str = str(b).replace('.', 'p')
+c_str = str(c).replace('.', 'p')
 T_str = str(T).replace('.', 'p')
 kt1_str = str(target_coeffs[0]).replace('.', 'p')
 kt2_str = str(target_coeffs[1]).replace('.', 'p')
 R_str = str(R).replace('.', 'p')
 
-objectives_str = path + '/objectives_a' + a_str + 'b' + b_str + 'T' + T_str + 'R' + R_str + 'kt1' + kt1_str + 'kt2' + kt2_str + '.txt'
-save_dir = path + '/objtest_a' + a_str + 'b' + b_str + 'T' + T_str + 'R' + R_str + 'kt1' + kt1_str + 'kt2' + kt2_str + '.png'
+objectives_str = path + '/objectives_a' + a_str + 'b' + b_str + 'c' + c_str + 'T' + T_str + 'R' + R_str + 'kt1' + kt1_str + 'kt2' + kt2_str + '.txt'
+save_dir = path + '/objtest_a' + a_str + 'b' + b_str + 'c' + c_str + 'T' + T_str + 'R' + R_str + 'kt1' + kt1_str + 'kt2' + kt2_str + '.png'
 
 # Simulation Parameters
 dealias = 3/2
