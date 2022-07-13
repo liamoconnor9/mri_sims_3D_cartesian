@@ -111,31 +111,31 @@ State of the art simulations performed by \cite{Zhu_2018} have reached $\Ra \sim
 
 \clearpage
 \section{Generalized Problem Setup}
-Given a generalized initial value problem
+We define a generalized solution state vector $\vec{U}$ and associated initial value problem
 \begin{align}
-  \mathcal{F}[U] &\equiv \partial_t U + L[U] + N[U, U] = 0 \label{genpde}
-  \intertext{and a target end state $U(x, T)$, our aim is to recover the associated initial condition $U(x, 0)$.  
+  \mathcal{F}[\vec{U}] &\equiv \partial_t \vec{U} + L[\vec{U}] + N[\vec{U}, \vec{U}] = 0 \label{genpde}
+  \intertext{Given a target end state $\vec{U}(\vec{x}, T)$, our aim is to recover the associated initial condition $\vec{U}(x, 0)$.  
   This is realized by performing gradient-based minimization of the functional}
-  H[u, U] &= \frac{1}{2}\davg{(u(x, T) - U(x, T))^2} = \frac{1}{2}\davg{u'^2(x, T)} \label{Hdef}, 
+  H[\vec{u}, \vec{U}] &= \frac{1}{2}\davg{|\vec{u}(\vec{x}, T) - \vec{U}(\vec{x}, T)|^2} = \frac{1}{2}\davg{\vec{u}'^2(\vec{x}, T)} \label{Hdef}, 
 \end{align}
-where the operator $\davg{\cdot}$ denotes the domain-integrated average and the quantity $u'(x, t)$ refers to $u(x, t)$'s the deviation from the target solution. For the remainder of this paper, capital symbols (such as $U(x, t)$) will be used to denote the target solution, while their corresponding lowercase symbols (such as $u(x, t)$) play the role of optimization parameters.
+where the operator $\davg{\cdot}$ denotes the domain-integrated average and the quantity $\vec{u}'(\vec{x}, T)$ refers to $\vec{u}(\vec{x}, T)$'s the deviation from the target solution. For the remainder of this paper, capital symbols (such as $\vec{u}(\vec{x}, T)$) will be used to denote the target solution, while their corresponding lowercase symbols (such as $\vec{u}(\vec{x}, T)$) play the role of optimization parameters.
 
 The Lagrangian associated with our initial value problem is given by
 \begin{align*}
-  \mathcal{L} &= \int_0^T \davg{\mu \cdot \mathcal{F}[u]} dt + H[u, U].
-  \intertext{Where $\mu(x, t)$ is the Lagrangian Multiplier corresponding to $u(x, t)$. Equating} \frac{\delta\L}{\delta u} &= 0 \quad \text{and} \quad \frac{\delta\L}{\delta \mu} = 0 
+  \mathcal{L} &= \int_0^T \davg{\vec{\mu} \cdot \mathcal{F}[\vec{u}]} dt + H[\vec{u}, \vec{U}].
+  \intertext{Where $\vec{\mu}(\vec{x}, T)$ is the Lagrangian Multiplier corresponding to $\vec{u}(\vec{x}, T)$. Equating} \frac{\delta\L}{\delta \vec{u}} &= 0 \quad \text{and} \quad \frac{\delta\L}{\delta \vec{\mu}} = 0 
   \intertext{yields the original and adjoint systems} 
-  \mathcal{F}[u] &= 0 \quad \text{and} \quad \mathcal{F}^{\dagger}[\mu, u] = 0 \intertext{respectively. At some particular guess $u^n(x, 0)$, we compute the functional derivative}
-  \frac{\delta\L}{\delta u^n(x, 0)} &= -\mu^n(x, 0)
-  \intertext{to determine the direction of steepest descent of our objective functional $H[u, U]$ with respect to the optimization parameter $u(x, 0)$. Naive gradient-descent can then be performed by computing an updated guess}
-  u^{n+1}(x, 0) &= u^n(x, 0) + \varepsilon \mu^n(x, 0)
+  \mathcal{F}[\vec{u}] &= 0 \quad \text{and} \quad \mathcal{F}^{\dagger}[\vec{\mu}, u] = 0 \intertext{respectively. At some particular guess $\vec{u}^n(\vec{x}, 0)$, we compute the functional derivative}
+  \frac{\delta\L}{\delta \vec{u}^n(\vec{x}, 0)} &= -\vec{\mu}^n(\vec{x}, 0)
+  \intertext{to determine the direction of steepest descent of our objective functional $H[\vec{u}, \vec{U}]$ with respect to the optimization parameter $\vec{u}(\vec{x}, 0)$. Naive gradient-descent can then be performed by computing an updated guess}
+  \vec{u}^{n+1}(\vec{x}, 0) &= \vec{u}^n(\vec{x}, 0) + \varepsilon \vec{\mu}^n(\vec{x}, 0)
   \intertext{where $\varepsilon$ is the step size.}
 \end{align*}
 In addition to this algorithm, more advanced gradient-based optimization techniques such as conjugate gradient and BFGS have been employed in conjunction with adjoint-looping to improve performance and accelerate convergence.
-In the context of our time-inversion optimization problem, such techniques traverse the space of possible initial conditions $u(x, 0)$ by relying on local information pertaining to the objective functional $H$ and its functional derivative $\frac{\delta H}{\delta u(x, 0)}$. 
+In the context of our time-inversion optimization problem, such techniques traverse the space of possible initial conditions $\vec{u}(\vec{x}, 0)$ by relying on local information pertaining to the objective functional $H$ and its functional derivative $\frac{\delta H}{\delta \vec{u}(\vec{x}, 0)}$. 
 For this reason, the focus of our investigation is largely centered around the objective functional's dependence on the initial condition.
 More specifically, we study the levelsets of the objective functional because these surfaces characterize the directions of steepest descent at any arbitrary point in the space of initial conditions.
-In doing so, we highlight the challenges and deficits associated with using the least squares functional to recover the initial condition $U(x, 0)$ belonging to a target end state $U(x, T)$.
+In doing so, we highlight the challenges and deficits associated with using the least squares functional to recover the initial condition $\vec{U}(\vec{x}, 0)$ belonging to a target end state $\vec{U}(\vec{x}, T)$.
 
 
 % Here I'll present a generalized PDE which we want to invert along with a bunch of notation. We'll define our target simulation, least-squares objective, and cite examples where the adjoint looping method has been successfully applied to inverse problems. We'll conclude this discussion by stressing the important of the objective function's shape in ``initial condition space'', because ultimately this is what curtails our gradient-based inversion technique.
@@ -177,16 +177,21 @@ Thus, when traversing an arbitrary path of steepest descent toward the target IC
 \subsection{Nonlinear Reversible Problems}
 Here the target matters. We consider burger's equation
 \begin{align*}
-  \partial_t u + u\partial_x u &= 0
+  \partial_t u + u\partial_x u &= b \, \partial_x^3 u
   \intertext{where energy is conserved}
-  0 &= \partial_t \langle \frac{1}{2}u^2 \rangle + \langle u^2\partial_x u\rangle \\
-  &= \partial_t \langle \frac{1}{2}u^2 \rangle + \langle  \frac{1}{3}\partial_x u^3\rangle \\
+  0 &= \partial_t \langle \frac{1}{2}u^2 \rangle + \langle u^2\partial_x u\rangle - b\davg{u\partial_x^3 u}\\
+  &= \partial_t \langle \frac{1}{2}u^2 \rangle + \langle  \frac{1}{3}\partial_x u^3\rangle  \\
   &= \partial_t \langle \frac{1}{2}u^2 \rangle \\
+  \\
+  \partial_x^3 (u*u) &= 2\partial_x^2[ u\partial_x u ] \\
+  &= 2\partial_x[ (\partial_x u)^2 + u\partial_x^2 u ]\\
+  &= 2\partial_x[ (\partial_x u)^2] + \partial_x u\partial_x^2 u + u\partial_x^3 u \\
+  &= \frac{5}{2} \partial_x[ (\partial_x u)^2] + u\partial_x^3 u \\
 \end{align*}
 Next we consider a guess with a known deviation from the target $u(x, 0) = U(x, 0) + u'(x, 0)$. Our objective function is given by $\langle (u(T) - U(T))^2 \rangle = \langle u'^2(T) \rangle$. The forward evolution equation for the perturbation is given by
 
 \begin{align}
-  0 &= \partial_t u' + u'\partial_x U + U\partial_x u' + u'\partial_x u' \label{pertbrg}\\
+  0 &= \partial_t u' + u'\partial_x U + U\partial_x u' + u'\partial_x u' - b\partial_x^3 u'\label{pertbrg}\\
   \intertext{then we have that}
   \intertext{the evolution of the target is given by}
   0 &= \frac{1}{2}\partial_t \davg{u'^2} + \davg{u' \partial_x (u'U)} + \davg{\frac{1}{3}\partial_x u'^3} \nonumber \\
