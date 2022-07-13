@@ -113,12 +113,12 @@ State of the art simulations performed by \cite{Zhu_2018} have reached $\Ra \sim
 \section{Generalized Problem Setup}
 We define a generalized solution state vector $\vec{U}$ and associated initial value problem
 \begin{align}
-  \mathcal{F}[\vec{U}] &\equiv \partial_t \vec{U} + L[\vec{U}] + N[\vec{U}, \vec{U}] = 0 \label{genpde}
+  \mathcal{F}[\vec{U}] &\equiv \partial_t \vec{U} + L[\vec{U}] + N[\vec{U}, \vec{U}] = 0. \label{genpde}
   \intertext{Given a target end state $\vec{U}(\vec{x}, T)$, our aim is to recover the associated initial condition $\vec{U}(x, 0)$.  
   This is realized by performing gradient-based minimization of the functional}
   H[\vec{u}, \vec{U}] &= \frac{1}{2}\davg{|\vec{u}(\vec{x}, T) - \vec{U}(\vec{x}, T)|^2} = \frac{1}{2}\davg{\vec{u}'^2(\vec{x}, T)} \label{Hdef}, 
 \end{align}
-where the operator $\davg{\cdot}$ denotes the domain-integrated average and the quantity $\vec{u}'(\vec{x}, T)$ refers to $\vec{u}(\vec{x}, T)$'s the deviation from the target solution. For the remainder of this paper, capital symbols (such as $\vec{u}(\vec{x}, T)$) will be used to denote the target solution, while their corresponding lowercase symbols (such as $\vec{u}(\vec{x}, T)$) play the role of optimization parameters.
+where the operator $\davg{\cdot}$ denotes the domain-integrated average and the quantity $\vec{u}'(\vec{x}, T)$ refers to $\vec{u}(\vec{x}, T)$'s the deviation from the target solution. For the remainder of this paper, capital symbols (such as $\vec{U}(\vec{x}, T)$) will be used to denote the target solution, while their corresponding lowercase symbols (such as $\vec{u}(\vec{x}, T)$) play the role of optimization parameters.
 
 The Lagrangian associated with our initial value problem is given by
 \begin{align*}
@@ -145,7 +145,7 @@ In doing so, we highlight the challenges and deficits associated with using the 
 In this section, we study linear initial value problems which obey (\ref{genpde}) along with the property $\mathcal{F}[u'] = \mathcal{F}[u] - \mathcal{F}[U]$. 
 In these special cases, the objective functional (\ref{Hdef}) depends only on the deviation's initial condition $u'(x, 0)$ about any arbitrary target $U$.
 For convenience when dealing with linear problems, we take $U(0) = U(T) = 0$ for all $x$.
-In the following section, we demonstrate that the objective functionals of nonlinear systems with nonzero targets are directory influenced by one's choice of $U$.
+In the following section, we demonstrate that the objective functionals of nonlinear systems with nonzero targets are directly influenced by one's choice of $U$.
 
 Time-reversible wave equations of the form
 \begin{align}
@@ -165,7 +165,7 @@ When the initial deviation $u'(x, 0)$ is described using a basis of fourier coef
 Accordingly, the path of steepest descent is only aligned with $u'(x, 0)$ when $u'(x, 0)$ is composed of a single fourier mode. Such systems are self-adjoint, meaning $L[u] = L^{\dagger}[u]$
 
 \begin{figure}
-  \includegraphics[width=9cm]{../diffusion/obj_k1k5.png}
+  \includegraphics[width=9cm]{objtest_a0p03b0p0c0p0T3p0R0p015kt10p0kt20.png}
   \caption{Objective function and an example gradient descent path for the diffusion equation. The target simulation $U(t) = 0$ and the deviation is composed of two fourier modes, i.e. $u'(t) = a_1\sin x + a_5\sin 5x$. Because the system is linear self-adjoint, each subsequent guess in the gradient descent trajectory is constrained to lie in this 2D phase space.}
 \end{figure}
 
