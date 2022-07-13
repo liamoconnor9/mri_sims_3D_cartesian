@@ -5,7 +5,7 @@ import pickle
 import sys
 sys.path.append(path + "/..")
 sys.path.append(path + "/../diffusion")
-sys.path.append(path + "/../kdv")
+# sys.path.append(path + "/../kdv")
 import dedalus.public as d3
 from dedalus.core.domain import Domain
 from mpi4py import MPI
@@ -39,7 +39,7 @@ logger.info(config.items('parameters'))
 problem = str(config.get('parameters', 'problem'))
 both = config.getboolean('parameters', 'both')
 write_objectives = config.getboolean('parameters', 'write_objectives')
-
+plot_paths = config.getboolean('parameters', 'plot_paths')
 
 ks = ast.literal_eval(config.get('parameters', 'ks'))
 k1, k2 = ks[0], ks[1]
@@ -96,7 +96,7 @@ x = dist.local_grid(xbasis)
 CW.Barrier()
 
 if problem == 'kdv':
-    forward_problem = ForwardKDV.build_problem(domain, xcoord, a, b)
+    forward_problem = ForwardKDV.build_problem(domain, xcoord, a, b, c)
 
 elif problem == 'diffusion':
     forward_problem = ForwardDiffusion.build_problem(domain, xcoord, a, b)
@@ -235,6 +235,27 @@ if (not write_objectives or both):
         plt.clabel(cont, cont.levels, inline=True, fmt=fmt, fontsize=7)
         plt.legend(loc='lower right')
         epsilon = 1.0
+        if plot_paths:
+            grad_ar = np.gradient(objectives)
+            from scipy import interpolate
+            k1k1, k2k2 = np.meshgrid(k1_coeffs, k2_coeffs)
+            gradinterp1 = interpolate.interp2d(k1k1, k2k2, grad_ar[0], kind='cubic')
+            gradinterp2 = interpolate.interp2d(k1k1, k2k2, grad_ar[1], kind='cubic')
+            
+            sdpath = [(k1_coeffs[0], k2_coeffs[0])]
+            eps = 0.001
+            for stp in range(1000):
+                print(stp)
+                lastpt = sdpath[-1]
+                grad1 = gradinterp1(lastpt[0], lastpt[1])
+                grad2 = gradinterp2(lastpt[0], lastpt[1])
+                sdpath.append((lastpt[0] + eps*grad1, lastpt[1] + eps*grad2))
+            print(sdpath)
+            uzpath = list(zip(*sdpath))
+            k1path = uzpath[0]
+            k2path = uzpath[1]
+            plt.plot(k1path, k2path, linstyle='--', color='k')
+            sys.exit()
         if False:
             for j in range(1):
                 g1 = -0.9
