@@ -233,29 +233,38 @@ if (not write_objectives or both):
         plt.scatter([target_coeffs[0]], [target_coeffs[1]], s=60, marker='*', color='k', label = 'target')
         cont = plt.contour(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, levels=[0.00001, 0.00002, 0.00004], colors=['k', 'k'])
         plt.clabel(cont, cont.levels, inline=True, fmt=fmt, fontsize=7)
-        plt.legend(loc='lower right')
         epsilon = 1.0
         if plot_paths:
             grad_ar = np.gradient(objectives)
             from scipy import interpolate
             k1k1, k2k2 = np.meshgrid(k1_coeffs, k2_coeffs)
-            gradinterp1 = interpolate.interp2d(k1k1, k2k2, grad_ar[0], kind='cubic')
-            gradinterp2 = interpolate.interp2d(k1k1, k2k2, grad_ar[1], kind='cubic')
+            stride = 10
+            gradinterp1 = interpolate.interp2d(k1k1[::stride, ::stride], k2k2[::stride, ::stride], grad_ar[0][::stride, ::stride].T, kind='linear')
+            gradinterp2 = interpolate.interp2d(k1k1[::stride, ::stride], k2k2[::stride, ::stride], grad_ar[1][::stride, ::stride].T, kind='linear')
             
-            sdpath = [(k1_coeffs[0], k2_coeffs[0])]
-            eps = 0.001
-            for stp in range(1000):
-                print(stp)
+            sdpath = [(-0.01, -0.01)]
+            plt.scatter([sdpath[-1][0]], [sdpath[-1][1]], s=60, marker='o', color='k', label = 'guess')
+
+            eps = 0.000005
+            stp = 0
+            # for stp in range(100):
+            while (stp < 10000 and sdpath[-1][0]**2 + sdpath[-1][0]**2 > 1e-8):
                 lastpt = sdpath[-1]
                 grad1 = gradinterp1(lastpt[0], lastpt[1])
                 grad2 = gradinterp2(lastpt[0], lastpt[1])
-                sdpath.append((lastpt[0] + eps*grad1, lastpt[1] + eps*grad2))
-            print(sdpath)
+                grad_mag = (grad1**2 + grad2**2)**0.5
+                grad1 /= grad_mag
+                grad2 /= grad_mag
+                print('step {}, pt {}, grad1 {}, grad2 {}'.format(stp, lastpt, grad1, grad2))
+                sdpath.append(((lastpt[0] - eps*grad1)[0], (lastpt[1] - eps*grad2)[0]))
+                stp += 1
+            
             uzpath = list(zip(*sdpath))
             k1path = uzpath[0]
             k2path = uzpath[1]
-            plt.plot(k1path, k2path, linstyle='--', color='k')
-            sys.exit()
+            plt.plot(k1path, k2path, linestyle='--', color='k')
+            # sys.exit()
+        plt.legend(loc='lower right')
         if False:
             for j in range(1):
                 g1 = -0.9
