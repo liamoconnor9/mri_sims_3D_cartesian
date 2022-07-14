@@ -1,0 +1,76 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx,amsmath,amsfonts,amssymb,mathtools}
+\usepackage{enumitem}
+\usepackage{empheq}
+\usepackage{xcolor}
+
+\newcommand\Ra{\mathrm{Ra}}
+\newcommand\Pran{\mathrm{Pr}}
+\newcommand\Rac{\mathrm{Ra}_{\mathrm{c}}}
+\newcommand\Ek{\mathrm{Ek}}
+\newcommand\Ro{\mathrm{Ro}}
+\newcommand\Nu{\mathrm{Nu}}
+\newcommand\Sc{\mathrm{Sc}}
+
+\newcommand\eps{\varepsilon}
+\renewcommand\L {\mathcal{L}}
+
+\newcommand{\n}{\\ \nonumber \\ }
+\newcommand{\nn}{\nonumber}
+\newcommand{\nnn}{\\ \nonumber \\ \nonumber}
+
+\newcommand\ie{\textit{i.e.},~}
+\newcommand\eg{\textit{e.g.},~}
+\newcommand{\omicron}{o}
+\newcommand*\widefbox[1]{\fbox{\hspace{2em}#1\hspace{2em}}}
+
+\newcommand{\pd}[1]{\partial_{#1}}
+\newcommand{\vhat}[1]{\hat{\boldsymbol{#1}}}
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\M}[1]{\mathbf{#1}}
+\newcommand{\grad}{\vec{\nabla}}
+\newcommand{\cross}{\vec{\times}}
+\newcommand{\curl}{\grad \vec{\times}}
+\newcommand{\divergence}{\grad \cdot}
+\newcommand{\laplacian}{\nabla^2}
+\newcommand{\veclaplacian}{\grad^2}
+
+\newcommand{\sump}[2]{\sideset{}{'}\sum_{{#1}=0}^{#2}}
+
+\newcommand{\eq}[1]{(\ref{#1})}
+\newcommand{\eqs}[2]{(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\eqss}[2]{(\ref{#1})--(\ref{#2})}
+
+\newcommand{\Eq}[1]{Eq.~(\ref{#1})}
+\newcommand{\Eqs}[2]{Eqs.~(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\Eqss}[2]{Eqs.~(\ref{#1})--(\ref{#2})}
+
+\newcommand{\fig}[1]{Fig.~(\ref{#1})}
+\newcommand{\figs}[2]{Figs.~(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\T}{{\cal T}}
+\newcommand{\Z}{{\cal Z}}
+
+\setlength{\parindent}{0pt}
+
+\begin{document}
+\subsection*{Linear Partial Differential Equations}
+\vspace{1cm}
+\begin{enumerate}
+    \item Consider the \textbf{diffusion equation}
+    \begin{align*}
+        \partial_t u &= a \partial_x^2 u \tag{1}
+        \intertext{on the domain $x \in [0, 2\pi).$}
+        \intertext{Derive the solution to this equation, assumming the initial state is given by an arbitrary Fourier mode, i.e.}
+        u(x, 0) &= \sin(nx) \tag{2}
+        \intertext{where $n$ is a natural number ($n \in \mathbb{N}$)}.
+        \intertext{\textbf{Hint: } assume the solution is of the form}
+        u(x, t) &= \sin(nx) f(t), \tag{3}
+        \intertext{then substitute (3) into (1) and solve for $f(t)$. The initial condition (2) places a constraint on $f(0)$, so your solution should be unique (there shouldn't be any undetermined constants or coefficients).}
+    \end{align*}
+
+    If you can get this solution for a single arbitrary Fourier mode, then all you have to do for a more general initial state $u(x, 0)$ is find its Fourier coefficients and treat them each individually. This is the magic of linearity!
+\end{enumerate}
+
+\end{document}
+ 
