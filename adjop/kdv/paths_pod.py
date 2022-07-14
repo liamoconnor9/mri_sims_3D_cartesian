@@ -139,3 +139,4 @@ for comp_ind in range(comps):
     plt.ylabel('Iteration')
     plt.title('Descent Paths POD: SV = {:.2f}'.format(pca.singular_values_[comp_ind]))
     plt.savefig(path + '/' + write_suffix + '/pod_comp{}.png'.format(comp_ind))
+    logger.info('figure saved to ' + path + '/' + write_suffix + '/pod_comp{}.png'.format(comp_ind))

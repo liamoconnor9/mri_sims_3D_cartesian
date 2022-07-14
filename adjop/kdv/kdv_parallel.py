@@ -179,7 +179,7 @@ def euler_descent(fun, x0, args, **kwargs):
             with open(tracker_name, 'wb') as file:
                 pickle.dump(opt.descent_tracker, file)
 
-        x0 -= 1e4 * gamma * gradf / np.sum(gradf**2)
+        # x0 -= 1e4 * gamma * gradf / np.sum(gradf**2)
     logger.info('success')
     logger.info('maxiter = {}'.format(maxiter))
     return optimize.OptimizeResult(x=x0, success=True, message='beep boop')
