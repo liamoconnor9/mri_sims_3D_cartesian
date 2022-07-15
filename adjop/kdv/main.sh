@@ -21,10 +21,10 @@ cd ~/scratch/dedalus/mri/adjop/kdv
 
 FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"
-CONFIG="kdv_options.cfg"
-PROCS=200
+CONFIG="kdv_sines.cfg"
+PROCS=20
 
-mpiexec_mpt -np 1      python3 kdv_burgers.py
-mpiexec_mpt -np $PROCS python3 kdv_burgers_sphere.py
-mpiexec_mpt -np $PROCS python3 kdv_parallel.py
-mpiexec_mpt -np 1      python3 paths_pod.py
+mpiexec_mpt -np 1      python3 kdv_burgers.py         $CONFIG
+mpiexec_mpt -np $PROCS python3 kdv_burgers_sphere.py  $CONFIG
+mpiexec_mpt -np $PROCS python3 kdv_parallel.py        $CONFIG
+mpiexec_mpt -np 1      python3 paths_pod.py           $CONFIG

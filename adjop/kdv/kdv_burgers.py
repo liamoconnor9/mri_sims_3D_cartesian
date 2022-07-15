@@ -5,6 +5,8 @@ a space-time plot of the solution. It should take just a few seconds to
 run (serial only).
 We use a Fourier basis to solve the IVP:
     dt(u) + u*dx(u) = a*dx(dx(u)) + b*dx(dx(dx(u)))
+Usage:
+    kdv_burgers.py <config_file>
 """
 
 import numpy as np
@@ -18,7 +20,12 @@ from docopt import docopt
 from pathlib import Path
 from configparser import ConfigParser
 
-filename = Path('kdv_options.cfg')
+args = docopt(__doc__)
+try:
+    filename = Path(args['<config_file>'])
+except:
+    filename = Path('kdv_options.cfg')
+    
 config = ConfigParser()
 config.read(str(filename))
 
@@ -27,6 +34,8 @@ logger.info(config.items('parameters'))
 
 # Parameters
 write_suffix = str(config.get('parameters', 'suffix'))
+target = str(config.get('parameters', 'target'))
+
 Lx = config.getfloat('parameters', 'Lx')
 Nx = config.getint('parameters', 'Nx')
 
@@ -94,8 +103,14 @@ else:
 
 # Initial conditions
 x = dist.local_grid(xbasis)
-u['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-# u['g'] = 2*np.sin(2*np.pi*x / Lx) + 2*np.sin(4*np.pi*x / Lx)
+
+if (target == 'gauss'):
+    u['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+elif (target == 'sinecos'):
+    u['g'] = 2*np.sin(2*np.pi*x / Lx) + 2*np.sin(4*np.pi*x / Lx)
+else:
+    logger.error('unrecognized target paramter. terminating script')
+    raise
 
 # R = 1.0
 # modes_dim = 5
@@ -143,6 +158,9 @@ for iter in range(int(solver.stop_sim_time // timestep) + 1):
 logger.info('solve complete, sim time = {}'.format(solver.sim_time))
 u.change_scales(1)
 u_T = u['g'].copy()
+np.savetxt(path + '/kdv_U.txt', u_T)
+logger.info('saved final state')
+
 
 udata = np.array(udata)
 times = np.array(times)

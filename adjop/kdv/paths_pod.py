@@ -1,3 +1,8 @@
+"""
+Usage:
+    paths_pod.py <config_file>
+"""
+
 from distutils.command.bdist import show_formats
 import os
 from ast import For
@@ -28,7 +33,12 @@ from KdvOptimization import KdvOptimization
 from sklearn.decomposition import PCA
 # import modred as mr
 
-filename = path + '/kdv_options.cfg'
+args = docopt(__doc__)
+try:
+    filename = Path(args['<config_file>'])
+except:
+    filename = Path('kdv_options.cfg')
+    
 config = ConfigParser()
 config.read(str(filename))
 
@@ -89,11 +99,13 @@ write_suffix = str(config.get('parameters', 'suffix'))
 import glob
 procs = len(glob.glob1(path + '/' + write_suffix, "*.pick"))
 
-U0 = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-guess = 0.0
+target = str(config.get('parameters', 'target'))
+if (target == 'gauss'):
+    U0 = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+else:
+    logger.info('using target {}'.format(target))
+    U0 = x*0.0
 
-
-path = os.path.dirname(os.path.abspath(__file__))
 U_data = np.loadtxt(path + '/kdv_U.txt')
 u = next(field for field in forward_solver.state if field.name == 'u')
 

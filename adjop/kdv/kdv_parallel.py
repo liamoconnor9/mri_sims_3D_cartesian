@@ -1,3 +1,7 @@
+"""
+Usage:
+    kdv_parallel.py <config_file>
+"""
 from distutils.command.bdist import show_formats
 import os
 from ast import For
@@ -26,7 +30,12 @@ from scipy import optimize
 from datetime import datetime
 from KdvOptimization import KdvOptimization
 
-filename = path + '/kdv_options.cfg'
+args = docopt(__doc__)
+try:
+    filename = Path(args['<config_file>'])
+except:
+    filename = Path('kdv_options.cfg')
+    
 config = ConfigParser()
 config.read(str(filename))
 
@@ -35,6 +44,8 @@ logger.info(config.items('parameters'))
 
 # Parameters
 write_suffix = str(config.get('parameters', 'suffix'))
+target = str(config.get('parameters', 'target'))
+
 Lx = config.getfloat('parameters', 'Lx')
 N = config.getint('parameters', 'Nx')
 
@@ -134,21 +145,30 @@ mode1['g'] = np.sin(2*np.pi*x / Lx)
 mode2 = dist.Field(name='mode2', bases=xbasis)
 mode2['g'] = np.sin(4*np.pi*x / Lx)
 
-opt.ic['u']['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+
+if (target == 'gauss'):
+    opt.ic['u']['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+elif (target == 'sinecos'):
+    opt.ic['u']['g'] = 2*np.sin(2*np.pi*x / Lx) + 2*np.sin(4*np.pi*x / Lx)
+else:
+    logger.error('unrecognized target paramter. terminating script')
+    raise
 
 np.random.seed(CW.rank)
 coeffs = 2*np.random.rand(modes_dim) - 1.0
 coeffs *= R / np.sqrt(np.sum(coeffs**2))
 for kx, coeff in enumerate(coeffs):
-    opt.ic['u']['g'] += coeff*np.cos((kx + 1)*2*np.pi*x / Lx)
+    if (target == 'gauss'):
+        opt.ic['u']['g'] += coeff*np.cos((kx + 1)*2*np.pi*x / Lx)
+    else:
+        opt.ic['u']['g'] += coeff*np.sin((kx + 1)*2*np.pi*x / Lx)
 
-# opt.ic['u']['g'] = 2.987*mode1['g'] + 7.3*mode2['g']
 
-# # opt.metrics0['A1'] = opt.ic['u']*mode1 / Lx * 2.0
-# # opt.metrics0['A2'] = opt.ic['u']*mode2 / Lx * 2.0
-# # opt.metrics0['Arem'] = opt.ic['u']*opt.ic['u'] - (opt.metrics0['A1']**2 + opt.metrics0['A2']**2) * Lx * 2.0
 
-# opt.track_metrics()
+opt.metrics0['A1'] = opt.ic['u']*mode1 / Lx * 2.0
+opt.metrics0['A2'] = opt.ic['u']*mode2 / Lx * 2.0
+opt.metrics0['Arem'] = opt.ic['u']*opt.ic['u'] - (opt.metrics0['A1']**2 + opt.metrics0['A2']**2) * Lx * 2.0
+opt.track_metrics()
 
 def euler_descent(fun, x0, args, **kwargs):
     # gamma = 0.001
