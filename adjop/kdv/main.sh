@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
-#PBS -l select=3:ncpus=40:mpiprocs=40:model=sky_ele
-#PBS -l walltime=4:00:00
+#PBS -l select=5:ncpus=40:mpiprocs=40:model=sky_ele
+#PBS -l walltime=8:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
@@ -22,7 +22,7 @@ cd ~/scratch/dedalus/mri/adjop/kdv
 FILE="$(readlink -f "$0")"
 DIR="$(dirname "$(readlink -f "$0")")/"
 CONFIG="kdv_options.cfg"
-PROCS=120
+PROCS=200
 
 mpiexec_mpt -np 1      python3 kdv_burgers.py
 mpiexec_mpt -np $PROCS python3 kdv_burgers_sphere.py

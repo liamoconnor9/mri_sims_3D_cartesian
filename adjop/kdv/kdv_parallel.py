@@ -158,7 +158,7 @@ def euler_descent(fun, x0, args, **kwargs):
     f = np.nan
     gamma = np.nan
     refinement_index = 0
-    base = 4
+    base = 2
     substeps_num = base**refinement_index
     substeps_left = 1
     for i in range(opt.loop_index, maxiter):
