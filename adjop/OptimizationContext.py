@@ -156,7 +156,6 @@ class OptimizationContext:
         
         self.ic['u'][layout] = self.reshape_soln(x)
         self.new_x[layout] = self.ic['u'][layout].copy()
-        self.evaluate_state0()
 
         self.before_fullforward_solve()
         
@@ -214,6 +213,7 @@ class OptimizationContext:
         self.new_grad[layout] = self.backward_solver.state[0][layout].copy()
 
         self.after_backward_solve()
+        self.evaluate_state0()
         self.loop_index += 1
 
         return self.backward_solver.state[0].allgather_data(layout=layout).flatten().copy() / 1e4

@@ -132,7 +132,8 @@ print(pca.singular_values_)
 
 for comp_ind in range(comps):
     pod0 = pca.components_[comp_ind].reshape(iters, N)
-    plt.pcolormesh(x.ravel(), np.array(range(iters)), pod0, cmap='RdBu_r', shading='gouraud', rasterized=True, clim=(-0.8, 0.8))
+    pc = plt.pcolormesh(x.ravel(), np.array(range(iters)), pod0, cmap='RdBu_r', shading='gouraud', rasterized=True, clim=(-0.8, 0.8))
+    plt.colorbar(pc)
     plt.xlim(0, Lx)
     plt.ylim(0, iters)
     plt.xlabel(r'$x$')

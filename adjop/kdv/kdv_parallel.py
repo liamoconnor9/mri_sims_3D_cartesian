@@ -52,6 +52,8 @@ opt_iters = config.getint('parameters', 'opt_iters')
 method = str(config.get('parameters', 'scipy_method'))
 euler_safety = config.getfloat('parameters', 'euler_safety')
 gamma_init = config.getfloat('parameters', 'gamma_init')
+R = config.getfloat('parameters', 'R')
+modes_dim = config.getint('parameters', 'modes_dim')
 
 periodic = config.getboolean('parameters', 'periodic')
 restart = config.getboolean('parameters', 'restart')
@@ -132,16 +134,10 @@ mode1['g'] = np.sin(2*np.pi*x / Lx)
 mode2 = dist.Field(name='mode2', bases=xbasis)
 mode2['g'] = np.sin(4*np.pi*x / Lx)
 
-Nics = 20
-if (CW.size != Nics):
-    raise
-
 opt.ic['u']['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
-R = 1.0
-modes_dim = 5
 np.random.seed(CW.rank)
-coeffs = 2*np.random.rand(5) - 1.0
+coeffs = 2*np.random.rand(modes_dim) - 1.0
 coeffs *= R / np.sqrt(np.sum(coeffs**2))
 for kx, coeff in enumerate(coeffs):
     opt.ic['u']['g'] += coeff*np.cos((kx + 1)*2*np.pi*x / Lx)
@@ -161,25 +157,43 @@ def euler_descent(fun, x0, args, **kwargs):
     jac = kwargs['jac']
     f = np.nan
     gamma = np.nan
+    refinement_index = 0
+    base = 4
+    substeps_num = base**refinement_index
+    substeps_left = 1
     for i in range(opt.loop_index, maxiter):
         old_f = f
         f, gradf = opt.loop(x0)
         old_gamma = gamma
-        if (load_ind + 2 <= opt.loop_index):
-            gamma = opt.compute_gamma(euler_safety)
-            step_p = (old_f - f) / old_gamma / (opt.old_grad_sqrd) * np.sum(gradf**2)
-            opt.metricsT_norms['step_p'] = step_p
-        else:
+        gamma = opt.compute_gamma(euler_safety)
+        if (euler_safety == 0.0):
             gamma = gamma_init
         opt.metricsT_norms['gamma'] = gamma
+        opt.metricsT_norms['ref_ind'] = refinement_index
+        opt.metricsT_norms['substeps_left'] = substeps_left
 
-        if i % 1 == 0:
+        if (load_ind + 2 <= opt.loop_index):
+            step_p = (old_f - f) / old_gamma / (opt.old_grad_sqrd**0.5) * substeps_num
+            opt.metricsT_norms['step_p'] = step_p
+            if (step_p < 0.9):
+                refinement_index += 1
+                substeps_num = base**refinement_index
+                substeps_left = base**refinement_index
+
+            
+        if i % 1 == 0 and substeps_left == 1:
             opt.descent_tracker['objectiveT'].append(f)
             opt.descent_tracker['x'].append(x0.copy())
             with open(tracker_name, 'wb') as file:
                 pickle.dump(opt.descent_tracker, file)
+            logger.info('wrote to tracker')
 
-        # x0 -= 1e4 * gamma * gradf / np.sum(gradf**2)
+        x0 -= 1e4 * gamma * gradf / (opt.new_grad_sqrd**0.5) / substeps_num
+        if (substeps_num > 1):
+            if (substeps_left > 1):
+                substeps_left -= 1
+            else:
+                substeps_left = substeps_num
     logger.info('success')
     logger.info('maxiter = {}'.format(maxiter))
     return optimize.OptimizeResult(x=x0, success=True, message='beep boop')

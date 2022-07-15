@@ -13,10 +13,11 @@ import dedalus.public as d3
 import logging
 logger = logging.getLogger(__name__)
 import os
-path = os.path.dirname(os.path.abspath(__file__))
 from docopt import docopt
 from pathlib import Path
 from configparser import ConfigParser
+from mpi4py import MPI
+CW = MPI.COMM_WORLD
 
 filename = Path('kdv_options.cfg')
 config = ConfigParser()
@@ -38,25 +39,23 @@ ic_scale = config.getfloat('parameters', 'ic_scale')
 stop_sim_time = config.getfloat('parameters', 'T')
 timestep = config.getfloat('parameters', 'dt')
 
-periodic = config.getboolean('parameters', 'periodic')
-show = config.getboolean('parameters', 'show')
-show_iter_cadence = config.getint('parameters', 'show_iter_cadence')
-
-if (not os.path.isdir(path + '/' + write_suffix)):
-    logger.info('Creating run directory {}'.format(path + '/' + write_suffix))
-    os.makedirs(path + '/' + write_suffix)
-
+R = config.getfloat('parameters', 'R')
+modes_dim = config.getint('parameters', 'modes_dim')
 
 # Simulation Parameters
 dealias = 3/2
 dtype = np.float64
+
+periodic = config.getboolean('parameters', 'periodic')
+show = config.getboolean('parameters', 'show')
+show_iter_cadence = config.getint('parameters', 'show_iter_cadence')
 
 timestepper = d3.RK443
 epsilon_safety = 1
 
 # Bases
 xcoord = d3.Coordinate('x')
-dist = d3.Distributor(xcoord, dtype=dtype)
+dist = d3.Distributor(xcoord, dtype=dtype, comm=MPI.COMM_SELF)
 
 if (periodic):
     xbasis = d3.RealFourier(xcoord, size=Nx, bounds=(0, Lx), dealias=dealias)
@@ -95,15 +94,12 @@ else:
 # Initial conditions
 x = dist.local_grid(xbasis)
 u['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-# u['g'] = 2*np.sin(2*np.pi*x / Lx) + 2*np.sin(4*np.pi*x / Lx)
 
-# R = 1.0
-# modes_dim = 5
-# np.random.seed(0)
-# coeffs = 2*np.random.rand(5) - 1.0
-# coeffs *= R / np.sqrt(np.sum(coeffs**2))
-# for kx, coeff in enumerate(coeffs):
-#     u['g'] += coeff*np.cos((kx + 1)*2*np.pi*x / Lx)
+np.random.seed(CW.rank)
+coeffs = 2*np.random.rand(modes_dim) - 1.0
+coeffs *= R / np.sqrt(np.sum(coeffs**2))
+for kx, coeff in enumerate(coeffs):
+    u['g'] += coeff*np.cos((kx + 1)*2*np.pi*x / Lx)
 
 # Solver
 solver = problem.build_solver(timestepper)
@@ -143,6 +139,7 @@ for iter in range(int(solver.stop_sim_time // timestep) + 1):
 logger.info('solve complete, sim time = {}'.format(solver.sim_time))
 u.change_scales(1)
 u_T = u['g'].copy()
+path = os.path.dirname(os.path.abspath(__file__))
 
 udata = np.array(udata)
 times = np.array(times)
@@ -152,7 +149,11 @@ plt.xlim(0, Lx)
 plt.ylim(0, times[-1])
 plt.xlabel(r'$x$')
 plt.ylabel(r'$t$')
+plt.title('Forward KdV: Initial Guess (Loop Index 0)')
+plt.savefig(path + '/' + write_suffix + '/loopind{}.png'.format(CW.rank))
+logger.info('figure saved to ' + path + '/' + write_suffix + '/loopind{}.png'.format(CW.rank))
+CW.Barrier()
 
-plt.title('Forward KdV: Target Simulation')
-plt.savefig(path + '/' + write_suffix + '/targetsim.png')
-logger.info('figure saved to ' + path + '/' + write_suffix + '/targetsim.png')
+if(np.isnan(udata).any()):
+    print('Initial guess simulation failed! rank = {}'.format(CW.rank))
+    raise
