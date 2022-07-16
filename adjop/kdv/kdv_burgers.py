@@ -158,7 +158,7 @@ for iter in range(int(solver.stop_sim_time // timestep) + 1):
 logger.info('solve complete, sim time = {}'.format(solver.sim_time))
 u.change_scales(1)
 u_T = u['g'].copy()
-np.savetxt(path + '/kdv_U.txt', u_T)
+np.savetxt(path + '/' + write_suffix + '/kdv_U.txt', u_T)
 logger.info('saved final state')
 
 

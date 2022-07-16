@@ -110,9 +110,9 @@ coeffs = 2*np.random.rand(modes_dim) - 1.0
 coeffs *= R / np.sqrt(np.sum(coeffs**2))
 for kx, coeff in enumerate(coeffs):
     if (target == 'gauss'):
-        opt.ic['u']['g'] += coeff*np.cos((kx + 1)*2*np.pi*x / Lx)
+        u['g'] += coeff*np.cos((kx + 1)*2*np.pi*x / Lx)
     else:
-        opt.ic['u']['g'] += coeff*np.sin((kx + 1)*2*np.pi*x / Lx)
+        u['g'] += coeff*np.sin((kx + 1)*2*np.pi*x / Lx)
         
 # Solver
 solver = problem.build_solver(timestepper)

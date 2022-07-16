@@ -63,6 +63,8 @@ opt_iters = config.getint('parameters', 'opt_iters')
 method = str(config.get('parameters', 'scipy_method'))
 euler_safety = config.getfloat('parameters', 'euler_safety')
 gamma_init = config.getfloat('parameters', 'gamma_init')
+ri_init = config.getint('parameters', 'ri_init')
+
 R = config.getfloat('parameters', 'R')
 modes_dim = config.getint('parameters', 'modes_dim')
 
@@ -130,7 +132,7 @@ else:
     opt.loop_index = len(opt.descent_tracker['x'])
     load_ind = opt.loop_index
 
-U_data = np.loadtxt(path + '/kdv_U.txt')
+U_data = np.loadtxt(path + '/' + write_suffix + '/kdv_U.txt')
 u = next(field for field in forward_solver.state if field.name == 'u')
 U = dist.Field(name='U', bases=xbasis)
 U['g'] = U_data
@@ -140,15 +142,19 @@ objectiveT = 0.5*(U - u)**2
 opt.set_objectiveT(objectiveT)
 
 mode1 = dist.Field(name='mode1', bases=xbasis)
-mode1['g'] = np.sin(2*np.pi*x / Lx)
-
 mode2 = dist.Field(name='mode2', bases=xbasis)
-mode2['g'] = np.sin(4*np.pi*x / Lx)
+mode3 = dist.Field(name='mode3', bases=xbasis)
 
 
 if (target == 'gauss'):
+    mode1['g'] = np.cos(2*np.pi*x / Lx)
+    mode2['g'] = np.cos(4*np.pi*x / Lx)
+    mode3['g'] = np.cos(6*np.pi*x / Lx)
     opt.ic['u']['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 elif (target == 'sinecos'):
+    mode1['g'] = np.sin(2*np.pi*x / Lx)
+    mode2['g'] = np.sin(4*np.pi*x / Lx)
+    mode3['g'] = np.sin(6*np.pi*x / Lx)
     opt.ic['u']['g'] = 2*np.sin(2*np.pi*x / Lx) + 2*np.sin(4*np.pi*x / Lx)
 else:
     logger.error('unrecognized target paramter. terminating script')
@@ -167,6 +173,7 @@ for kx, coeff in enumerate(coeffs):
 
 opt.metrics0['A1'] = opt.ic['u']*mode1 / Lx * 2.0
 opt.metrics0['A2'] = opt.ic['u']*mode2 / Lx * 2.0
+opt.metrics0['A3'] = opt.ic['u']*mode3 / Lx * 2.0
 opt.metrics0['Arem'] = opt.ic['u']*opt.ic['u'] - (opt.metrics0['A1']**2 + opt.metrics0['A2']**2) * Lx * 2.0
 opt.track_metrics()
 
@@ -177,7 +184,7 @@ def euler_descent(fun, x0, args, **kwargs):
     jac = kwargs['jac']
     f = np.nan
     gamma = np.nan
-    refinement_index = 0
+    refinement_index = 2
     base = 2
     substeps_num = base**refinement_index
     substeps_left = 1
