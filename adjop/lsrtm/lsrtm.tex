@@ -111,39 +111,39 @@ State of the art simulations performed by \cite{Zhu_2018} have reached $\Ra \sim
 
 \clearpage
 \section{Generalized Problem Setup}
-We define a generalized solution state vector $\vec{U}$ and associated initial value problem
+We define a generalized solution state vector $\bar{X}$ and associated initial value problem
 \begin{align}
-  \mathcal{F}[\vec{U}] &\equiv \partial_t \vec{U} + L[\vec{U}] + N[\vec{U}, \vec{U}] = 0. \label{genpde}
-  \intertext{Given a target end state $\vec{U}(\vec{x}, T)$, our aim is to recover the associated initial condition $\vec{U}(x, 0)$.  
+  \mathcal{F}[\bar{X}] &\equiv \partial_t \bar{X} + L . \bar{X} + N[\bar{X}, \bar{X}] = 0. \label{genpde}
+  \intertext{Given a target end state $\bar{X}(\vec{x}, T)$, our aim is to recover the associated initial condition $\bar{X}(\vec{x}, 0)$.  
   This is realized by performing gradient-based minimization of the functional}
-  H[\vec{u}, \vec{U}] &= \frac{1}{2}\davg{|\vec{u}(\vec{x}, T) - \vec{U}(\vec{x}, T)|^2} = \frac{1}{2}\davg{\vec{u}'^2(\vec{x}, T)} \label{Hdef}, 
+  H[X, \bar{X}] &= \frac{1}{2}\davg{|X(\vec{x}, T) - \bar{X}(\vec{x}, T)|^2} = \frac{1}{2}\davg{X'^2(\vec{x}, T)} \label{Hdef}, 
 \end{align}
-where the operator $\davg{\cdot}$ denotes the domain-integrated average and the quantity $\vec{u}'(\vec{x}, T)$ refers to $\vec{u}(\vec{x}, T)$'s the deviation from the target solution. For the remainder of this paper, capital symbols (such as $\vec{U}(\vec{x}, T)$) will be used to denote the target solution, while their corresponding lowercase symbols (such as $\vec{u}(\vec{x}, T)$) play the role of optimization parameters.
+with respect to $X(\vec{x}, 0)$, where $X(\vec{x}, t)$ obeys (\ref{genpde}). The operator $\davg{\cdot}$ denotes the domain-integrated average and the quantity $X'(\vec{x}, t) \equiv X(\vec{x}, t) - \bar{X}(\vec{x}, t)$. For the remainder of this paper, symbols with overbars (such as $\bar{X}(\vec{x}, T)$) will be used to denote the target solution, while their corresponding unannotated symbols (such as $X(\vec{x}, T)$) play the role of optimization parameters.
 
 The Lagrangian associated with our initial value problem is given by
 \begin{align*}
-  \mathcal{L} &= \int_0^T \davg{\vec{\mu} \cdot \mathcal{F}[\vec{u}]} dt + H[\vec{u}, \vec{U}].
-  \intertext{Where $\vec{\mu}(\vec{x}, T)$ is the Lagrangian Multiplier corresponding to $\vec{u}(\vec{x}, T)$. Equating} \frac{\delta\L}{\delta \vec{u}} &= 0 \quad \text{and} \quad \frac{\delta\L}{\delta \vec{\mu}} = 0 
+  \mathcal{L} &= \int_0^T \davg{\chi \cdot \mathcal{F}[X]} dt + H[X, \bar{X}].
+  \intertext{Where $\chi(\vec{x}, T)$ is the Lagrangian Multiplier corresponding to $X(\vec{x}, T)$. Equating} \frac{\delta\L}{\delta X} &= 0 \quad \text{and} \quad \frac{\delta\L}{\delta \chi} = 0 
   \intertext{yields the original and adjoint systems} 
-  \mathcal{F}[\vec{u}] &= 0 \quad \text{and} \quad \mathcal{F}^{\dagger}[\vec{\mu}, u] = 0 \intertext{respectively. At some particular guess $\vec{u}^n(\vec{x}, 0)$, we compute the functional derivative}
-  \frac{\delta\L}{\delta \vec{u}^n(\vec{x}, 0)} &= -\vec{\mu}^n(\vec{x}, 0)
-  \intertext{to determine the direction of steepest descent of our objective functional $H[\vec{u}, \vec{U}]$ with respect to the optimization parameter $\vec{u}(\vec{x}, 0)$. Naive gradient-descent can then be performed by computing an updated guess}
-  \vec{u}^{n+1}(\vec{x}, 0) &= \vec{u}^n(\vec{x}, 0) + \varepsilon \vec{\mu}^n(\vec{x}, 0)
+  \mathcal{F}[X] &= 0 \quad \text{and} \quad \mathcal{F}^{\dagger}[\chi, X] = 0 \intertext{respectively. At some particular guess $X^n(\vec{x}, 0)$, we compute the functional derivative}
+  \frac{\delta\L}{\delta X^n(\vec{x}, 0)} &= -\chi^n(\vec{x}, 0)
+  \intertext{to determine the direction of steepest descent. Naive gradient-descent can then be performed by computing an updated guess}
+  X^{n+1}(\vec{x}, 0) &= X^n(\vec{x}, 0) + \varepsilon \chi^n(\vec{x}, 0)
   \intertext{where $\varepsilon$ is the step size.}
 \end{align*}
 In addition to this algorithm, more advanced gradient-based optimization techniques such as conjugate gradient and BFGS have been employed in conjunction with adjoint-looping to improve performance and accelerate convergence.
-In the context of our time-inversion optimization problem, such techniques traverse the space of possible initial conditions $\vec{u}(\vec{x}, 0)$ by relying on local information pertaining to the objective functional $H$ and its functional derivative $\frac{\delta H}{\delta \vec{u}(\vec{x}, 0)}$. 
+In the context of our time-inversion optimization problem, such techniques traverse the space of possible initial conditions $X(\vec{x}, 0)$ by relying on local information pertaining to the objective functional $H$ and its functional derivative $\frac{\delta H}{\delta X(\vec{x}, 0)}$. 
 For this reason, the focus of our investigation is largely centered around the objective functional's dependence on the initial condition.
 More specifically, we study the levelsets of the objective functional because these surfaces characterize the directions of steepest descent at any arbitrary point in the space of initial conditions.
-In doing so, we highlight the challenges and deficits associated with using the least squares functional to recover the initial condition $\vec{U}(\vec{x}, 0)$ belonging to a target end state $\vec{U}(\vec{x}, T)$.
+In doing so, we highlight the challenges and deficits associated with using the least squares functional (\ref{Hdef}) to recover the initial condition $\bar{X}(\vec{x}, 0)$ belonging to a target end state $\bar{X}(\vec{x}, T)$.
 
 
 % Here I'll present a generalized PDE which we want to invert along with a bunch of notation. We'll define our target simulation, least-squares objective, and cite examples where the adjoint looping method has been successfully applied to inverse problems. We'll conclude this discussion by stressing the important of the objective function's shape in ``initial condition space'', because ultimately this is what curtails our gradient-based inversion technique.
 
-\section{Preliminary Analytic Analysis}
+\section{Preliminary Analysis}
 \subsection{Linearity and Reversiblity}
-In this section, we study linear initial value problems which obey (\ref{genpde}) along with the property $\mathcal{F}[u'] = \mathcal{F}[u] - \mathcal{F}[U]$. 
-In these special cases, the objective functional (\ref{Hdef}) depends only on the deviation's initial condition $u'(x, 0)$ about any arbitrary target $U$.
+In this section, we study linear initial value problems which do not include the nonlinear term in (\ref{genpde}), i.e. $N[X, X] = N[\bar{X}, \bar{X}] = 0$. Therefore $\mathcal{F}[X'] = \mathcal{F}[X] - \mathcal{F}[\bar{X}]$. 
+In these special cases, the objective functional (\ref{Hdef}) depends only on the deviation's initial condition $X'(x, 0)$ about any arbitrary target $\bar{X}(x, 0)$.
 For convenience when dealing with linear problems, we take $U(0) = U(T) = 0$ for all $x$.
 In the following section, we demonstrate that the objective functionals of nonlinear systems with nonzero targets are directly influenced by one's choice of $U$.
 
