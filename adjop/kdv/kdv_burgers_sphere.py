@@ -1,10 +1,6 @@
 """
-Dedalus script simulating the 1D Korteweg-de Vries / Burgers equation.
-This script demonstrates solving a 1D initial value problem and produces
-a space-time plot of the solution. It should take just a few seconds to
-run (serial only).
-We use a Fourier basis to solve the IVP:
-    dt(u) + u*dx(u) = a*dx(dx(u)) + b*dx(dx(dx(u)))
+Usage:
+    kdv_burgers_sphere.py <config_file>
 """
 
 import numpy as np
@@ -19,7 +15,12 @@ from configparser import ConfigParser
 from mpi4py import MPI
 CW = MPI.COMM_WORLD
 
-filename = Path('kdv_options.cfg')
+args = docopt(__doc__)
+try:
+    filename = Path(args['<config_file>'])
+except:
+    filename = Path('kdv_options.cfg')
+
 config = ConfigParser()
 config.read(str(filename))
 
@@ -28,6 +29,8 @@ logger.info(config.items('parameters'))
 
 # Parameters
 write_suffix = str(config.get('parameters', 'suffix'))
+target = str(config.get('parameters', 'target'))
+
 Lx = config.getfloat('parameters', 'Lx')
 Nx = config.getint('parameters', 'Nx')
 
@@ -93,14 +96,24 @@ else:
 
 # Initial conditions
 x = dist.local_grid(xbasis)
-u['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+
+if (target == 'gauss'):
+    u['g'] = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+elif (target == 'sinecos'):
+    u['g'] = 2*np.sin(2*np.pi*x / Lx) + 2*np.sin(4*np.pi*x / Lx)
+else:
+    logger.error('unrecognized target paramter. terminating script')
+    raise
 
 np.random.seed(CW.rank)
 coeffs = 2*np.random.rand(modes_dim) - 1.0
 coeffs *= R / np.sqrt(np.sum(coeffs**2))
 for kx, coeff in enumerate(coeffs):
-    u['g'] += coeff*np.cos((kx + 1)*2*np.pi*x / Lx)
-
+    if (target == 'gauss'):
+        opt.ic['u']['g'] += coeff*np.cos((kx + 1)*2*np.pi*x / Lx)
+    else:
+        opt.ic['u']['g'] += coeff*np.sin((kx + 1)*2*np.pi*x / Lx)
+        
 # Solver
 solver = problem.build_solver(timestepper)
 solver.stop_sim_time = stop_sim_time

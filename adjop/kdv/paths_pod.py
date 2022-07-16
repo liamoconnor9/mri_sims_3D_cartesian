@@ -1,3 +1,8 @@
+"""
+Usage:
+    paths_pod.py <config_file>
+"""
+
 from distutils.command.bdist import show_formats
 import os
 from ast import For
@@ -28,7 +33,12 @@ from KdvOptimization import KdvOptimization
 from sklearn.decomposition import PCA
 # import modred as mr
 
-filename = path + '/kdv_options.cfg'
+args = docopt(__doc__)
+try:
+    filename = Path(args['<config_file>'])
+except:
+    filename = Path('kdv_options.cfg')
+    
 config = ConfigParser()
 config.read(str(filename))
 
@@ -86,12 +96,16 @@ forward_solver = forward_problem.build_solver(d3.RK443)
 backward_solver = backward_problem.build_solver(d3.RK443)
 
 write_suffix = str(config.get('parameters', 'suffix'))
+import glob
+procs = len(glob.glob1(path + '/' + write_suffix, "*.pick"))
 
-U0 = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-guess = 0.0
+target = str(config.get('parameters', 'target'))
+if (target == 'gauss'):
+    U0 = ic_scale*np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+else:
+    logger.info('using target {}'.format(target))
+    U0 = x*0.0
 
-
-path = os.path.dirname(os.path.abspath(__file__))
 U_data = np.loadtxt(path + '/kdv_U.txt')
 u = next(field for field in forward_solver.state if field.name == 'u')
 
@@ -103,14 +117,13 @@ mode2['g'] = np.sin(4*np.pi*x / Lx)
 
 # U0 = mode1['g'].copy() + mode2['g'].copy()
 
-Nics = 20
 from mpl_toolkits.mplot3d import Axes3D
 xs, ys, zs = 1, 1, 0.1
 # ax.set_box_aspect((np.ptp(xs), np.ptp(ys), np.ptp(zs)))  # aspect ratio is 1:1:1 in data space
 
 data = []
 iters = 0
-for i in range(0, 20, 1):
+for i in range(0, procs, 1):
     tracker_name = path + '/' + write_suffix + '/tracker_rank' + str(i) + '.pick'
     with open(tracker_name, 'rb') as file:
         tracker = pickle.load(file)
@@ -119,7 +132,7 @@ for i in range(0, 20, 1):
         x0[ind] -= U0
     iters = len(x0)
     objs = tracker['objectiveT']
-    logger.info('appending {}/{}'.format(i, Nics))
+    logger.info('appending {}/{}'.format(i, procs))
     data.append(np.array(x0).flatten())
 
 
@@ -135,9 +148,10 @@ for comp_ind in range(comps):
     pc = plt.pcolormesh(x.ravel(), np.array(range(iters)), pod0, cmap='RdBu_r', shading='gouraud', rasterized=True, clim=(-0.8, 0.8))
     plt.colorbar(pc)
     plt.xlim(0, Lx)
-    plt.ylim(0, iters)
+    plt.ylim(0, iters - 1)
     plt.xlabel(r'$x$')
     plt.ylabel('Iteration')
     plt.title('Descent Paths POD: SV = {:.2f}'.format(pca.singular_values_[comp_ind]))
     plt.savefig(path + '/' + write_suffix + '/pod_comp{}.png'.format(comp_ind))
     logger.info('figure saved to ' + path + '/' + write_suffix + '/pod_comp{}.png'.format(comp_ind))
+    plt.close()
