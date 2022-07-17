@@ -1,3 +1,7 @@
+"""
+Usage:
+    plot_paths.py <config_file>
+"""
 from distutils.command.bdist import show_formats
 import os
 from ast import For
@@ -26,7 +30,12 @@ from scipy import optimize
 from datetime import datetime
 from KdvOptimization import KdvOptimization
 
-filename = path + '/kdv_options.cfg'
+args = docopt(__doc__)
+try:
+    filename = Path(args['<config_file>'])
+except:
+    filename = Path('kdv_options.cfg')
+    
 config = ConfigParser()
 config.read(str(filename))
 
@@ -99,7 +108,9 @@ mode1['g'] = np.sin(2*np.pi*x / Lx)
 mode2 = dist.Field(name='mode2', bases=xbasis)
 mode2['g'] = np.sin(4*np.pi*x / Lx)
 
-Nics = 20
+import glob
+Nics = len(glob.glob1(path + '/' + write_suffix, "*.pick"))
+print('number of procs = {}'.format(Nics))
 
 for i in range(Nics):
     tracker_name = path + '/' + write_suffix + '/tracker_rank' + str(i) + '.pick'
@@ -122,5 +133,5 @@ plt.colorbar(pc)
 plt.xlabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(1))
 plt.ylabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(2))
 plt.title(r'$\langle (u - U)^2 \rangle$; a = {}, b = {}, T = {}'.format(a, b, T))
-plt.savefig(path + '/paths_2d_long.png')
-
+plt.savefig(path + '/' + write_suffix + '/paths_2d_long.png')
+logger.info('saved fig to directory: {}'.format(path + '/' + write_suffix + '/paths_2d_long.png'))

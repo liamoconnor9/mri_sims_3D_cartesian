@@ -28,3 +28,5 @@ mpiexec_mpt -np 1      python3 kdv_burgers.py         $CONFIG
 mpiexec_mpt -np $PROCS python3 kdv_burgers_sphere.py  $CONFIG
 mpiexec_mpt -np $PROCS python3 kdv_parallel.py        $CONFIG
 mpiexec_mpt -np 1      python3 paths_pod.py           $CONFIG
+mpiexec_mpt -np   1      python3 plot_paths.py          $CONFIG
+mpiexec_mpt -np   1      python3 plot_paths3d.py        $CONFIG

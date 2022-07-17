@@ -207,7 +207,7 @@ def euler_descent(fun, x0, args, **kwargs):
                 lastrefinement_index = opt.loop_index
                 refinement_index += 1
                 substeps_num = base**refinement_index
-                substeps_left = base**refinement_index
+                substeps_left = base**refinement_index - base*substeps_left
 
             
         if i % 1 == 0 and substeps_left == 1:

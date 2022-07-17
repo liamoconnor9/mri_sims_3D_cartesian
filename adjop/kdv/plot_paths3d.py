@@ -1,3 +1,7 @@
+"""
+Usage:
+    plot_paths3d.py <config_file>
+"""
 from distutils.command.bdist import show_formats
 import os
 from ast import For
@@ -132,5 +136,5 @@ plt.colorbar(pc)
 plt.xlabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(1))
 plt.ylabel(r'$(2/L_x) \; \langle u\sin${}$x \rangle$'.format(2))
 plt.title(r'$\langle (u - U)^2 \rangle$; a = {}, b = {}, T = {}'.format(a, b, T))
-plt.savefig(path + '/paths_3d_long.png')
-
+plt.savefig(path + '/' + write_suffix + '/paths_3d_long.png')
+logger.info('saved fig to directory: {}'.format(path + '/' + write_suffix + '/paths_3d_long.png'))
