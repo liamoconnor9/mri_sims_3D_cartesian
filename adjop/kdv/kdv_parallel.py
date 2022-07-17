@@ -184,10 +184,11 @@ def euler_descent(fun, x0, args, **kwargs):
     jac = kwargs['jac']
     f = np.nan
     gamma = np.nan
-    refinement_index = 2
+    refinement_index = 0
     base = 2
     substeps_num = base**refinement_index
     substeps_left = 1
+    lastrefinement_index = 0
     for i in range(opt.loop_index, maxiter):
         old_f = f
         f, gradf = opt.loop(x0)
@@ -202,7 +203,8 @@ def euler_descent(fun, x0, args, **kwargs):
         if (load_ind + 2 <= opt.loop_index):
             step_p = (old_f - f) / old_gamma / (opt.old_grad_sqrd**0.5) * substeps_num
             opt.metricsT_norms['step_p'] = step_p
-            if (step_p < 0.9):
+            if (step_p < 0.999 and opt.loop_index - lastrefinement_index > 10):
+                lastrefinement_index = opt.loop_index
                 refinement_index += 1
                 substeps_num = base**refinement_index
                 substeps_left = base**refinement_index

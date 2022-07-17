@@ -1,6 +1,6 @@
 #PBS -S /bin/bash
 #PBS -l select=5:ncpus=40:mpiprocs=40:model=sky_ele
-#PBS -l walltime=20:00:00
+#PBS -l walltime=24:00:00
 #PBS -j oe
 #PBS -W group_list=s2276
 file=${0##*/}
