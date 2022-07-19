@@ -1,0 +1,78 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx,amsmath,amsfonts,amssymb,mathtools}
+\usepackage{enumitem}
+\usepackage{empheq}
+\usepackage{xcolor}
+
+\newcommand\Ra{\mathrm{Ra}}
+\newcommand\Pran{\mathrm{Pr}}
+\newcommand\Rac{\mathrm{Ra}_{\mathrm{c}}}
+\newcommand\Ek{\mathrm{Ek}}
+\newcommand\Ro{\mathrm{Ro}}
+\newcommand\Nu{\mathrm{Nu}}
+\newcommand\Sc{\mathrm{Sc}}
+
+\newcommand\eps{\varepsilon}
+\renewcommand\L {\mathcal{L}}
+
+\newcommand{\n}{\\ \nonumber \\ }
+\newcommand{\nn}{\nonumber}
+\newcommand{\nnn}{\\ \nonumber \\ \nonumber}
+
+\newcommand\ie{\textit{i.e.},~}
+\newcommand\eg{\textit{e.g.},~}
+\newcommand{\omicron}{o}
+\newcommand*\widefbox[1]{\fbox{\hspace{2em}#1\hspace{2em}}}
+
+\newcommand{\pd}[1]{\partial_{#1}}
+\newcommand{\vhat}[1]{\hat{\boldsymbol{#1}}}
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\M}[1]{\mathbf{#1}}
+\newcommand{\grad}{\vec{\nabla}}
+\newcommand{\cross}{\vec{\times}}
+\newcommand{\curl}{\grad \vec{\times}}
+\newcommand{\divergence}{\grad \cdot}
+\newcommand{\laplacian}{\nabla^2}
+\newcommand{\veclaplacian}{\grad^2}
+
+\newcommand{\sump}[2]{\sideset{}{'}\sum_{{#1}=0}^{#2}}
+
+\newcommand{\eq}[1]{(\ref{#1})}
+\newcommand{\eqs}[2]{(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\eqss}[2]{(\ref{#1})--(\ref{#2})}
+
+\newcommand{\Eq}[1]{Eq.~(\ref{#1})}
+\newcommand{\Eqs}[2]{Eqs.~(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\Eqss}[2]{Eqs.~(\ref{#1})--(\ref{#2})}
+
+\newcommand{\fig}[1]{Fig.~(\ref{#1})}
+\newcommand{\figs}[2]{Figs.~(\ref{#1})~\&~(\ref{#2})}
+\newcommand{\T}{{\cal T}}
+\newcommand{\Z}{{\cal Z}}
+
+\setlength{\parindent}{0pt}
+
+\begin{document}
+\subsection*{Spatial Derivatives: Gradient, Divergence, Laplacian}
+\vspace{1cm}
+\begin{enumerate}
+    \item Consider the scalar function 
+    \begin{align*}
+        f(x, y) &= \sin\big( \frac{x}{\sqrt{y}} \big) + xy^2 + x.
+        \intertext{Notice that $f$ takes a point in 2D space and returns a single number. In math language, this can be written as}
+        f\,&:\, \mathbb{R}^2 \to \mathbb{R}.
+    \end{align*}
+    \newline
+    \begin{enumerate}
+        \item Compute $f$'s gradient $\grad f$. Remember that the gradient operator acts on a scalar function, and returns a vector field.\newline\newline
+
+        \item Compute $f$'s laplacian $\grad^2 f$. Remember that the laplacian operator acts on a scalar function, and returns a scalar field.\newline\newline
+
+        \item Compute the divergence of $f$'s gradient of $\grad \cdot \grad f$.\newline\newline
+    \end{enumerate}
+
+\end{enumerate}
+
+\end{document}
+ 

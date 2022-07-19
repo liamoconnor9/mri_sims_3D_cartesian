@@ -109,6 +109,38 @@ The resulting buoyancy-driven flows regulate heat transfer and generate large-sc
 Turbulent convection, which is associated with large Rayleigh numbers $\Ra$, is difficult to simulate. 
 State of the art simulations performed by \cite{Zhu_2018} have reached $\Ra \sim 10^{14}$ but estimates for the sun's convective zone and earth's interior are $\Ra \sim 10^{16}-10^{20}$ and $\Ra \sim 10^{20}-10^{30}$ respectively \cite{Ossendrijver,Gubbins_2001}. 
 
+% \vspace{1cm}
+% \textbf{Grad and Div}
+
+% suppose $f(x, y, z):\mathbb{R}^3 \to \mathbb{R}$
+
+% suppose $\vec{F}(x, y, z):\mathbb{R}^3 \to \mathbb{R}^3$
+% \begin{align*}
+%   \textbf{Gradient:}&\quad \grad f(x,y,z) \quad \longrightarrow \quad vector \\
+%   \textbf{Divergence:}&\quad \grad \cdot \vec{F}(x,y,z) \quad \longrightarrow \quad scalar
+% \end{align*}
+% \vspace{1cm}
+
+% \textbf{Navier-Stokes Equation}
+
+% \begin{align*}
+%   \intertext{Newton's 2nd law:}
+%   \vec{F} &= m\vec{a} \\
+%   &= \frac{d}{dt} [m\vec{u}]
+% \end{align*}
+
+% \begin{align*}
+%   \intertext{Consider a velocity $\vec{u}(x, y, t)$}
+%   \textbf{Conservation of momentum:} &\quad \partial_t \vec{u} = - \vec{u} \cdot \grad\vec{u} - \grad p + \nu \grad^2 \vec{u} + \vec{F} \tag{1}\\
+%   \text{Inertial Term:} &\quad \vec{u}\cdot\grad\vec{u} \\
+%   \text{Pressure Gradient Term:} &\quad \grad p \\
+%   \text{Diffusive (Friction) Term:} &\quad \nu \laplacian \vec{u} \\
+%   \text{Body Force:} &\quad \vec{F} \\
+%   &\; \\
+%   \textbf{Conservation of mass:} &\quad \grad \cdot \vec{u} = 0 \tag{2}\\
+%   p(x, y, t) &= f(t) \; [\sum \sum (a_n\sin(nx)b_m\sin(my))]
+% \end{align*}
+
 \clearpage
 \section{Generalized Problem Setup}
 We define a generalized solution state vector $\bar{X}$ and associated initial value problem
