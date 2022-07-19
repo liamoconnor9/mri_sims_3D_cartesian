@@ -230,39 +230,52 @@ if (not write_objectives or both):
         # print(objectives)
         pc = plt.pcolormesh(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, cmap='GnBu')
         cb = plt.colorbar(pc, fraction=0.046, pad=0.15)
+        plt.clim(0.0, 8e-5)
         plt.scatter([target_coeffs[0]], [target_coeffs[1]], s=60, marker='*', color='k', label = 'target')
-        cont = plt.contour(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, levels=[0.00001, 0.00002, 0.00004], colors=['k', 'k'])
-        plt.clabel(cont, cont.levels, inline=True, fmt=fmt, fontsize=7)
+        cont = plt.contour(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, levels=[0.00001, 0.00002, 0.00004, 0.00008], colors=['k', 'k'])
+        # plt.clabel(cont, cont.levels, inline=True, fmt=fmt, fontsize=7)
         epsilon = 1.0
         if plot_paths:
-            grad_ar = np.gradient(objectives)
-            from scipy import interpolate
-            k1k1, k2k2 = np.meshgrid(k1_coeffs, k2_coeffs)
-            stride = 10
-            gradinterp1 = interpolate.interp2d(k1k1[::stride, ::stride], k2k2[::stride, ::stride], grad_ar[0][::stride, ::stride].T, kind='linear')
-            gradinterp2 = interpolate.interp2d(k1k1[::stride, ::stride], k2k2[::stride, ::stride], grad_ar[1][::stride, ::stride].T, kind='linear')
-            
             sdpath = [(-0.01, -0.01)]
+
+            NN = 10000
+            linspace = np.array(range(NN))
+            tlin = np.exp(-linspace)
+            # tlin = np.linspace(0, 1, 1000000)
+            a1 = np.exp(-2*T*a*(2*np.pi * k1 / Lx)**2)
+            a2 = np.exp(-2*T*a*(2*np.pi * k2 / Lx)**2)
+            x0, y0 = sdpath[0][0], sdpath[0][1]
+            xlin = x0*tlin**(a1)
+            ylin = y0*tlin**(a2)
+            plt.plot(xlin, ylin, color='k', linestyle='--')
+
+            # grad_ar = np.gradient(objectives)
+            # from scipy import interpolate
+            # k1k1, k2k2 = np.meshgrid(k1_coeffs, k2_coeffs)
+            # stride = 10
+            # gradinterp1 = interpolate.interp2d(k1k1[::stride, ::stride], k2k2[::stride, ::stride], grad_ar[0][::stride, ::stride].T, kind='linear')
+            # gradinterp2 = interpolate.interp2d(k1k1[::stride, ::stride], k2k2[::stride, ::stride], grad_ar[1][::stride, ::stride].T, kind='linear')
+            
             plt.scatter([sdpath[-1][0]], [sdpath[-1][1]], s=60, marker='o', color='k', label = 'guess')
 
-            eps = 0.000005
-            stp = 0
-            # for stp in range(100):
-            while (stp < 10000 and sdpath[-1][0]**2 + sdpath[-1][0]**2 > 1e-8):
-                lastpt = sdpath[-1]
-                grad1 = gradinterp1(lastpt[0], lastpt[1])
-                grad2 = gradinterp2(lastpt[0], lastpt[1])
-                grad_mag = (grad1**2 + grad2**2)**0.5
-                grad1 /= grad_mag
-                grad2 /= grad_mag
-                print('step {}, pt {}, grad1 {}, grad2 {}'.format(stp, lastpt, grad1, grad2))
-                sdpath.append(((lastpt[0] - eps*grad1)[0], (lastpt[1] - eps*grad2)[0]))
-                stp += 1
+            # eps = 0.000005
+            # stp = 0
+            # # for stp in range(100):
+            # while (stp < 10000 and sdpath[-1][0]**2 + sdpath[-1][0]**2 > 1e-8):
+            #     lastpt = sdpath[-1]
+            #     grad1 = gradinterp1(lastpt[0], lastpt[1])
+            #     grad2 = gradinterp2(lastpt[0], lastpt[1])
+            #     grad_mag = (grad1**2 + grad2**2)**0.5
+            #     grad1 /= grad_mag
+            #     grad2 /= grad_mag
+            #     print('step {}, pt {}, grad1 {}, grad2 {}'.format(stp, lastpt, grad1, grad2))
+            #     sdpath.append(((lastpt[0] - eps*grad1)[0], (lastpt[1] - eps*grad2)[0]))
+            #     stp += 1
             
-            uzpath = list(zip(*sdpath))
-            k1path = uzpath[0]
-            k2path = uzpath[1]
-            plt.plot(k1path, k2path, linestyle='--', color='k')
+            # uzpath = list(zip(*sdpath))
+            # k1path = uzpath[0]
+            # k2path = uzpath[1]
+            # plt.plot(k1path, k2path, linestyle='--', color='k')
             # sys.exit()
         plt.legend(loc='lower right')
         if False:
@@ -304,6 +317,10 @@ if (not write_objectives or both):
 
         cb.update_ticks()
         plt.axes().set_aspect('equal')
+
+        # plt.scatter(xlin, ylin, color='k', marker='o')
+
+
         plt.savefig(save_dir)
         logger.info('image saved to file: ' + save_dir)
         plt.show()
