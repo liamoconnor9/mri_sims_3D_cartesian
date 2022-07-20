@@ -191,7 +191,7 @@ Time-reversible wave equations of the form
   \intertext{do not conserve $\davg{u^2(x, t)}$, and consequently their objective functionals depend on $u'(x, 0)$'s \textit{direction} along with its magnitude. Suppose initial deviation can be written as}
   u'(x, 0) &= \sum_{k \geq 0} a_k e^{ikx}.
   \intertext{then}
-  \davg{u'(x, T)} &= \pi \sum_{k \geq 0} \Big[\exp\Big({-2T\sum_{n \geq 1} k^{2n}  }\Big)a_k^2\Big].
+  \davg{u'(x, T)} &= \pi \sum_{k \geq 0} \Big[\exp\Big({-2T\sum_{n \geq 1} b_n k^{2n}  }\Big)\, a_k^2\Big].
 \end{align}
 When the initial deviation $u'(x, 0)$ is described using a basis of fourier coefficients, its levelsets form hyperellipses, whose semi-major (semi-minor) axes are aligned with $u'(x, 0)$'s largest (smallest) fourier coefficient.
 Accordingly, the path of steepest descent is only aligned with $u'(x, 0)$ when $u'(x, 0)$ is composed of a single fourier mode. Such systems are self-adjoint, meaning $L[u] = L^{\dagger}[u]$
