@@ -216,24 +216,30 @@ Time-reversible wave equations of the form
 That's gives us spherical objective levelsets. Notice what happens as we increment the number of terms in the above Taylor Series
 
 
-% \begin{figure*}
-%   \centering
-%   \begin{tabular}{@{}c@{}}
-%       \includegraphics[width=3.375in]{flux_sup_n.pdf}
-%   \end{tabular}
-%   \begin{tabular}{@{}c@{}}
-%       \includegraphics[width=3.375in]{EV_spectra_2ra.pdf}
-%   \end{tabular}
-%   \caption{Heat fluxes (left) and eigenvalue spectra (right) of equilibrated states with $\Ra = 2 \times 10^5$ (top) and $\Ra = 10^9$ (bottom). 
-%   The heat flux profiles are symmetric about $z=0$, so we only plot for $z<0$.
-%   We plot the advection profiles for marginally-stable modes. 
-%   At low $\Ra$, a single mode with $k_x = 1.5\pi$ is sufficient to oppose boundary layer diffusion and facilitate heat flux throughout the bulk of the domain. 
-%   At large $\Ra$, high-wavenumber modes contribute pronounced small-scale advection profiles which tightly hug the thin boundary layers. 
-%   A combination of progressively wider advection profiles is necessary to transition to bulk advection provided by the $k_x = 1.5\pi$ mode. 
-%   This bulk mode mimics the large-scale convective cells which are characteristic of Rayleigh–Bénard convection, both in qualitative structure and number of cells in the domain.
-%   The eigenfunctions which compose the advective profiles are illustrated in Appendix~\ref{sec:eigenfunctions}.}
-%   \label{fig:flux}
-% \end{figure*}
+\begin{figure*}[h]
+  \centering
+  \begin{tabular}{@{}c@{}}
+      \includegraphics[width=3in]{SPHRtest_Nts1a0p3b0p0c0p0T1p0R0p015kt10p0kt20.png}
+  \end{tabular}
+  \begin{tabular}{@{}c@{}}
+      \includegraphics[width=3in]{SPHRtest_Nts2a0p3b0p0c0p0T1p0R0p015kt10p0kt20.png}
+  \end{tabular}
+  \begin{tabular}{@{}c@{}}
+      \includegraphics[width=3in]{SPHRtest_Nts3a0p3b0p0c0p0T1p0R0p015kt10p0kt20.png}
+  \end{tabular}
+  \begin{tabular}{@{}c@{}}
+      \includegraphics[width=3in]{SPHRtest_Nts4a0p3b0p0c0p0T1p0R0p015kt10p0kt20.png}
+  \end{tabular}
+  % \caption{Heat fluxes (left) and eigenvalue spectra (right) of equilibrated states with $\Ra = 2 \times 10^5$ (top) and $\Ra = 10^9$ (bottom). 
+  % The heat flux profiles are symmetric about $z=0$, so we only plot for $z<0$.
+  % We plot the advection profiles for marginally-stable modes. 
+  % At low $\Ra$, a single mode with $k_x = 1.5\pi$ is sufficient to oppose boundary layer diffusion and facilitate heat flux throughout the bulk of the domain. 
+  % At large $\Ra$, high-wavenumber modes contribute pronounced small-scale advection profiles which tightly hug the thin boundary layers. 
+  % A combination of progressively wider advection profiles is necessary to transition to bulk advection provided by the $k_x = 1.5\pi$ mode. 
+  % This bulk mode mimics the large-scale convective cells which are characteristic of Rayleigh–Bénard convection, both in qualitative structure and number of cells in the domain.
+  % The eigenfunctions which compose the advective profiles are illustrated in Appendix~\ref{sec:eigenfunctions}.}
+  % \label{fig:flux}
+\end{figure*}
 
 \clearpage
 When the initial deviation $u'(x, 0)$ is described using a basis of fourier coefficients, its levelsets form hyperellipses, whose semi-major (semi-minor) axes are aligned with $u'(x, 0)$'s largest (smallest) fourier coefficient.
