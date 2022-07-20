@@ -1,4 +1,5 @@
-\documentclass[longbibliography,twocolumn,amsmath,amssymb,aps,nofootinbib]{revtex4-2}
+% \documentclass[longbibliography,twocolumn,amsmath,amssymb,aps,nofootinbib]{revtex4-2}
+\documentclass[longbibliography,amsmath,amssymb,aps,nofootinbib]{revtex4-2}
 
 \usepackage{graphicx}
 \usepackage{natbib}
@@ -190,16 +191,58 @@ Time-reversible wave equations of the form
   \partial_t u &= \sum_{n \geq 1} b_n \partial^{2n}_x u \label{waveeq}
   \intertext{do not conserve $\davg{u^2(x, t)}$, and consequently their objective functionals depend on $u'(x, 0)$'s \textit{direction} along with its magnitude. Suppose initial deviation can be written as}
   u'(x, 0) &= \sum_{k \geq 0} a_k e^{ikx}.
-  \intertext{then}
-  \davg{u'(x, T)} &= \pi \sum_{k \geq 0} \Big[\exp\Big({-2T\sum_{n \geq 1} b_n k^{2n}  }\Big)\, a_k^2\Big].
+  \intertext{Let's just consider the diffusion equation ($n=1$). Then the end state is given by}
+  u'(x, T) &= \sum_{k\geq 0} a_k \exp(ikx-Tb_1k^2) \label{diffsoln}\\
+  \intertext{The nominal objective functional is given by}
+  \davg{|u'(x, T)|^2} &= \pi \sum_{k \geq 0} \Big[a_k^2\exp\Big({-2T\sum_{n \geq 1} b_n k^{2n}  }\Big)\, \Big] \label{nomobjdiff}.
+  \intertext{Equation (\ref{nomobjdiff}) gives us the elliptical heatmaps we observed previously.}
+  \intertext{Let's take a second-order spatial derivative of (\ref{diffsoln})}
+  \partial_x^2 u'(x, T) &= \pi \sum_{k\geq 0} -k^2 a_k^2 \exp(ikx-Tb_1k^2)\\
+  \intertext{In general, applying a spatial derivative of order $2m$ to (\ref{diffsoln}), yields}
+  \partial_x^{2m} u'(x, T) &= \pi \sum_{k\geq 0} (-k^2)^m a_k^2 \exp(ikx-Tb_1k^{2})\\
+  \intertext{We can leverage this fact to construct an objective functional whose levelsets are spherical. Consider}
 \end{align}
+\begin{tiny}
+\begin{align*}
+  H[u'(T)] &= \davg{|u'(x, T) - (Tb_1)\partial_x^2 u'(x, T) + \frac{(Tb_1)^2}{2!}\partial_x^4 u'(x, T) - \frac{(Tb_1)^3}{3!}\partial_x^6 u'(x, T) ...|^2} \\
+  &= \davg{\Big|\sum_{k\geq 0}a_k \exp(ikx-Tb_1k^2) + \sum_{k\geq 0}(Tb_1k^2)a_k \exp(ikx-Tb_1k^2) + \sum_{k\geq 0}\frac{(Tb_1k^2)^2}{2!}a_k \exp(ikx-Tb_1k^2) + \sum_{k\geq 0}\frac{(Tb_1k^2)^3}{3!}a_k \exp(ikx-Tb_1k^2) + ...\Big|^2} \\
+  &= \davg{|\sum_{k\geq 0}\Big[a_k \exp(ikx-Tb_1k^2)\Big(1 + (Tb_1k^2) + \frac{(Tb_1k^2)^2}{2!} + \frac{(Tb_1k^2)^3}{3!} ...\Big)\Big]|^2} \\
+  &= \davg{|\sum_{k\geq 0}\Big[ a_k \exp(ikx-Tb_1k^2) \Big( \exp(Tb_1k^2) \Big)\Big]|^2} \\
+  &= \davg{|\sum_{k\geq 0}\Big[ a_k \exp(ikx)  \Big)\Big]|^2} \\
+  &= \pi \sum_{k\geq 0} a_k^2
+  % &= \pi \sum_{k \geq 0} \Big[\exp\Big({-2T\sum_{n \geq 1} b_n k^{2n}  }\Big)\, a_k^2\Big].
+\end{align*}
+\end{tiny}
+That's gives us spherical objective levelsets. Notice what happens as we increment the number of terms in the above Taylor Series
+
+
+% \begin{figure*}
+%   \centering
+%   \begin{tabular}{@{}c@{}}
+%       \includegraphics[width=3.375in]{flux_sup_n.pdf}
+%   \end{tabular}
+%   \begin{tabular}{@{}c@{}}
+%       \includegraphics[width=3.375in]{EV_spectra_2ra.pdf}
+%   \end{tabular}
+%   \caption{Heat fluxes (left) and eigenvalue spectra (right) of equilibrated states with $\Ra = 2 \times 10^5$ (top) and $\Ra = 10^9$ (bottom). 
+%   The heat flux profiles are symmetric about $z=0$, so we only plot for $z<0$.
+%   We plot the advection profiles for marginally-stable modes. 
+%   At low $\Ra$, a single mode with $k_x = 1.5\pi$ is sufficient to oppose boundary layer diffusion and facilitate heat flux throughout the bulk of the domain. 
+%   At large $\Ra$, high-wavenumber modes contribute pronounced small-scale advection profiles which tightly hug the thin boundary layers. 
+%   A combination of progressively wider advection profiles is necessary to transition to bulk advection provided by the $k_x = 1.5\pi$ mode. 
+%   This bulk mode mimics the large-scale convective cells which are characteristic of Rayleigh–Bénard convection, both in qualitative structure and number of cells in the domain.
+%   The eigenfunctions which compose the advective profiles are illustrated in Appendix~\ref{sec:eigenfunctions}.}
+%   \label{fig:flux}
+% \end{figure*}
+
+\clearpage
 When the initial deviation $u'(x, 0)$ is described using a basis of fourier coefficients, its levelsets form hyperellipses, whose semi-major (semi-minor) axes are aligned with $u'(x, 0)$'s largest (smallest) fourier coefficient.
 Accordingly, the path of steepest descent is only aligned with $u'(x, 0)$ when $u'(x, 0)$ is composed of a single fourier mode. Such systems are self-adjoint, meaning $L[u] = L^{\dagger}[u]$
 
-\begin{figure}
-  \includegraphics[width=9cm]{objtest_a0p03b0p0c0p0T3p0R0p015kt10p0kt20.png}
-  \caption{Objective function and an example gradient descent path for the diffusion equation. The target simulation $U(t) = 0$ and the deviation is composed of two fourier modes, i.e. $u'(t) = a_1\sin x + a_5\sin 5x$. Because the system is linear self-adjoint, each subsequent guess in the gradient descent trajectory is constrained to lie in this 2D phase space.}
-\end{figure}
+% \begin{figure}
+%   \includegraphics[width=9cm]{objtest_a0p03b0p0c0p0T3p0R0p015kt10p0kt20.png}
+%   \caption{Objective function and an example gradient descent path for the diffusion equation. The target simulation $U(t) = 0$ and the deviation is composed of two fourier modes, i.e. $u'(t) = a_1\sin x + a_5\sin 5x$. Because the system is linear self-adjoint, each subsequent guess in the gradient descent trajectory is constrained to lie in this 2D phase space.}
+% \end{figure}
 
 \textbf{summary: }Linear systems' objective functions' shapes do not depend on the target--the target manifests itself as a constant shift in ic space. 
 Reversible wave equations, which conserve energy yield objective functions whose levelsets in ic space are spherical, so the gradient at any given guess always provides the shortest path to the target. 
