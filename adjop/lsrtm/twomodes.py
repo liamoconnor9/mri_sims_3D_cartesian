@@ -71,7 +71,7 @@ kt1_str = str(target_coeffs[0]).replace('.', 'p')
 kt2_str = str(target_coeffs[1]).replace('.', 'p')
 R_str = str(R).replace('.', 'p')
 
-objectives_str = path + '/objectives_a' + a_str + 'b' + b_str + 'c' + c_str + 'T' + T_str + 'R' + R_str + 'kt1' + kt1_str + 'kt2' + kt2_str + '.txt'
+objectives_str = path + '/objectives_Nts' + str(Nts) + 'a' + a_str + 'b' + b_str + 'c' + c_str + 'T' + T_str + 'R' + R_str + 'kt1' + kt1_str + 'kt2' + kt2_str + '.txt'
 save_dir = path + '/SPHRtest_Nts' + str(Nts) + 'a' + a_str + 'b' + b_str + 'c' + c_str + 'T' + T_str + 'R' + R_str + 'kt1' + kt1_str + 'kt2' + kt2_str + '.png'
 
 # Simulation Parameters
@@ -257,12 +257,17 @@ if (not write_objectives or both):
             # tlin = np.linspace(0, 1, 1000000)
             a1 = np.exp(-2*T*a*(2*np.pi * k1 / Lx)**2)
             a2 = np.exp(-2*T*a*(2*np.pi * k2 / Lx)**2)
+            if Nts > 1:
+                for nt in range(1, Nts):
+                    a1 += (T*a*k1**2)**nt*np.exp(-2*T*a*(2*np.pi * k1 / Lx)**2)
+                    a2 += (T*a*k2**2)**nt*np.exp(-2*T*a*(2*np.pi * k2 / Lx)**2)
+
             x0, y0 = sdpath[0][0], sdpath[0][1]
             xlin = x0*tlin**(a1)
             ylin = y0*tlin**(a2)
-            
-            # plt.plot(xlin, ylin, color='k', linestyle='--')
-            # plt.scatter([sdpath[-1][0]], [sdpath[-1][1]], s=60, marker='o', color='k', label = 'guess')
+
+            plt.plot(xlin, ylin, color='k', linestyle='--')
+            plt.scatter([sdpath[-1][0]], [sdpath[-1][1]], s=60, marker='o', color='k', label = 'guess')
 
             # grad_ar = np.gradient(objectives)
             # from scipy import interpolate
