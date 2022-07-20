@@ -49,6 +49,7 @@ k1_range = ast.literal_eval(config.get('parameters', 'k1_range'))
 k2_range = ast.literal_eval(config.get('parameters', 'k2_range'))
 R = config.getfloat('parameters', 'R')
 Nmodes = config.getint('parameters', 'Nmodes')
+Nts = config.getint('parameters', 'Nts')
 
 # Parameters
 Lx = eval(config.get('parameters', 'Lx'))
@@ -71,7 +72,7 @@ kt2_str = str(target_coeffs[1]).replace('.', 'p')
 R_str = str(R).replace('.', 'p')
 
 objectives_str = path + '/objectives_a' + a_str + 'b' + b_str + 'c' + c_str + 'T' + T_str + 'R' + R_str + 'kt1' + kt1_str + 'kt2' + kt2_str + '.txt'
-save_dir = path + '/objtest_a' + a_str + 'b' + b_str + 'c' + c_str + 'T' + T_str + 'R' + R_str + 'kt1' + kt1_str + 'kt2' + kt2_str + '.png'
+save_dir = path + '/SPHRtest_Nts' + str(Nts) + 'a' + a_str + 'b' + b_str + 'c' + c_str + 'T' + T_str + 'R' + R_str + 'kt1' + kt1_str + 'kt2' + kt2_str + '.png'
 
 # Simulation Parameters
 dealias = 3/2
@@ -181,8 +182,20 @@ if (write_objectives or both):
 
     def evaluate_objective(u, U):
         # fac2 = np.sum((u['g'])**2)
-        fac2 = d3.Integrate((u - U)**2).evaluate()['g'].flat[0] / Lx
-        # print('obj = {}, rank = {}'.format(fac2, CW.rank))
+        # fac2 = d3.Integrate((u - U)**2).evaluate()['g'].flat[0] / Lx
+
+        intgrand = 0
+        for term_ind in range(Nts):
+            uder = u.copy()
+            for i in range(2*term_ind):
+                uder = d3.Differentiate(uder.copy(), xcoord).evaluate().copy()
+
+            coeffA = (-1)**term_ind*T**term_ind * a**term_ind / (np.math.factorial(term_ind))
+            # logger.info('term_ind = {}, coeffA = {}'.format(term_ind, coeffA))
+            intgrand += coeffA * uder.copy()
+
+        fac2 = d3.Integrate((intgrand)**2).evaluate()['g'].flat[0] / Lx
+        # sys.exit()
         return fac2
         # return fac1 + fac2
 
@@ -230,7 +243,7 @@ if (not write_objectives or both):
         # print(objectives)
         pc = plt.pcolormesh(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, cmap='GnBu')
         cb = plt.colorbar(pc, fraction=0.046, pad=0.15)
-        plt.clim(0.0, 8e-5)
+        # plt.clim(0.0, 8e-5)
         plt.scatter([target_coeffs[0]], [target_coeffs[1]], s=60, marker='*', color='k', label = 'target')
         cont = plt.contour(k1_coeffs.ravel(), k2_coeffs.ravel(), objectives.T, levels=[0.00001, 0.00002, 0.00004, 0.00008], colors=['k', 'k'])
         # plt.clabel(cont, cont.levels, inline=True, fmt=fmt, fontsize=7)
@@ -247,7 +260,9 @@ if (not write_objectives or both):
             x0, y0 = sdpath[0][0], sdpath[0][1]
             xlin = x0*tlin**(a1)
             ylin = y0*tlin**(a2)
-            plt.plot(xlin, ylin, color='k', linestyle='--')
+            
+            # plt.plot(xlin, ylin, color='k', linestyle='--')
+            # plt.scatter([sdpath[-1][0]], [sdpath[-1][1]], s=60, marker='o', color='k', label = 'guess')
 
             # grad_ar = np.gradient(objectives)
             # from scipy import interpolate
@@ -256,7 +271,6 @@ if (not write_objectives or both):
             # gradinterp1 = interpolate.interp2d(k1k1[::stride, ::stride], k2k2[::stride, ::stride], grad_ar[0][::stride, ::stride].T, kind='linear')
             # gradinterp2 = interpolate.interp2d(k1k1[::stride, ::stride], k2k2[::stride, ::stride], grad_ar[1][::stride, ::stride].T, kind='linear')
             
-            plt.scatter([sdpath[-1][0]], [sdpath[-1][1]], s=60, marker='o', color='k', label = 'guess')
 
             # eps = 0.000005
             # stp = 0
@@ -300,7 +314,8 @@ if (not write_objectives or both):
                 plt.plot(c1s, c2s, color='lime', linewidth=3)
         plt.xlabel(r'$(2/L_x) \; \langle u(x, 0) \, \sin${}$x \rangle$'.format(k1))
         plt.ylabel(r'$(2/L_x) \; \langle u(x, 0) \, \sin${}$x \rangle$'.format(k2))
-        plt.title(r'$\langle (u(T) - U(T))^2 \rangle$; a = {}, b = {}, T = {}'.format(a, b, T), pad=20)
+        plt.title('Taylor Series Terms: {}'.format(Nts), pad=20)
+        # plt.title(''r'$\langle (u(T) - U(T))^2 \rangle$; a = {}, b = {}, T = {}'.format(a, b, T), pad=20)
         import types
         def bottom_offset(self, bboxes, bboxes2):
             bottom = self.axes.bbox.ymin
