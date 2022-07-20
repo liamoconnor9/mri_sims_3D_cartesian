@@ -191,15 +191,27 @@ Time-reversible wave equations of the form
   \partial_t u &= \sum_{n \geq 1} b_n \partial^{2n}_x u \label{waveeq}
   \intertext{do not conserve $\davg{u^2(x, t)}$, and consequently their objective functionals depend on $u'(x, 0)$'s \textit{direction} along with its magnitude. Suppose initial deviation can be written as}
   u'(x, 0) &= \sum_{k \geq 0} a_k e^{ikx}.
+\end{align}
+\clearpage
+\begin{align}
   \intertext{Let's just consider the diffusion equation ($n=1$). Then the end state is given by}
   u'(x, T) &= \sum_{k\geq 0} a_k \exp(ikx-Tb_1k^2) \label{diffsoln}\\
   \intertext{The nominal objective functional is given by}
   \davg{|u'(x, T)|^2} &= \pi \sum_{k \geq 0} \Big[a_k^2\exp\Big({-2T\sum_{n \geq 1} b_n k^{2n}  }\Big)\, \Big] \label{nomobjdiff}.
-  \intertext{Equation (\ref{nomobjdiff}) gives us the elliptical heatmaps we observed previously.}
+  \intertext{Equation (\ref{nomobjdiff}) gives us the elliptical heatmaps we observed previously, as shown in Figure \ref{diff_ellipse}.}
+\end{align}
+
+\begin{figure}[h]
+  \includegraphics[width=9cm]{objtest_a0p03b0p0c0p0T3p0R0p015kt10p0kt20.png}
+  \caption{Objective function and an example gradient descent path for the diffusion equation. The target simulation $U(t) = 0$ and the deviation is composed of two fourier modes, i.e. $u'(t) = a_1\sin x + a_2\sin 2x$. Because the system is linear self-adjoint, each subsequent guess in the gradient descent trajectory is constrained to lie in this 2D phase space.}
+  \label{diff_ellipse}
+\end{figure}
+  
+\begin{align}
   \intertext{Let's take a second-order spatial derivative of (\ref{diffsoln})}
-  \partial_x^2 u'(x, T) &= \pi \sum_{k\geq 0} -k^2 a_k^2 \exp(ikx-Tb_1k^2)\\
+  \partial_x^2 u'(x, T) &= \sum_{k\geq 0} -k^2 a_k^2 \exp(ikx-Tb_1k^2)\\
   \intertext{In general, applying a spatial derivative of order $2m$ to (\ref{diffsoln}), yields}
-  \partial_x^{2m} u'(x, T) &= \pi \sum_{k\geq 0} (-k^2)^m a_k^2 \exp(ikx-Tb_1k^{2})\\
+  \partial_x^{2m} u'(x, T) &= \sum_{k\geq 0} (-k^2)^m a_k^2 \exp(ikx-Tb_1k^{2})\\
   \intertext{We can leverage this fact to construct an objective functional whose levelsets are spherical. Consider}
 \end{align}
 \begin{tiny}
@@ -213,7 +225,7 @@ Time-reversible wave equations of the form
   % &= \pi \sum_{k \geq 0} \Big[\exp\Big({-2T\sum_{n \geq 1} b_n k^{2n}  }\Big)\, a_k^2\Big].
 \end{align*}
 \end{tiny}
-That's gives us spherical objective levelsets. Notice what happens as we increment the number of terms in the above Taylor Series
+That gives us spherical objective levelsets. Notice what happens as we increment the number of terms in the above Taylor Series
 
 
 \begin{figure*}[h]
@@ -244,11 +256,6 @@ That's gives us spherical objective levelsets. Notice what happens as we increme
 \clearpage
 When the initial deviation $u'(x, 0)$ is described using a basis of fourier coefficients, its levelsets form hyperellipses, whose semi-major (semi-minor) axes are aligned with $u'(x, 0)$'s largest (smallest) fourier coefficient.
 Accordingly, the path of steepest descent is only aligned with $u'(x, 0)$ when $u'(x, 0)$ is composed of a single fourier mode. Such systems are self-adjoint, meaning $L[u] = L^{\dagger}[u]$
-
-% \begin{figure}
-%   \includegraphics[width=9cm]{objtest_a0p03b0p0c0p0T3p0R0p015kt10p0kt20.png}
-%   \caption{Objective function and an example gradient descent path for the diffusion equation. The target simulation $U(t) = 0$ and the deviation is composed of two fourier modes, i.e. $u'(t) = a_1\sin x + a_5\sin 5x$. Because the system is linear self-adjoint, each subsequent guess in the gradient descent trajectory is constrained to lie in this 2D phase space.}
-% \end{figure}
 
 \textbf{summary: }Linear systems' objective functions' shapes do not depend on the target--the target manifests itself as a constant shift in ic space. 
 Reversible wave equations, which conserve energy yield objective functions whose levelsets in ic space are spherical, so the gradient at any given guess always provides the shortest path to the target. 
