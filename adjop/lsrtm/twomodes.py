@@ -28,6 +28,7 @@ plt.rcParams.update({'figure.autolayout': True})
 golden_mean = (np.sqrt(5)-1.0)/2.0
 plt.rcParams.update({'figure.figsize': [3.4, 3.4]})
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+from Undiffuse import undiffuse
 
 filename = path + '/twomodes_options.cfg'
 config = ConfigParser()
@@ -184,16 +185,17 @@ if (write_objectives or both):
         # fac2 = np.sum((u['g'])**2)
         # fac2 = d3.Integrate((u - U)**2).evaluate()['g'].flat[0] / Lx
 
-        intgrand = 0
-        for term_ind in range(Nts):
-            uder = u.copy()
-            for i in range(2*term_ind):
-                uder = d3.Differentiate(uder.copy(), xcoord).evaluate().copy()
+        # intgrand = 0
+        # for term_ind in range(Nts):
+        #     uder = u.copy()
+        #     for i in range(2*term_ind):
+        #         uder = d3.Differentiate(uder.copy(), xcoord).evaluate().copy()
 
-            coeffA = (-1)**term_ind*T**term_ind * a**term_ind / (np.math.factorial(term_ind))
-            # logger.info('term_ind = {}, coeffA = {}'.format(term_ind, coeffA))
-            intgrand += coeffA * uder.copy()
+        #     coeffA = (-1)**term_ind*T**term_ind * a**term_ind / (np.math.factorial(term_ind))
+        #     # logger.info('term_ind = {}, coeffA = {}'.format(term_ind, coeffA))
+        #     intgrand += coeffA * uder.copy()
 
+        intgrand = undiffuse(u, xcoord, a*T, Nts)
         fac2 = d3.Integrate((intgrand)**2).evaluate()['g'].flat[0] / Lx
         # sys.exit()
         return fac2
