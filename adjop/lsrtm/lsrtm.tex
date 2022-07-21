@@ -194,9 +194,9 @@ Time-reversible wave equations of the form
 \end{align}
 \clearpage
 \begin{align}
-  \intertext{Let's just consider the diffusion equation ($n=1$). Then the end state is given by}
+  \intertext{Let's just consider the diffusion equation ($n=1$) with diffusivity $b_1$. The end state is given by}
   u'(x, T) &= \sum_{k\geq 0} a_k \exp(ikx-Tb_1k^2) \label{diffsoln}\\
-  \intertext{The nominal objective functional is given by}
+  \intertext{and the nominal objective functional is given by}
   \davg{|u'(x, T)|^2} &= \pi \sum_{k \geq 0} \Big[a_k^2\exp\Big({-2T\sum_{n \geq 1} b_n k^{2n}  }\Big)\, \Big] \label{nomobjdiff}.
   \intertext{Equation (\ref{nomobjdiff}) gives us the elliptical heatmaps we observed previously, as shown in Figure \ref{diff_ellipse}.}
 \end{align}
@@ -212,8 +212,10 @@ Time-reversible wave equations of the form
   \partial_x^2 u'(x, T) &= \sum_{k\geq 0} -k^2 a_k^2 \exp(ikx-Tb_1k^2)\\
   \intertext{In general, applying a spatial derivative of order $2m$ to (\ref{diffsoln}), yields}
   \partial_x^{2m} u'(x, T) &= \sum_{k\geq 0} (-k^2)^m a_k^2 \exp(ikx-Tb_1k^{2})\\
-  \intertext{We can leverage this fact to construct an objective functional whose levelsets are spherical. Consider}
+  \intertext{We can leverage this fact to construct an objective functional whose levelsets are spherical.} 
+  \intertext{Consider the following objective functional}
 \end{align}
+\vspace{-1cm}
 \begin{tiny}
 \begin{align*}
   H[u'(T)] &= \davg{|u'(x, T) - (Tb_1)\partial_x^2 u'(x, T) + \frac{(Tb_1)^2}{2!}\partial_x^4 u'(x, T) - \frac{(Tb_1)^3}{3!}\partial_x^6 u'(x, T) ...|^2} \\
